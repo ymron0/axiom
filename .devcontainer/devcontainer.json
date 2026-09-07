@@ -1,0 +1,37 @@
+{
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "forwardPorts": [
+        3000
+    ],
+    "name": "dart-playground",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // Remote Development
+                "ms-azuretools.vscode-containers",
+                "ms-vscode-remote.remote-containers",
+                "GitHub.codespaces",
+                // Theme
+                "GitHub.github-vscode-theme",
+                // AI
+                "github.copilot",
+                "github.copilot-chat",
+                "openai.chatgpt",
+                // Dart & Flutter
+                "Dart-Code.dart-code",
+                "Dart-Code.flutter",
+                // Editor enhancements
+                "Gruntfuggly.todo-tree",
+                "ryanluker.vscode-coverage-gutters",
+                // Linting & formatting
+                "DavidAnson.vscode-markdownlint"
+            ],
+            "settings": {
+                "todo-tree.ripgrep.ripgrep": "/usr/bin/rg"
+            }
+        }
+    },
+    "postCreateCommand": "flutter pub get"
+}
