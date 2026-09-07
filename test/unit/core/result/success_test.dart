@@ -14,6 +14,13 @@ void main() {
         // Then
         expect(success.value, same(value));
       });
+
+      test('allows nullable success values', () {
+        const result = Success<String?>(null);
+
+        expect(result.isSuccess, isTrue);
+        expect(result.valueOrNull, isNull);
+      });
     });
 
     group('state', () {

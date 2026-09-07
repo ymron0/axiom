@@ -2,7 +2,7 @@ part of 'result.dart';
 
 /// Represents a result containing a successful value.
 @MappableClass()
-final class Success<T extends Object> extends Result<T, Never>
+final class Success<T extends Object?> extends Result<T, Never>
     with SuccessMappable {
   /// Creates a successful result containing [value].
   const Success(this.value);
