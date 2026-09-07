@@ -7,7 +7,7 @@ part 'result.mapper.dart';
 
 /// Represents either a successful value or a failure.
 @MappableClass()
-sealed class Result<T extends Object, F extends BaseFailure>
+sealed class Result<T extends Object?, F extends BaseFailure>
     with ResultMappable {
   /// Creates a result for use by a concrete result type.
   const Result();
