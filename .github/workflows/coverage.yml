@@ -1,0 +1,173 @@
+name: Test & Coverage
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  coverage-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository contents for the workflow.
+      - name: Checkout Code
+        uses: actions/checkout@v5
+
+      # Install the stable Flutter SDK and enable dependency caching.
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      # Configure SSH for private dependencies
+      - name: Configure SSH for private dependencies
+        shell: bash
+        env:
+          FIXTURES_SSH_KEY: ${{ secrets.FIXTURES_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$FIXTURES_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      # Resolve and install the project's Dart and Flutter dependencies.
+      - name: Install Dependencies
+        run: flutter pub get --no-example
+
+      # Generate the project's build-time Dart code.
+      - name: Run build_runner
+        run: dart run build_runner build
+
+      # Run the project's test suite and produce the coverage data used below.
+      - name: Run Tests with Coverage
+        run: flutter test --coverage
+
+      # Add Dart files missing from the generated coverage report.
+      - name: Add Uncovered Dart Files
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for file in $(find lib -type f -name '*.dart' \
+            ! -name '*.g.dart' \
+            ! -name '*.gr.dart' \
+            ! -name '*.mapper.dart' | sort); do
+
+            windows_file="${file//\\/\\\\}"
+
+            if grep -Fqx "SF:${file}" coverage/lcov.info || \
+              grep -Fqx "SF:${windows_file}" coverage/lcov.info; then
+              continue
+            fi
+
+            line_count=$(wc -l < "$file")
+
+            {
+              echo "TN:"
+              echo "SF:${file}"
+              echo "FNF:0"
+              echo "FNH:0"
+
+              for line_number in $(seq 1 "$line_count"); do
+                echo "DA:${line_number},0"
+              done
+
+              echo "LF:${line_count}"
+              echo "LH:0"
+              echo "end_of_record"
+            } >> coverage/lcov.info
+          done
+
+      # Normalize duplicated lib path segments before processing and uploading LCOV.
+      # - name: Normalize LCOV Paths
+      #   shell: bash
+      #   run: |
+      #     perl -pi -e 's{^(SF:.*)lib/lib/}{$1lib/}' coverage/lcov.info
+
+      ## Remove files that should be ignored from the coverage report, such as those starting with coverage:ignore-file
+      - name: Remove Ignored Files from Coverage
+        run: |
+          dart pub global activate remove_from_coverage
+
+          remove_args=(-f coverage/lcov.info)
+          while IFS= read -r -d '' file; do
+            pattern="${file//./\\.}"
+            remove_args+=(-r "^${pattern}$")
+          done < <(grep -rlZ --include='*.dart' '^// coverage:ignore-file' lib)
+
+          dart pub global run remove_from_coverage:remove_from_coverage "${remove_args[@]}"
+
+      # Install lcov for coverage report processing.
+      - name: Install lcov
+        run: sudo apt-get install -y lcov
+
+      # Remove generated Dart files from the coverage report.
+      - name: Remove Generated Files from Coverage
+        run: |
+          lcov --ignore-errors unused \
+            --remove coverage/lcov.info \
+              '*.g.dart' '*.gr.dart' '*.mapper.dart' \
+            -o coverage/lcov.info
+
+      # Generate HTML coverage report from the processed lcov.info file
+      - name: Generate HTML Coverage Report
+        run: genhtml --prefix "$GITHUB_WORKSPACE" coverage/lcov.info -o coverage/html
+
+      # Upload the HTML folder as a downloadable workflow artifact
+      - name: Upload HTML Coverage Report Artilib/libfact
+        uses: actions/upload-artifact@v4
+        if: always() # Uploads the report even if test/coverage steps fail
+        with:
+          name: html-coverage-report
+          path: coverage/html/
+          retention-days: 14            
+
+      # Upload the processed coverage report to Codecov.
+      - name: Upload Coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
+      # Report coverage and enforce the configured total coverage thresholds.
+      - name: Report & Enforce Coverage Threshold
+        uses: whynotmake-it/dart-coverage-assistant@v1
+        with:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          lower_threshold: 50
+          upper_threshold: 85
+          enforce_threshold: 'total'
+
+      # Extract the overall line coverage percentage for later publishing.
+      - name: Extract Overall Coverage Percentage
+        id: coverage_percent
+        run: |
+          PERCENT=$(lcov --summary coverage/lcov.info | grep lines...... | cut -d ' ' -f 4 | cut -d '%' -f 1)
+          echo "PERCENT=$PERCENT" >> $GITHUB_OUTPUT
+
+      # Update the external coverage badge with the extracted percentage.
+      - name: Update Coverage Badge Gist
+        uses: schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 08447eecf635d10e922562f0555319fd
+          filename: coverage.json
+          label: coverage
+          message: ${{ steps.coverage_percent.outputs.PERCENT }}%
+          valColorRange: ${{ steps.coverage_percent.outputs.PERCENT }}
+          minColorRange: 50
+          maxColorRange: 85
+
+      # Publish the overall coverage percentage to the GitHub Actions summary.
+      - name: Publish Coverage to GitHub Summary
+        run: |
+          COVERAGE=$(lcov --summary coverage/lcov.info | grep "lines......:" | cut -d ' ' -f 4)
+          echo "### Code Coverage: **$COVERAGE**" >> $GITHUB_STEP_SUMMARY
