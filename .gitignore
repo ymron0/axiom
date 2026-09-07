@@ -1,0 +1,33 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.swiftpm/
+
+# IntelliJ related
+*.iml
+.idea/
+
+# Flutter/Dart/Pub related
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Generated files
+*.g.dart
+*.mapper.dart
+*.gr.dart
+
+# Temporary and development files
+dev/
