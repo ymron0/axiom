@@ -1,0 +1,53 @@
+import 'package:test/test.dart' hide TestFailure;
+
+import '../../../fixtures/core/result/test_failure.dart';
+
+void main() {
+  group('Failure', () {
+    group('construction', () {
+      test('preserves the provided message', () {
+        // Given
+        const message = 'Operation failed.';
+
+        // When
+        const failure = TestFailure(message: message);
+
+        // Then
+        expect(failure.message, message);
+      });
+    });
+
+    group('state', () {
+      test('exposes only the failure value', () {
+        // Given
+        const failure = TestFailure();
+
+        // When
+        final failureValue = failure.failureOrNull;
+        final successValue = failure.valueOrNull;
+
+        // Then
+        expect(failure.isFailure, isTrue);
+        expect(failure.isSuccess, isFalse);
+        expect(failureValue, same(failure));
+        expect(successValue, isNull);
+      });
+    });
+
+    group('when', () {
+      test('invokes the failure callback with itself', () {
+        // Given
+        const failure = TestFailure();
+
+        // When
+        final selectedFailure = failure.when<TestFailure>(
+          success: (_) => throw StateError('Unexpected success callback.'),
+          failure: (value) => value,
+        );
+
+        // Then
+        expect(selectedFailure, same(failure));
+      });
+    });
+  });
+}
