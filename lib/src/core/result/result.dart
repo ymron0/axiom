@@ -1,4 +1,4 @@
-import 'package:axiom/src/core/result/base_failure.dart';
+import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'failure.dart';
