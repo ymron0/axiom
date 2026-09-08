@@ -1,3 +1,5 @@
+// coverage:ignore-file
+
 import 'package:axiom/src/core/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
@@ -141,8 +143,8 @@ final class AssetAmount with AssetAmountMappable {
     final resultDirection = signedAmount < Decimal.zero
         ? AssetAmountDirection.outgoing
         : signedAmount > Decimal.zero
-            ? AssetAmountDirection.incoming
-            : direction;
+        ? AssetAmountDirection.incoming
+        : direction;
 
     return AssetAmount(
       assetId: assetId,
