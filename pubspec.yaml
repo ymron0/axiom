@@ -18,6 +18,9 @@ dependencies:
   riverpod_annotation: 4.0.3
   meta: ^1.18.0
   material_symbols_icons: ^4.2960.0
+  fixtures:
+    git:
+      url: git@github.com:ymron0/fixtures.git
 
 dev_dependencies:
   test: ^1.26.0
@@ -27,9 +30,6 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   build_runner: ^2.15.1
   dart_mappable_builder: 4.8.0
-  fixtures:
-    git:
-      url: git@github.com:ymron0/fixtures.git
   auto_route_generator: ^10.6.0
   riverpod_generator: 4.0.4
 
