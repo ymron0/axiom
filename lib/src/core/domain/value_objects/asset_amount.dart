@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/domain/enums/asset_amount_direction.dart';
-import 'package:axiom/src/core/domain/value_objects/asset_id.dart';
+import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
 
@@ -16,7 +17,7 @@ part 'asset_amount.mapper.dart';
 ///   amount: Decimal.parse('12.5'),
 /// );
 /// ```
-@MappableClass()
+@MappableClass(includeCustomMappers: [DecimalMapper()])
 final class AssetAmount with AssetAmountMappable {
   /// The asset whose quantity this value describes.
   final AssetId assetId;
@@ -64,14 +65,120 @@ final class AssetAmount with AssetAmountMappable {
     );
   }
 
+  /// Whether the quantity is known.
+  bool get isKnownAmount => amount != Decimal.fromInt(-1);
+
   /// Whether the quantity is unknown.
-  bool get isUnknown => amount == Decimal.fromInt(-1);
+  bool get isUnknownAmount => amount == Decimal.fromInt(-1);
 
   /// Whether this quantity is incoming.
   bool get isIncoming => direction == AssetAmountDirection.incoming;
 
   /// Whether this quantity is outgoing.
   bool get isOutgoing => direction == AssetAmountDirection.outgoing;
+
+  /// Adds [other] as a signed balance change for the same asset.
+  ///
+  /// Incoming amounts increase the result and outgoing amounts decrease it.
+  /// If either amount is unknown, the result is unknown and retains this
+  /// amount's direction. Throws an [ArgumentError] when [other] belongs to a
+  /// different asset.
+  AssetAmount add(AssetAmount other) {
+    _ensureSameAsset(other);
+    if (isUnknownAmount || other.isUnknownAmount) {
+      return _unknownResult();
+    }
+
+    return _fromSignedAmount(_signedAmount + other._signedAmount);
+  }
+
+  /// Subtracts [other] as a signed balance change for the same asset.
+  ///
+  /// If either amount is unknown, the result is unknown and retains this
+  /// amount's direction. Throws an [ArgumentError] when [other] belongs to a
+  /// different asset.
+  AssetAmount subtract(AssetAmount other) {
+    _ensureSameAsset(other);
+    if (isUnknownAmount || other.isUnknownAmount) {
+      return _unknownResult();
+    }
+
+    return _fromSignedAmount(_signedAmount - other._signedAmount);
+  }
+
+  /// Whether this amount is greater than [other] as a signed balance change.
+  ///
+  /// Throws an [ArgumentError] when [other] belongs to a different asset or
+  /// when either amount is unknown.
+  bool isGreaterThan(AssetAmount other) {
+    _ensureComparable(other);
+    return _signedAmount > other._signedAmount;
+  }
+
+  /// Whether this amount is less than [other] as a signed balance change.
+  ///
+  /// Throws an [ArgumentError] when [other] belongs to a different asset or
+  /// when either amount is unknown.
+  bool isLessThan(AssetAmount other) {
+    _ensureComparable(other);
+    return _signedAmount < other._signedAmount;
+  }
+
+  /// Whether this amount equals [other] as a signed balance change.
+  ///
+  /// Throws an [ArgumentError] when [other] belongs to a different asset or
+  /// when either amount is unknown.
+  bool isEqualTo(AssetAmount other) {
+    _ensureComparable(other);
+    return _signedAmount == other._signedAmount;
+  }
+
+  Decimal get _signedAmount {
+    return isIncoming ? amount : -amount;
+  }
+
+  AssetAmount _fromSignedAmount(Decimal signedAmount) {
+    final resultDirection = signedAmount < Decimal.zero
+        ? AssetAmountDirection.outgoing
+        : signedAmount > Decimal.zero
+            ? AssetAmountDirection.incoming
+            : direction;
+
+    return AssetAmount(
+      assetId: assetId,
+      amount: signedAmount.abs(),
+      direction: resultDirection,
+    );
+  }
+
+  AssetAmount _unknownResult() {
+    return AssetAmount(
+      assetId: assetId,
+      amount: Decimal.fromInt(-1),
+      direction: direction,
+    );
+  }
+
+  void _ensureSameAsset(AssetAmount other) {
+    if (assetId != other.assetId) {
+      throw ArgumentError.value(
+        other.assetId,
+        'other',
+        'Asset amounts must describe the same asset.',
+      );
+    }
+  }
+
+  void _ensureComparable(AssetAmount other) {
+    _ensureSameAsset(other);
+    if (isUnknownAmount || other.isUnknownAmount) {
+      throw ArgumentError.value(
+        other,
+        'other',
+        'Unknown asset amounts cannot be compared.',
+      );
+    }
+  }
 
   /// Rejects negative quantities other than the unknown sentinel value.
   static Decimal _validateAmount(Decimal amount) {
