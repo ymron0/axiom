@@ -1,5 +1,3 @@
-// coverage:ignore-file
-
 import 'package:axiom/src/core/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
@@ -82,28 +80,20 @@ final class AssetAmount with AssetAmountMappable {
   /// Adds [other] as a signed balance change for the same asset.
   ///
   /// Incoming amounts increase the result and outgoing amounts decrease it.
-  /// If either amount is unknown, the result is unknown and retains this
-  /// amount's direction. Throws an [ArgumentError] when [other] belongs to a
-  /// different asset.
+  /// Throws an [ArgumentError] when [other] belongs to a different asset or
+  /// when either amount is unknown.
   AssetAmount add(AssetAmount other) {
-    _ensureSameAsset(other);
-    if (isUnknownAmount || other.isUnknownAmount) {
-      return _unknownResult();
-    }
+    _ensureComparable(other);
 
     return _fromSignedAmount(_signedAmount + other._signedAmount);
   }
 
   /// Subtracts [other] as a signed balance change for the same asset.
   ///
-  /// If either amount is unknown, the result is unknown and retains this
-  /// amount's direction. Throws an [ArgumentError] when [other] belongs to a
-  /// different asset.
+  /// Throws an [ArgumentError] when [other] belongs to a different asset or
+  /// when either amount is unknown.
   AssetAmount subtract(AssetAmount other) {
-    _ensureSameAsset(other);
-    if (isUnknownAmount || other.isUnknownAmount) {
-      return _unknownResult();
-    }
+    _ensureComparable(other);
 
     return _fromSignedAmount(_signedAmount - other._signedAmount);
   }
@@ -150,14 +140,6 @@ final class AssetAmount with AssetAmountMappable {
       assetId: assetId,
       amount: signedAmount.abs(),
       direction: resultDirection,
-    );
-  }
-
-  AssetAmount _unknownResult() {
-    return AssetAmount(
-      assetId: assetId,
-      amount: Decimal.fromInt(-1),
-      direction: direction,
     );
   }
 
