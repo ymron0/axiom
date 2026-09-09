@@ -3,9 +3,12 @@ import 'package:test/test.dart';
 
 void main() {
   group('RecordNotFoundFailure', () {
+    // Invoke constructors at runtime so coverage records their execution.
+    final createFailure = RecordNotFoundFailure.new;
+
     test('can be instantiated without a diagnostic message', () {
       // Given
-      const failure = RecordNotFoundFailure();
+      final failure = createFailure();
 
       // Then
       expect(failure.message, isNull);
@@ -16,7 +19,7 @@ void main() {
       const message = 'The record was not found.';
 
       // When
-      const failure = RecordNotFoundFailure(message: message);
+      final failure = createFailure(message: message);
 
       // Then
       expect(failure.message, message);

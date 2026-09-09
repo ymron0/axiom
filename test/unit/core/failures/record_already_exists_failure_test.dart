@@ -3,9 +3,12 @@ import 'package:test/test.dart';
 
 void main() {
   group('RecordAlreadyExistsFailure', () {
+    // Invoke constructors at runtime so coverage records their execution.
+    final createFailure = RecordAlreadyExistsFailure.new;
+
     test('can be instantiated without a diagnostic message', () {
       // Given
-      const failure = RecordAlreadyExistsFailure();
+      final failure = createFailure();
 
       // Then
       expect(failure.message, isNull);
@@ -16,7 +19,7 @@ void main() {
       const message = 'The record already exists.';
 
       // When
-      const failure = RecordAlreadyExistsFailure(message: message);
+      final failure = createFailure(message: message);
 
       // Then
       expect(failure.message, message);
