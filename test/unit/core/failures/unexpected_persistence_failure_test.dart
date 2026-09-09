@@ -3,9 +3,12 @@ import 'package:test/test.dart';
 
 void main() {
   group('UnexpectedPersistenceFailure', () {
+    // Invoke constructors at runtime so coverage records their execution.
+    final createFailure = UnexpectedPersistenceFailure.new;
+
     test('can be instantiated without a diagnostic message', () {
       // Given
-      const failure = UnexpectedPersistenceFailure();
+      final failure = createFailure();
 
       // Then
       expect(failure.message, isNull);
@@ -16,7 +19,7 @@ void main() {
       const message = 'The persistence operation failed unexpectedly.';
 
       // When
-      const failure = UnexpectedPersistenceFailure(message: message);
+      final failure = createFailure(message: message);
 
       // Then
       expect(failure.message, message);
