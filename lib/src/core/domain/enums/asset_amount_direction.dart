@@ -1,3 +1,5 @@
+// coverage:ignore-file
+
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'asset_amount_direction.mapper.dart';
