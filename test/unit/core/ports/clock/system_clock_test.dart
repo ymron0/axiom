@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('SystemClock', () {
-    test('now uses system time when debugNow is empty', () {
+    test('now uses system time', () {
       const clock = SystemClock();
 
       final before = DateTime.now();
@@ -14,33 +14,16 @@ void main() {
       expect(actual.isAfter(after), isFalse);
     });
 
-    test('now uses debugNow when configured', () {
-      const debugNow = '2026-09-06T12:34:56Z';
-      const clock = SystemClock(debugNow: debugNow);
+    test('nowUtc uses current system time in UTC', () {
+      const clock = SystemClock();
 
-      expect(clock.now, DateTime.parse(debugNow));
-    });
-
-    test('nowUtc converts debugNow to UTC', () {
-      const debugNow = '2026-09-06T12:34:56+02:00';
-      const clock = SystemClock(debugNow: debugNow);
-
+      final before = DateTime.now().toUtc();
       final actual = clock.nowUtc;
+      final after = DateTime.now().toUtc();
 
-      expect(actual, DateTime.parse(debugNow).toUtc());
       expect(actual.isUtc, isTrue);
-    });
-
-    test('now throws FormatException when debugNow is invalid', () {
-      const clock = SystemClock(debugNow: 'not-a-date');
-
-      expect(() => clock.now, throwsFormatException);
-    });
-
-    test('nowUtc throws FormatException when debugNow is invalid', () {
-      const clock = SystemClock(debugNow: 'not-a-date');
-
-      expect(() => clock.nowUtc, throwsFormatException);
+      expect(actual.isBefore(before), isFalse);
+      expect(actual.isAfter(after), isFalse);
     });
   });
 }
