@@ -6,10 +6,32 @@ import 'package:decimal/decimal.dart';
 
 part 'asset_amount.mapper.dart';
 
-/// An asset quantity and its direction.
+/// A quantity of one specific asset and its flow direction.
 ///
-/// An [amount] of `-1` represents an unknown quantity. Otherwise, [amount]
-/// must be zero or positive.
+/// [assetId] is deliberately typed as [AssetId]. This is a domain invariant,
+/// not an implementation detail: identifiers from unrelated domains cannot be
+/// supplied through the static API.
+///
+/// ## Invariants
+///
+/// - [assetId] is a valid, immutable [AssetId].
+/// - [amount] is zero, positive, or the reserved `-1` unknown sentinel.
+/// - Zero is a valid known amount.
+/// - [amount] stores magnitude; [direction] stores incoming or outgoing flow.
+/// - The value is immutable after construction.
+///
+/// ## Semantics
+///
+/// [amount] is the non-negative magnitude of the quantity, while [direction]
+/// describes whether that quantity enters or leaves the asset balance. An
+/// [amount] of `-1` means that the quantity is unknown and is distinct from
+/// zero.
+///
+/// ## Contract
+///
+/// Constructors reject negative values other than the reserved `-1` sentinel
+/// with [ArgumentError]. The value retains its [AssetId], [amount], and
+/// [direction] for equality and mapping.
 ///
 /// ```dart
 /// final amount = AssetAmount.incoming(

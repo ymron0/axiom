@@ -66,11 +66,7 @@ void main() {
     });
 
     test('preserves exact decimal values including eighteen decimals', () {
-      final values = [
-        '1',
-        '1.00',
-        '0.123456789012345678',
-      ];
+      final values = ['1', '1.00', '0.123456789012345678'];
 
       for (final value in values) {
         final amount = AssetAmount.incoming(
@@ -79,6 +75,37 @@ void main() {
         );
 
         expect(amount.amount, Decimal.parse(value));
+      }
+    });
+
+    test('compares equal when all value fields are equal', () {
+      final first = AssetAmount.outgoing(
+        assetId: assetId,
+        amount: Decimal.parse('12.50'),
+      );
+      final same = AssetAmount.outgoing(
+        assetId: AssetId.fromString('asset-123'),
+        amount: Decimal.parse('12.50'),
+      );
+      final differentDirection = AssetAmount.incoming(
+        assetId: assetId,
+        amount: Decimal.parse('12.50'),
+      );
+
+      expect(first, same);
+      expect(first, isNot(differentDirection));
+    });
+
+    test('round trips through dart_mappable serialization', () {
+      final amounts = [
+        AssetAmount.outgoing(assetId: assetId, amount: Decimal.parse('12.50')),
+        AssetAmount.incoming(assetId: assetId, amount: Decimal.fromInt(-1)),
+      ];
+
+      for (final amount in amounts) {
+        final decoded = AssetAmountMapper.fromJson(amount.toJson());
+
+        expect(decoded, amount);
       }
     });
 
@@ -227,10 +254,7 @@ void main() {
     });
 
     test('rejects unknown receiver or operand for every operation', () {
-      final known = AssetAmount.incoming(
-        assetId: assetId,
-        amount: Decimal.one,
-      );
+      final known = AssetAmount.incoming(assetId: assetId, amount: Decimal.one);
       final unknown = AssetAmount.incoming(
         assetId: assetId,
         amount: Decimal.fromInt(-1),
