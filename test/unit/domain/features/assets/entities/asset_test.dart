@@ -32,6 +32,63 @@ void main() {
       expect(currency.decimalPlaces, 2);
     });
 
+    test('represents a concrete currency asset subtype', () {
+      // Given / When
+      final currency = Currency(
+        id: AssetId.fromString('currency-eur'),
+        name: 'Euro',
+        code: AssetCode('EUR'),
+        decimalPlaces: 2,
+      );
+
+      // Then
+      expect(currency, isA<Currency>());
+      expect(currency, isA<Asset>());
+    });
+
+    test('round trips through dart_mappable serialization', () {
+      // Given
+      final currency = Currency(
+        id: AssetId.fromString('currency-eur'),
+        name: 'Euro',
+        code: AssetCode('EUR'),
+        symbol: '€',
+        decimalPlaces: 2,
+      );
+
+      // When
+      final decoded = CurrencyMapper.fromJson(currency.toJson());
+
+      // Then
+      expect(decoded, currency);
+    });
+
+    test('compares currencies by their mapped domain values', () {
+      // Given
+      final first = Currency(
+        id: AssetId.fromString('currency-eur'),
+        name: 'Euro',
+        code: AssetCode('EUR'),
+        decimalPlaces: 2,
+      );
+      final equivalent = Currency(
+        id: AssetId.fromString('currency-eur'),
+        name: 'Euro',
+        code: AssetCode('EUR'),
+        decimalPlaces: 2,
+      );
+      final different = Currency(
+        id: AssetId.fromString('currency-usd'),
+        name: 'US Dollar',
+        code: AssetCode('USD'),
+        decimalPlaces: 2,
+      );
+
+      // Then
+      expect(first, equivalent);
+      expect(first, isNot(different));
+    });
+
     test('allows optional metadata to be omitted through Currency', () {
       // Given / When
       final currency = Currency(
@@ -110,23 +167,17 @@ void main() {
       );
     });
 
-    test('rejects decimal place counts above 18', () {
-      // Given / When / Then
-      expect(
-        () => Currency(
-          id: AssetId.fromString('currency-eur'),
-          name: 'Euro',
-          code: AssetCode('EUR'),
-          decimalPlaces: 19,
-        ),
-        throwsA(
-          isA<ArgumentError>().having(
-            (error) => error.name,
-            'name',
-            'decimalPlaces',
-          ),
-        ),
+    test('allows decimal place counts above 18', () {
+      // Given / When
+      final currency = Currency(
+        id: AssetId.fromString('currency-eur'),
+        name: 'Euro',
+        code: AssetCode('EUR'),
+        decimalPlaces: 19,
       );
+
+      // Then
+      expect(currency.decimalPlaces, 19);
     });
 
     test('rejects a blank optional symbol', () {
@@ -167,7 +218,10 @@ void main() {
 
     test('rejects an invalid remote logo URL', () {
       // Given / When / Then
-      for (final value in ['example.com/logo.png', 'ftp://example.com/logo.png']) {
+      for (final value in [
+        'example.com/logo.png',
+        'ftp://example.com/logo.png',
+      ]) {
         expect(
           () => Currency(
             id: AssetId.fromString('currency-eur'),
@@ -202,6 +256,29 @@ void main() {
       // Then
       expect(currency.remoteLogoUrl, 'https://example.com/euro.png');
       expect(currency.bundledLogoAsset, 'assets/logos/euro.png');
+    });
+
+    test('keeps identity independent from display metadata', () {
+      // Given
+      final assetId = AssetId.fromString('currency-eur');
+      final first = Currency(
+        id: assetId,
+        name: 'Euro',
+        code: AssetCode('EUR'),
+        symbol: '€',
+        decimalPlaces: 2,
+      );
+      final second = Currency(
+        id: assetId,
+        name: 'Euro (updated display name)',
+        code: AssetCode('EUR'),
+        symbol: '€',
+        decimalPlaces: 2,
+      );
+
+      // Then
+      expect(first.id, second.id);
+      expect(first.name, isNot(second.name));
     });
 
     test('rejects currency codes that are not exactly three letters', () {

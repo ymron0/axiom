@@ -5,6 +5,12 @@ part 'asset_id.mapper.dart';
 
 /// A type-safe identifier for an asset.
 ///
+/// [AssetId] remains owned by the Assets feature even though Core primitives
+/// may reference it when they specifically identify an asset. This deliberate
+/// exception lets APIs such as [AssetAmount] reject unrelated typed IDs at
+/// compile time instead of accepting a generic [UniqueId]. Core must not use
+/// this exception to depend on other Assets domain types.
+///
 /// Create one from a persisted value:
 /// ```dart
 /// final assetId = AssetId.fromString('asset-123');

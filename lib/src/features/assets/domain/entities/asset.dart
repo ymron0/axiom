@@ -6,10 +6,35 @@ import 'package:dart_mappable/dart_mappable.dart';
 part 'currency.dart';
 part 'asset.mapper.dart';
 
-/// Base class for assets.
+/// Base domain model for an identifiable financial asset.
 ///
-/// Concrete assets should extend this entity and provide the required
-/// identifying and display metadata. Example:
+/// An [Asset] owns metadata common to supported asset classes while keeping
+/// identity separate from display metadata and financial behavior. Concrete
+/// assets should extend this type and add only subtype-specific invariants and
+/// behavior.
+///
+/// ## Invariants
+///
+/// - [id] is a valid, strongly typed [AssetId].
+/// - [name] is non-blank after trimming.
+/// - [code] is a valid [AssetCode].
+/// - [decimalPlaces] is non-negative.
+/// - Optional metadata is either `null` or a valid non-blank value.
+/// - Asset identity is represented by [id], independently of display metadata.
+///
+/// ## Semantics
+///
+/// [Asset] is the common parent for financial asset types such as currencies,
+/// blockchain assets, stocks, metals, and funds. [name], [code], [symbol], and
+/// logo metadata describe an asset; they do not define its identity.
+///
+/// ## Contract
+///
+/// Subclasses must preserve the immutable asset state established here and
+/// must keep subtype-specific financial rules in the subtype. This type has no
+/// persistence, repository, or presentation responsibilities.
+///
+/// Example:
 /// ```dart
 /// final asset = Currency(
 ///   id: AssetId.generate(),
@@ -24,7 +49,7 @@ sealed class Asset with AssetMappable {
   /// The typed identifier of the asset.
   final AssetId id;
 
-  /// The human-readable name of the asset, e.g., 'Euro'.
+  /// The trimmed human-readable name of the asset, e.g., 'Euro'.
   final String name;
 
   /// The code used to identify the asset, e.g. 'EUR'.
@@ -36,19 +61,19 @@ sealed class Asset with AssetMappable {
   /// The number of fractional decimal places supported by the asset.
   final int decimalPlaces;
 
-  /// An optional remote logo URL, e.g., 'https://example.com/euro.png'.
+  /// An optional absolute HTTP(S) URL for the asset logo.
   final String? remoteLogoUrl;
 
-  /// An optional path to a bundled logo asset, e.g., 'assets/logos/euro.png'.
+  /// An optional path to a bundled logo asset.
   final String? bundledLogoAsset;
 
   /// Creates an asset with its identity and display metadata.
   ///
-  /// Trims [name] and [symbol] when supplied.
+  /// Trims [name], [symbol], and optional logo metadata when supplied.
   ///
-  /// Throws [ArgumentError] when [name], [symbol], or [bundledLogoAsset] is
-  /// blank, when [remoteLogoUrl] is not an absolute HTTP(S) URL, or when
-  /// [decimalPlaces] is outside the range 0 to 18.
+  /// Throws [ArgumentError] when required text is blank, when supplied optional
+  /// text is blank, when [remoteLogoUrl] is not an absolute HTTP(S) URL, or
+  /// when [decimalPlaces] is negative.
   Asset({
     required this.id,
     required String name,
@@ -64,11 +89,11 @@ sealed class Asset with AssetMappable {
          bundledLogoAsset,
          'bundledLogoAsset',
        ) {
-    if (decimalPlaces < 0 || decimalPlaces > 18) {
+    if (decimalPlaces < 0) {
       throw ArgumentError.value(
         decimalPlaces,
         'decimalPlaces',
-        'Decimal places must be between 0 and 18',
+        'Decimal places cannot be negative',
       );
     }
   }
