@@ -1,4 +1,4 @@
-import 'package:axiom/src/features/categories/domain/value_objects/category_id.dart';
+import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:nanoid/nanoid.dart';
 import 'package:test/test.dart';
 

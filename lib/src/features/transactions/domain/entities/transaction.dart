@@ -1,14 +1,14 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/core/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/core/domain/value_objects/unique_id.dart';
+import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
-import 'package:axiom/src/features/merchants/domain/value_objects/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
-import 'package:axiom/src/features/transactions/domain/value_objects/transaction_id.dart';
+import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';

@@ -1,6 +1,6 @@
 import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/features/accounts/domain/value_objects/account_id.dart';
-import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
+import 'package:axiom/src/core/identity/ids/account_id.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 import 'package:decimal/decimal.dart';

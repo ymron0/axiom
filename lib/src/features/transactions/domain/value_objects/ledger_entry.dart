@@ -1,5 +1,5 @@
 import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/features/accounts/domain/value_objects/account_id.dart';
+import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 

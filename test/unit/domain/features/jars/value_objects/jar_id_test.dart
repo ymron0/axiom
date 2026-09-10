@@ -1,4 +1,4 @@
-import 'package:axiom/src/features/jars/domain/value_objects/jar_id.dart';
+import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:nanoid/nanoid.dart';
 import 'package:test/test.dart';
 

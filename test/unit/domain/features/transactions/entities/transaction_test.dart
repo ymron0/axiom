@@ -1,15 +1,15 @@
 import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/features/accounts/domain/value_objects/account_id.dart';
-import 'package:axiom/src/features/budgets/domain/value_objects/budget_id.dart';
-import 'package:axiom/src/features/merchants/domain/value_objects/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/account_id.dart';
+import 'package:axiom/src/core/identity/ids/budget_id.dart';
+import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
-import 'package:axiom/src/features/transactions/domain/value_objects/transaction_id.dart';
+import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
-import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
