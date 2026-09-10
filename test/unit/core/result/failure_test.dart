@@ -32,6 +32,39 @@ void main() {
         expect(failureValue, same(failure));
         expect(successValue, isNull);
       });
+
+      test('retains stable failure information', () {
+        // Given
+        const failure = TestFailure(message: 'Operation failed.');
+
+        // When
+        final failureValue = failure.failureOrNull;
+
+        // Then
+        expect(failure.type, TestFailure.typeId);
+        expect(failure.message, 'Operation failed.');
+        expect(failureValue, same(failure));
+      });
+    });
+
+    group('equality', () {
+      test('compares failures with equal state as equal', () {
+        // Given
+        const first = TestFailure(message: 'Operation failed.');
+        const second = TestFailure(message: 'Operation failed.');
+
+        // Then
+        expect(first, equals(second));
+      });
+
+      test('distinguishes failures with different state', () {
+        // Given
+        const first = TestFailure(message: 'Operation failed.');
+        const second = TestFailure(message: 'Permission denied.');
+
+        // Then
+        expect(first, isNot(equals(second)));
+      });
     });
 
     group('when', () {
