@@ -1,6 +1,26 @@
 part of 'result.dart';
 
-/// Represents a result containing a successful value.
+/// Represents a successful [Result] containing the value produced by a
+/// completed operation.
+///
+/// ## Invariants
+///
+/// A [Success] always represents a successful result and cannot represent a
+/// failure at the same time. The successful [value] is immutable after
+/// construction. When value equality is provided by the mapping mechanism,
+/// it is based on the meaningful stored value.
+///
+/// ## Semantics
+///
+/// [Success] means that the operation completed successfully and produced a
+/// value of type [T]. Nullable payloads are valid when [T] is nullable.
+///
+/// ## Contract
+///
+/// The payload is available through [value] and [valueOrNull]. The result
+/// state is available through [isSuccess] and [isFailure]; [failureOrNull] is
+/// always `null` for a [Success]. Use [when] to handle the successful outcome
+/// without treating it as a failure.
 @MappableClass()
 final class Success<T extends Object?> extends Result<T, Never>
     with SuccessMappable {

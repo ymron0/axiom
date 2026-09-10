@@ -1,6 +1,33 @@
 part of 'result.dart';
 
-/// Represents a result containing a typed failure.
+/// Represents an expected unsuccessful [Result] containing typed failure
+/// information for callers to inspect and handle.
+///
+/// A [Failure] is for failures that are part of the normal domain or
+/// application contract. It is not a replacement for programmer errors or
+/// violated internal invariants that indicate invalid program state.
+///
+/// ## Invariants
+///
+/// A [Failure] always represents a failed result and cannot represent a
+/// successful result at the same time. Its failure state is immutable after
+/// construction, and required failure information remains available for the
+/// lifetime of the object. When value equality is provided by the mapping
+/// mechanism, it remains stable and reflects meaningful failure state.
+///
+/// ## Semantics
+///
+/// [Failure] represents an expected unsuccessful outcome. The typed failure
+/// information identifies the kind of failure and may include additional
+/// context through [message]. Callers can inspect or handle it without
+/// treating it as an exception or presentation concern.
+///
+/// ## Contract
+///
+/// Concrete failures return themselves from [failureOrNull], expose a stable
+/// [type] identifier, and never expose a successful value through
+/// [valueOrNull]. [isFailure] is always `true`, [isSuccess] is always `false`,
+/// and [when] invokes the failure callback with the typed failure.
 @MappableClass()
 abstract class Failure<F extends BaseFailure> extends Result<Never, F>
     with FailureMappable
