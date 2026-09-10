@@ -12,7 +12,7 @@ void main() {
       test('creates an asset', () async {
         // Given
         final repository = InMemoryAssetRepository();
-        final asset = currencyFixture(id: 'create-asset');
+        final asset = currencyFixture(id: 'create-asset', code: 'AAA');
 
         // When
         final result = await repository.create(asset);
@@ -22,14 +22,45 @@ void main() {
         expect((await repository.getById(asset.id)).valueOrNull, same(asset));
       });
 
-      test('returns RecordAlreadyExistsFailure when the asset exists', () async {
+      test(
+        'returns RecordAlreadyExistsFailure when the asset exists',
+        () async {
+          // Given
+          final repository = InMemoryAssetRepository();
+          final original = currencyFixture(
+            id: 'create-duplicate',
+            code: 'AAA',
+          );
+          await repository.create(original);
+          final duplicate = currencyFixture(
+            id: 'create-duplicate',
+            name: 'Duplicate',
+            code: 'AAA',
+          );
+
+          // When
+          final result = await repository.create(duplicate);
+
+          // Then
+          expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+          expect(
+            (await repository.getById(original.id)).valueOrNull,
+            same(original),
+          );
+        },
+      );
+
+      test('returns RecordAlreadyExistsFailure when the code exists', () async {
         // Given
         final repository = InMemoryAssetRepository();
-        final original = currencyFixture(id: 'create-duplicate');
+        final original = currencyFixture(
+          id: 'create-code-original',
+          code: 'AAA',
+        );
         await repository.create(original);
         final duplicate = currencyFixture(
-          id: 'create-duplicate',
-          name: 'Duplicate',
+          id: 'create-code-duplicate',
+          code: original.code.value,
         );
 
         // When
@@ -37,10 +68,7 @@ void main() {
 
         // Then
         expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
-        expect(
-          (await repository.getById(original.id)).valueOrNull,
-          same(original),
-        );
+        expect((await repository.getById(duplicate.id)).valueOrNull, isNull);
       });
     });
 
@@ -48,11 +76,8 @@ void main() {
       test('creates two assets at the same time', () async {
         // Given
         final repository = InMemoryAssetRepository();
-        final first = currencyFixture(id: 'create-all-first');
-        final second = currencyFixture(
-          id: 'create-all-second',
-          code: 'CHF',
-        );
+        final first = currencyFixture(id: 'create-all-first', code: 'AAA');
+        final second = currencyFixture(id: 'create-all-second', code: 'BBB');
 
         // When
         final result = await repository.createAll([first, second]);
@@ -63,28 +88,79 @@ void main() {
         expect(result.valueOrNull![1], same(second));
       });
 
+      test('rejects duplicate IDs without partial mutation', () async {
+        // Given
+        final repository = InMemoryAssetRepository();
+        final first = currencyFixture(
+          id: 'create-all-duplicate-id',
+          code: 'AAA',
+        );
+        final duplicate = currencyFixture(
+          id: 'create-all-duplicate-id',
+          code: 'BBB',
+        );
+
+        // When
+        final result = await repository.createAll([first, duplicate]);
+
+        // Then
+        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect((await repository.getById(first.id)).valueOrNull, isNull);
+      });
+
       test(
         'returns RecordAlreadyExistsFailure when one asset already exists',
         () async {
           // Given
           final repository = InMemoryAssetRepository();
-          final newAsset = currencyFixture(id: 'create-all-new');
+          final newAsset = currencyFixture(id: 'create-all-new', code: 'AAA');
           final existingAsset = currencyFixture(id: 'asset-eur');
 
           // When
-          final result = await repository.createAll([
-            newAsset,
-            existingAsset,
-          ]);
+          final result = await repository.createAll([newAsset, existingAsset]);
 
           // Then
           expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
-          expect(
-            (await repository.getById(newAsset.id)).valueOrNull,
-            isNull,
-          );
+          expect((await repository.getById(newAsset.id)).valueOrNull, isNull);
         },
       );
+
+      test('rejects duplicate codes without partial mutation', () async {
+        // Given
+        final repository = InMemoryAssetRepository();
+        final first = currencyFixture(
+          id: 'create-all-code-first',
+          code: 'AAA',
+        );
+        final duplicate = currencyFixture(
+          id: 'create-all-code-second',
+          code: first.code.value,
+        );
+
+        // When
+        final result = await repository.createAll([first, duplicate]);
+
+        // Then
+        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect((await repository.getById(first.id)).valueOrNull, isNull);
+        expect((await repository.getById(duplicate.id)).valueOrNull, isNull);
+      });
+
+      test('rejects a code that already exists', () async {
+        // Given
+        final repository = InMemoryAssetRepository();
+        final duplicate = currencyFixture(
+          id: 'create-all-existing-code',
+          code: 'EUR',
+        );
+
+        // When
+        final result = await repository.createAll([duplicate]);
+
+        // Then
+        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect((await repository.getById(duplicate.id)).valueOrNull, isNull);
+      });
     });
 
     group('getAll', () {
@@ -97,10 +173,11 @@ void main() {
 
         // Then
         final assets = result.valueOrNull!;
-        expect(
-          assets.map((asset) => asset.id.value).toList(),
-          ['asset-eur', 'asset-chf', 'asset-usd'],
-        );
+        expect(assets.map((asset) => asset.id.value).toList(), [
+          'asset-eur',
+          'asset-chf',
+          'asset-usd',
+        ]);
       });
     });
 
@@ -108,8 +185,8 @@ void main() {
       test('returns the asset with the requested ID', () async {
         // Given
         final repository = InMemoryAssetRepository();
-        final first = currencyFixture(id: 'get-by-id-first');
-        final second = currencyFixture(id: 'get-by-id-second', code: 'CHF');
+        final first = currencyFixture(id: 'get-by-id-first', code: 'AAA');
+        final second = currencyFixture(id: 'get-by-id-second', code: 'BBB');
         await repository.createAll([first, second]);
 
         // When
@@ -165,9 +242,9 @@ void main() {
       test('returns the two requested assets but not the third', () async {
         // Given
         final repository = InMemoryAssetRepository();
-        final first = currencyFixture(id: 'get-by-ids-first');
-        final second = currencyFixture(id: 'get-by-ids-second', code: 'CHF');
-        final third = currencyFixture(id: 'get-by-ids-third', code: 'USD');
+        final first = currencyFixture(id: 'get-by-ids-first', code: 'AAA');
+        final second = currencyFixture(id: 'get-by-ids-second', code: 'BBB');
+        final third = currencyFixture(id: 'get-by-ids-third', code: 'CCC');
         await repository.createAll([first, second, third]);
 
         // When
@@ -180,17 +257,45 @@ void main() {
         expect(lookup.found[1], same(second));
         expect(lookup.found, isNot(contains(same(third))));
       });
+
+      test('deduplicates requests and preserves missing ID order', () async {
+        // Given
+        final repository = InMemoryAssetRepository();
+        final existing = currencyFixture(
+          id: 'get-by-ids-existing',
+          code: 'AAA',
+        );
+        await repository.create(existing);
+        final firstMissing = currencyFixture(id: 'get-by-ids-missing-first').id;
+        final secondMissing = currencyFixture(
+          id: 'get-by-ids-missing-second',
+        ).id;
+
+        // When
+        final result = await repository.getByIds([
+          secondMissing,
+          existing.id,
+          firstMissing,
+          secondMissing,
+        ]);
+
+        // Then
+        final lookup = result.valueOrNull!;
+        expect(lookup.found, [same(existing)]);
+        expect(lookup.missing, [secondMissing, firstMissing]);
+      });
     });
 
     group('update', () {
       test('updates an existing asset', () async {
         // Given
         final repository = InMemoryAssetRepository();
-        final original = currencyFixture(id: 'update-asset');
+        final original = currencyFixture(id: 'update-asset', code: 'AAA');
         await repository.create(original);
         final updated = currencyFixture(
           id: 'update-asset',
           name: 'Updated Euro',
+          code: 'AAA',
         );
 
         // When
@@ -218,23 +323,55 @@ void main() {
           expect(result.failureOrNull, isA<RecordNotFoundFailure>());
         },
       );
+
+      test(
+        'returns RecordAlreadyExistsFailure for a conflicting code',
+        () async {
+          // Given
+          final repository = InMemoryAssetRepository();
+          final original = currencyFixture(
+            id: 'update-code-original',
+            code: 'AAA',
+          );
+          final other = currencyFixture(
+            id: 'update-code-other',
+            code: 'BBB',
+          );
+          await repository.createAll([original, other]);
+          final conflicting = currencyFixture(
+            id: original.id.value,
+            code: other.code.value,
+          );
+
+          // When
+          final result = await repository.update(conflicting);
+
+          // Then
+          expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+          expect(
+            (await repository.getById(original.id)).valueOrNull,
+            same(original),
+          );
+        },
+      );
     });
 
     group('updateAll', () {
       test('updates several assets together', () async {
         // Given
         final repository = InMemoryAssetRepository();
-        final first = currencyFixture(id: 'update-all-first');
-        final second = currencyFixture(id: 'update-all-second', code: 'CHF');
+        final first = currencyFixture(id: 'update-all-first', code: 'AAA');
+        final second = currencyFixture(id: 'update-all-second', code: 'BBB');
         await repository.createAll([first, second]);
         final firstUpdate = currencyFixture(
           id: 'update-all-first',
           name: 'Updated first',
+          code: 'AAA',
         );
         final secondUpdate = currencyFixture(
           id: 'update-all-second',
           name: 'Updated second',
-          code: 'CHF',
+          code: 'BBB',
         );
 
         // When
@@ -257,15 +394,20 @@ void main() {
         () async {
           // Given
           final repository = InMemoryAssetRepository();
-          final original = currencyFixture(id: 'update-all-duplicate');
+          final original = currencyFixture(
+            id: 'update-all-duplicate',
+            code: 'AAA',
+          );
           await repository.create(original);
           final firstUpdate = currencyFixture(
             id: 'update-all-duplicate',
             name: 'First update',
+            code: 'AAA',
           );
           final secondUpdate = currencyFixture(
             id: 'update-all-duplicate',
             name: 'Second update',
+            code: 'AAA',
           );
 
           // When
@@ -284,23 +426,54 @@ void main() {
       );
 
       test(
+        'returns RecordAlreadyExistsFailure when a code belongs to another asset',
+        () async {
+          // Given
+          final repository = InMemoryAssetRepository();
+          final original = currencyFixture(
+            id: 'update-all-existing-code',
+            code: 'AAA',
+          );
+          await repository.create(original);
+          final conflicting = currencyFixture(
+            id: original.id.value,
+            code: 'EUR',
+          );
+
+          // When
+          final result = await repository.updateAll([conflicting]);
+
+          // Then
+          expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+          expect(
+            (await repository.getById(original.id)).valueOrNull,
+            same(original),
+          );
+        },
+      );
+
+      test(
         'returns RecordNotFoundFailure when an asset does not exist',
         () async {
           // Given
           final repository = InMemoryAssetRepository();
-          final existing = currencyFixture(id: 'update-all-existing');
+          final existing = currencyFixture(
+            id: 'update-all-existing',
+            code: 'AAA',
+          );
           await repository.create(existing);
           final existingUpdate = currencyFixture(
             id: 'update-all-existing',
             name: 'Updated existing',
+            code: 'AAA',
           );
-          final missing = currencyFixture(id: 'update-all-missing');
+          final missing = currencyFixture(
+            id: 'update-all-missing',
+            code: 'BBB',
+          );
 
           // When
-          final result = await repository.updateAll([
-            existingUpdate,
-            missing,
-          ]);
+          final result = await repository.updateAll([existingUpdate, missing]);
 
           // Then
           expect(result.failureOrNull, isA<RecordNotFoundFailure>());
@@ -310,6 +483,30 @@ void main() {
           );
         },
       );
+
+      test('rejects conflicting codes without partial mutation', () async {
+        // Given
+        final repository = InMemoryAssetRepository();
+        final first = currencyFixture(
+          id: 'update-all-code-first',
+          code: 'AAA',
+        );
+        final second = currencyFixture(
+          id: 'update-all-code-second',
+          code: 'BBB',
+        );
+        await repository.createAll([first, second]);
+        final firstUpdate = currencyFixture(id: first.id.value, code: 'CCC');
+        final secondUpdate = currencyFixture(id: second.id.value, code: 'CCC');
+
+        // When
+        final result = await repository.updateAll([firstUpdate, secondUpdate]);
+
+        // Then
+        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect((await repository.getById(first.id)).valueOrNull, same(first));
+        expect((await repository.getById(second.id)).valueOrNull, same(second));
+      });
     });
   });
 }

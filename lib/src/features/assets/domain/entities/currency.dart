@@ -1,6 +1,15 @@
 part of 'asset.dart';
 
-/// A currency represented as an asset, such as EUR, CHF, or USD.
+/// A fiat currency represented as an [Asset], such as EUR, CHF, or USD.
+///
+/// [Currency] is a distinct subtype even though it currently shares the
+/// structural metadata of [Asset]. The subtype establishes fiat-money
+/// semantics and provides a boundary for future currency-specific behavior
+/// without placing those rules on assets such as cryptocurrencies, stocks,
+/// metals, or funds.
+///
+/// [Currency] inherits the validation and identity semantics of [Asset] and
+/// additionally requires a three-letter ASCII currency code.
 ///
 /// Example:
 /// ```dart
@@ -16,8 +25,8 @@ part of 'asset.dart';
 final class Currency extends Asset with CurrencyMappable {
   /// Creates a currency.
   ///
-  /// Throws [ArgumentError] when [code] does not contain exactly three ASCII
-  /// letters.
+  /// Inherits the validation contract of [Asset]. Throws [ArgumentError] when
+  /// [code] does not contain exactly three ASCII letters.
   Currency({
     required super.id,
     required super.name,

@@ -4,20 +4,20 @@ import 'package:test/test.dart';
 void main() {
   group('AssetCode', () {
     group('construction', () {
-      test('trims surrounding whitespace', () {
+      test('trims surrounding whitespace and preserves case', () {
         // Given
-        const value = '  EUR  ';
+        const value = '  eUr  ';
 
         // When
         final code = AssetCode(value);
 
         // Then
-        expect(code.value, 'EUR');
+        expect(code.value, 'eUr');
       });
 
-      test('preserves a generic non-whitespace value', () {
+      test('preserves lowercase values', () {
         // Given
-        const value = 'EUR';
+        const value = 'btc';
 
         // When
         final code = AssetCode(value);
@@ -37,7 +37,7 @@ void main() {
             isA<ArgumentError>().having(
               (error) => error.message,
               'message',
-              'Asset code cannot be empty',
+              'Asset code cannot be blank.',
             ),
           ),
         );
@@ -58,6 +58,24 @@ void main() {
 
       // When / Then
       expect(code.toString(), 'EUR');
+    });
+
+    test('compares equivalent trimmed values as equal', () {
+      // Given
+      final lowercase = AssetCode(' eur ');
+      final trimmed = AssetCode('eur');
+
+      // Then
+      expect(lowercase, trimmed);
+    });
+
+    test('compares codes with different casing as unequal', () {
+      // Given
+      final lowercase = AssetCode('eur');
+      final uppercase = AssetCode('EUR');
+
+      // Then
+      expect(lowercase, isNot(uppercase));
     });
   });
 }
