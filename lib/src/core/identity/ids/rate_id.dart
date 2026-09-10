@@ -1,13 +1,13 @@
-import 'package:axiom/src/core/domain/value_objects/unique_id.dart';
+import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
-part 'jar_id.mapper.dart';
+part 'rate_id.mapper.dart';
 
-/// A type-safe identifier for a jar.
+/// A type-safe identifier for a rate.
 ///
 /// Create one from a persisted value:
 /// ```dart
-/// final jarId = JarId.fromString('jar-123');
+/// final rateId = RateId.fromString('rate-123');
 /// ```
 ///
 /// ## Invariants
@@ -19,20 +19,20 @@ part 'jar_id.mapper.dart';
 ///
 /// ## Semantics
 ///
-/// The Dart type represents jar identity and must not be substituted for an
+/// The Dart type represents rate identity and must not be substituted for an
 /// unrelated typed identifier with the same serialized value.
 ///
 /// ## Contract
 ///
-/// Use [fromString] for persisted values and [generate] for new jar IDs.
+/// Use [fromString] for persisted values and [generate] for new rate IDs.
 @MappableClass()
-final class JarId extends UniqueId with JarIdMappable {
-  /// Creates a jar identifier from its serialized [value].
+final class RateId extends UniqueId with RateIdMappable {
+  /// Creates a rate identifier from its serialized [value].
   ///
   /// Throws an [ArgumentError] when [value] is blank.
   @MappableConstructor()
-  JarId.fromString(super.value);
+  RateId.fromString(super.value);
 
-  /// Creates a jar identifier with a newly generated Nano ID value.
-  JarId.generate() : super.generate();
+  /// Creates a rate identifier with a newly generated Nano ID value.
+  RateId.generate() : super.generate();
 }

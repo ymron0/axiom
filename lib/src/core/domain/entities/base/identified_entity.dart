@@ -1,6 +1,6 @@
 
 import 'package:axiom/src/core/domain/entities/base/base_entity.dart';
-import 'package:axiom/src/core/domain/value_objects/unique_id.dart';
+import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'identified_entity.mapper.dart';

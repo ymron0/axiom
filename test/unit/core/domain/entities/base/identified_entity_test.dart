@@ -1,5 +1,5 @@
 import 'package:axiom/src/core/domain/entities/base/identified_entity.dart';
-import 'package:axiom/src/core/domain/value_objects/unique_id.dart';
+import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:test/test.dart';
 

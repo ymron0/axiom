@@ -1,7 +1,7 @@
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids.dart';
-import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart' hide TestFailure;
 

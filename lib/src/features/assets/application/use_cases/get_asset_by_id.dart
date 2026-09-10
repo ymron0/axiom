@@ -2,7 +2,7 @@ import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/repositories/asset_repository.dart';
-import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
 
 /// Retrieves an asset by its identifier.
 ///

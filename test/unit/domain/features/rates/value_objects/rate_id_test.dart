@@ -1,4 +1,4 @@
-import 'package:axiom/src/features/rates/domain/value_objects/rate_id.dart';
+import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:nanoid/nanoid.dart';
 import 'package:test/test.dart';
 

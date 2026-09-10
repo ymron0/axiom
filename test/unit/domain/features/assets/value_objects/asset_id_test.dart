@@ -1,5 +1,5 @@
-import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
-import 'package:axiom/src/features/accounts/domain/value_objects/account_id.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:nanoid/nanoid.dart';
 import 'package:test/test.dart';
 

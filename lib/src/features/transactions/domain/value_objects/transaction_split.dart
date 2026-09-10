@@ -1,7 +1,7 @@
 import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/features/budgets/domain/value_objects/budget_id.dart';
-import 'package:axiom/src/features/categories/domain/value_objects/category_id.dart';
-import 'package:axiom/src/features/jars/domain/value_objects/jar_id.dart';
+import 'package:axiom/src/core/identity/ids/budget_id.dart';
+import 'package:axiom/src/core/identity/ids/category_id.dart';
+import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'transaction_split.mapper.dart';

@@ -1,4 +1,4 @@
-import 'package:axiom/src/features/budgets/domain/value_objects/budget_id.dart';
+import 'package:axiom/src/core/identity/ids/budget_id.dart';
 import 'package:nanoid/nanoid.dart';
 import 'package:test/test.dart';
 

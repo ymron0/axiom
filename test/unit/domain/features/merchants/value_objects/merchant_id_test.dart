@@ -1,4 +1,4 @@
-import 'package:axiom/src/features/merchants/domain/value_objects/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:nanoid/nanoid.dart';
 import 'package:test/test.dart';
 
