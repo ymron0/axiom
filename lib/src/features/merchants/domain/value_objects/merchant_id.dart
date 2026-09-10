@@ -9,6 +9,22 @@ part 'merchant_id.mapper.dart';
 /// ```dart
 /// final merchantId = MerchantId.fromString('merchant-123');
 /// ```
+///
+/// ## Invariants
+///
+/// The serialized value is non-empty, not solely whitespace, immutable, and
+/// stable for the lifetime of this identifier. Generated values obey the same
+/// validation contract. Valid supplied values are preserved exactly without
+/// silent trimming or normalization.
+///
+/// ## Semantics
+///
+/// The Dart type represents merchant identity; [self] is the reserved current
+/// merchant identity. Neither may be substituted for an unrelated typed ID.
+///
+/// ## Contract
+///
+/// Use [fromString] for persisted values and [generate] for new merchant IDs.
 @MappableClass()
 final class MerchantId extends UniqueId with MerchantIdMappable {
   /// The reserved identifier used for the current merchant context.

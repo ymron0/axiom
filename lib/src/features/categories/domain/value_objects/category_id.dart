@@ -9,6 +9,22 @@ part 'category_id.mapper.dart';
 /// ```dart
 /// final categoryId = CategoryId.fromString('category-123');
 /// ```
+///
+/// ## Invariants
+///
+/// The serialized value is non-empty, not solely whitespace, immutable, and
+/// stable for the lifetime of this identifier. Generated values obey the same
+/// validation contract. Valid supplied values are preserved exactly without
+/// silent trimming or normalization.
+///
+/// ## Semantics
+///
+/// The Dart type represents category identity and must not be substituted for
+/// an unrelated typed identifier with the same serialized value.
+///
+/// ## Contract
+///
+/// Use [fromString] for persisted values and [generate] for new category IDs.
 @MappableClass()
 final class CategoryId extends UniqueId with CategoryIdMappable {
   /// Creates a category identifier from its serialized [value].

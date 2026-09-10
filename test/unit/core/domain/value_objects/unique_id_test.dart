@@ -33,6 +33,25 @@ void main() {
           );
         }
       });
+
+      test('mapper round trips a valid identifier without changing its value', () {
+        const value = '  existing-id  ';
+        final id = TestUniqueId(value);
+
+        final decoded = TestUniqueIdMapper.fromJson(id.toJson());
+
+        expect(decoded.value, value);
+        expect(decoded, id);
+      });
+
+      test('copyWith rejects a blank replacement value', () {
+        final id = TestUniqueId('existing-id');
+
+        expect(
+          () => id.copyWith(value: ''),
+          throwsA(isA<ArgumentError>()),
+        );
+      });
     });
 
     group('generate', () {
