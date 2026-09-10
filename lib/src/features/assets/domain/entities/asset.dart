@@ -1,3 +1,4 @@
+import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/domain/validation/url_validation.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_id.dart';
@@ -83,9 +84,9 @@ sealed class Asset with AssetMappable {
     String? remoteLogoUrl,
     String? bundledLogoAsset,
   }) : name = _requireNonBlank(name, 'name'),
-       symbol = _normalizeOptionalText(symbol, 'symbol'),
+       symbol = normalizeOptionalText(symbol, 'symbol'),
        remoteLogoUrl = _normalizeOptionalUrl(remoteLogoUrl),
-       bundledLogoAsset = _normalizeOptionalText(
+       bundledLogoAsset = normalizeOptionalText(
          bundledLogoAsset,
          'bundledLogoAsset',
        ) {
@@ -108,15 +109,6 @@ String _requireNonBlank(String value, String name) {
   }
 
   return normalized;
-}
-
-// Trims optional text and rejects a supplied blank value.
-String? _normalizeOptionalText(String? value, String name) {
-  if (value == null) {
-    return null;
-  }
-
-  return _requireNonBlank(value, name);
 }
 
 // Trims an optional URL and accepts only absolute HTTP(S) URLs with a host.

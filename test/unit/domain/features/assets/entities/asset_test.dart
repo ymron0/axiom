@@ -133,6 +133,22 @@ void main() {
       expect(currency.symbol, '€');
     });
 
+    test('normalizes optional metadata through the shared text validator', () {
+      // Given / When
+      final currency = Currency(
+        id: AssetId.fromString('currency-eur'),
+        name: 'Euro',
+        code: AssetCode('EUR'),
+        symbol: ' € ',
+        bundledLogoAsset: ' assets/logos/euro.png ',
+        decimalPlaces: 2,
+      );
+
+      // Then
+      expect(currency.symbol, '€');
+      expect(currency.bundledLogoAsset, 'assets/logos/euro.png');
+    });
+
     test('rejects a blank display name', () {
       // Given / When / Then
       expect(
