@@ -54,6 +54,6 @@ sealed class Result<T extends Object?, F extends BaseFailure>
   /// Handles the result by invoking the callback for its state.
   R when<R>({
     required R Function(T value) success,
-    required R Function(F failure) failure,
+    required R Function(Failure<F> failure) failure,
   });
 }

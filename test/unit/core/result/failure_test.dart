@@ -73,7 +73,7 @@ void main() {
         const failure = TestFailure();
 
         // When
-        final selectedFailure = failure.when<TestFailure>(
+        final selectedFailure = failure.when(
           success: (_) => throw StateError('Unexpected success callback.'),
           failure: (value) => value,
         );
