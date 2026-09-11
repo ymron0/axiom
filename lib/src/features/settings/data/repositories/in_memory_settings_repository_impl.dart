@@ -11,7 +11,7 @@ import 'package:fixtures/fixtures.dart';
 ///
 /// The repository is initialized from the single settings fixture. A
 /// successful [update] replaces the initialized settings.
-final class InMemorySettingsRepository implements SettingsRepository {
+final class InMemorySettingsRepositoryImpl implements SettingsRepository {
   Settings? _settings = Settings(
     valuationCurrencyId: AssetId.fromString(
       settingsFixtures.first.valuationCurrencyId,
