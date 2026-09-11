@@ -10,7 +10,7 @@ import 'package:axiom/src/features/settings/domain/repositories/settings_reposit
 ///
 /// A `null` successful value indicates that settings have not yet been
 /// initialized.
-final class GetSettingsUseCase {
+class GetSettingsUseCase {
   /// Creates a use case backed by [repository].
   const GetSettingsUseCase(this._repository);
 
