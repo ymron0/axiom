@@ -254,7 +254,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: f9c2819e085faeddf4a1f45064f0de240c418ad3
+      resolved-ref: "9db09a822eb33221ae49d70ba7f73ed07d353a0a"
       url: "git@github.com:ymron0/fixtures.git"
     source: git
     version: "1.0.0"
@@ -568,10 +568,10 @@ packages:
     dependency: "direct main"
     description:
       name: sembast
-      sha256: a58b26925e23071cf0f4754d8449aabe829e9a9930a872fb18e6ae4c2c88e025
+      sha256: "7a836961af5e1aefd2498bc08501737cbea75b90019d5fd6f705cb28ec9ef526"
       url: "https://pub.dev"
     source: hosted
-    version: "3.8.9+1"
+    version: "3.8.10"
   shelf:
     dependency: transitive
     description:
@@ -685,10 +685,10 @@ packages:
     dependency: transitive
     description:
       name: synchronized
-      sha256: "3a7b5d17422dd0f8d5c6c14feaa5a1c65638b9455f871a96f08437562c046931"
+      sha256: "397b146f97613b83d84bdccb439bc8d0f3aebb6c1d14a9641e6f24201c490b2d"
       url: "https://pub.dev"
     source: hosted
-    version: "3.4.1+2"
+    version: "3.4.2"
   term_glyph:
     dependency: transitive
     description:

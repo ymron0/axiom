@@ -1,0 +1,61 @@
+import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
+import 'package:axiom/src/features/settings/data/repositories/in_memory_settings_repository.dart';
+import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:fixtures/fixtures/settings_fixtures.dart';
+import 'package:test/test.dart';
+
+void main() {
+  group('InMemorySettingsRepository', () {
+    test('starts with the fixture settings', () async {
+      // Given
+      final repository = InMemorySettingsRepository();
+      final expected = Settings(
+        valuationCurrencyId: AssetId.fromString(
+          settingsFixtures.first.valuationCurrencyId,
+        ),
+      );
+
+      // When
+      final result = await repository.get();
+
+      // Then
+      expect(result.isSuccess, isTrue);
+      expect(result.valueOrNull, expected);
+    });
+
+    test(
+      'rejects creation without replacing the fixture settings',
+      () async {
+        // Given
+        final repository = InMemorySettingsRepository();
+        final original = (await repository.get()).valueOrNull;
+        final settings = Settings(
+          valuationCurrencyId: AssetId.fromString('asset-usd'),
+        );
+
+        // When
+        final result = await repository.create(settings);
+
+        // Then
+        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect((await repository.get()).valueOrNull, same(original));
+      },
+    );
+
+    test('updates initialized settings', () async {
+      // Given
+      final repository = InMemorySettingsRepository();
+      final replacement = Settings(
+        valuationCurrencyId: AssetId.fromString('asset-usd'),
+      );
+
+      // When
+      final result = await repository.update(replacement);
+
+      // Then
+      expect(result.valueOrNull, same(replacement));
+      expect((await repository.get()).valueOrNull, same(replacement));
+    });
+  });
+}
