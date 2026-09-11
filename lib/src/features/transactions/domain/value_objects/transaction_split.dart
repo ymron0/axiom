@@ -45,7 +45,7 @@ final class TransactionSplit with TransactionSplitMappable {
   /// The portion allocated by this split in the transaction's currency.
   final AssetAmount transactionAmount;
 
-  /// The value of [transactionAmount] in Axiom's valuation currency.
+  /// The value of [transactionAmount] in the app's valuation currency.
   ///
   /// This is the same allocation as [transactionAmount] expressed
   /// in another currency, not an additional allocation.
