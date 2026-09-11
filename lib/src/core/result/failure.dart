@@ -69,8 +69,8 @@ abstract class Failure<F extends BaseFailure> extends Result<Never, F>
   @override
   R when<R>({
     required R Function(Never value) success,
-    required R Function(F failure) failure,
+    required R Function(Failure<F> failure) failure,
   }) {
-    return failure(failureOrNull);
+    return failure(this);
   }
 }
