@@ -5,10 +5,10 @@ import 'package:axiom/src/features/assets/domain/repositories/asset_repository.d
 
 /// Retrieves all assets from the asset repository.
 ///
-/// Example: `final result = await GetAssetsUseCase(repository).call();`
-class GetAssetsUseCase {
+/// Example: `final result = await GetAssetUseCase(repository).call();`
+class GetAssetUseCase {
   /// Creates a use case backed by [repository].
-  GetAssetsUseCase(this._repository);
+  GetAssetUseCase(this._repository);
 
   final AssetRepository _repository;
 
