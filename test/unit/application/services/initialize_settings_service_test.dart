@@ -62,7 +62,7 @@ void main() {
 
       // Then
       expect(result.failureOrNull, same(failure));
-      verifyNever(() => createSettings(any()));
+      verifyZeroInteractions(createSettings);
     });
 
     test(
@@ -80,7 +80,7 @@ void main() {
         // Then
         expect(result.failureOrNull, isA<RecordNotFoundFailure>());
         expect(result.failureOrNull?.message, contains(valuationAssetId.value));
-        verifyNever(() => createSettings(any()));
+        verifyZeroInteractions(createSettings);
       },
     );
 
