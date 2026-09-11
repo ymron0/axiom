@@ -1,5 +1,9 @@
 {
   "dart.flutterTestAdditionalArgs": [
     "--coverage"
+  ],
+  "dart.coverageExcludePatterns": [
+    "**/*.g.dart",
+    "**/*.mapper.dart"
   ]
 }
