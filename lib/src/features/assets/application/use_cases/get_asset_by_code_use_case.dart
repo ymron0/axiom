@@ -7,10 +7,10 @@ import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 /// Retrieves all assets matching an asset code.
 ///
 /// Example:
-/// `final result = await GetAssetsByCodeUseCase(repository).call(code);`
-class GetAssetsByCodeUseCase {
+/// `final result = await GetAssetByCodeUseCase(repository).call(code);`
+class GetAssetByCodeUseCase {
   /// Creates a use case backed by [repository].
-  GetAssetsByCodeUseCase(this._repository);
+  GetAssetByCodeUseCase(this._repository);
 
   final AssetRepository _repository;
 
