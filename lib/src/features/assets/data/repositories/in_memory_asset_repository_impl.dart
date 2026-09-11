@@ -9,23 +9,31 @@ import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:fixtures/fixtures.dart';
 
-/// Stores assets in memory, initially populated from the asset fixtures.
+/// Stores assets in memory.
 ///
-/// Example: `final repository = InMemoryAssetRepository();`
-final class InMemoryAssetRepository implements AssetRepository {
-  final List<Asset> _assets = assetsFixtures
-      .map<Asset>(
-        (fixture) => Currency(
-          id: AssetId.fromString(fixture.id),
-          name: fixture.name,
-          code: AssetCode(fixture.code.value),
-          symbol: fixture.symbol,
-          decimalPlaces: fixture.decimalPlaces,
-          remoteLogoUrl: fixture.remoteLogoUrl,
-          bundledLogoAsset: fixture.bundledLogoAsset,
-        ),
-      )
-      .toList();
+/// Example: `final repository = InMemoryAssetRepositoryImpl();`
+final class InMemoryAssetRepositoryImpl implements AssetRepository {
+  /// Creates a repository seeded with [initialAssets].
+  ///
+  /// When omitted, the repository loads the external asset fixtures.
+  InMemoryAssetRepositoryImpl({Iterable<Asset>? initialAssets})
+    : _assets =
+          initialAssets?.toList() ??
+          assetsFixtures
+              .map<Asset>(
+                (fixture) => Currency(
+                  id: AssetId.fromString(fixture.id),
+                  name: fixture.name,
+                  code: AssetCode(fixture.code.value),
+                  symbol: fixture.symbol,
+                  decimalPlaces: fixture.decimalPlaces,
+                  remoteLogoUrl: fixture.remoteLogoUrl,
+                  bundledLogoAsset: fixture.bundledLogoAsset,
+                ),
+              )
+              .toList();
+
+  final List<Asset> _assets;
 
   @override
   Future<Result<Asset, BaseFailure>> create(Asset asset) async {

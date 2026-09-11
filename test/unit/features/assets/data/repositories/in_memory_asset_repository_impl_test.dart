@@ -1,17 +1,17 @@
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
-import 'package:axiom/src/features/assets/data/repositories/in_memory_asset_repository.dart';
+import 'package:axiom/src/features/assets/data/repositories/in_memory_asset_repository_impl.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:test/test.dart';
 
 import '../../../../../fixtures/features/assets/asset_fixtures.dart';
 
 void main() {
-  group('InMemoryAssetRepository', () {
+  group('InMemoryAssetRepositoryImpl', () {
     group('create', () {
       test('creates an asset', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final asset = currencyFixture(id: 'create-asset', code: 'AAA');
 
         // When
@@ -26,11 +26,8 @@ void main() {
         'returns RecordAlreadyExistsFailure when the asset exists',
         () async {
           // Given
-          final repository = InMemoryAssetRepository();
-          final original = currencyFixture(
-            id: 'create-duplicate',
-            code: 'AAA',
-          );
+          final repository = _createRepository();
+          final original = currencyFixture(id: 'create-duplicate', code: 'AAA');
           await repository.create(original);
           final duplicate = currencyFixture(
             id: 'create-duplicate',
@@ -52,7 +49,7 @@ void main() {
 
       test('returns RecordAlreadyExistsFailure when the code exists', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final original = currencyFixture(
           id: 'create-code-original',
           code: 'AAA',
@@ -75,7 +72,7 @@ void main() {
     group('createAll', () {
       test('creates two assets at the same time', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final first = currencyFixture(id: 'create-all-first', code: 'AAA');
         final second = currencyFixture(id: 'create-all-second', code: 'BBB');
 
@@ -90,7 +87,7 @@ void main() {
 
       test('rejects duplicate IDs without partial mutation', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final first = currencyFixture(
           id: 'create-all-duplicate-id',
           code: 'AAA',
@@ -112,7 +109,7 @@ void main() {
         'returns RecordAlreadyExistsFailure when one asset already exists',
         () async {
           // Given
-          final repository = InMemoryAssetRepository();
+          final repository = _createRepository();
           final newAsset = currencyFixture(id: 'create-all-new', code: 'AAA');
           final existingAsset = currencyFixture(id: 'asset-eur');
 
@@ -127,11 +124,8 @@ void main() {
 
       test('rejects duplicate codes without partial mutation', () async {
         // Given
-        final repository = InMemoryAssetRepository();
-        final first = currencyFixture(
-          id: 'create-all-code-first',
-          code: 'AAA',
-        );
+        final repository = _createRepository();
+        final first = currencyFixture(id: 'create-all-code-first', code: 'AAA');
         final duplicate = currencyFixture(
           id: 'create-all-code-second',
           code: first.code.value,
@@ -148,7 +142,7 @@ void main() {
 
       test('rejects a code that already exists', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final duplicate = currencyFixture(
           id: 'create-all-existing-code',
           code: 'EUR',
@@ -166,7 +160,7 @@ void main() {
     group('getAll', () {
       test('returns the full list of assets', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
 
         // When
         final result = await repository.getAll();
@@ -184,7 +178,7 @@ void main() {
     group('getById', () {
       test('returns the asset with the requested ID', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final first = currencyFixture(id: 'get-by-id-first', code: 'AAA');
         final second = currencyFixture(id: 'get-by-id-second', code: 'BBB');
         await repository.createAll([first, second]);
@@ -198,7 +192,7 @@ void main() {
 
       test('returns null when the ID is not found', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
 
         // When
         final result = await repository.getById(
@@ -213,7 +207,7 @@ void main() {
     group('getByCode', () {
       test('returns the asset with the requested code', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final first = currencyFixture(id: 'get-by-code-first', code: 'AAA');
         final second = currencyFixture(id: 'get-by-code-second', code: 'BBB');
         await repository.createAll([first, second]);
@@ -228,7 +222,7 @@ void main() {
 
       test('returns an empty list when the code is not found', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
 
         // When
         final result = await repository.getByCode(AssetCode('MISSING'));
@@ -241,7 +235,7 @@ void main() {
     group('getByIds', () {
       test('returns the two requested assets but not the third', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final first = currencyFixture(id: 'get-by-ids-first', code: 'AAA');
         final second = currencyFixture(id: 'get-by-ids-second', code: 'BBB');
         final third = currencyFixture(id: 'get-by-ids-third', code: 'CCC');
@@ -260,7 +254,7 @@ void main() {
 
       test('deduplicates requests and preserves missing ID order', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final existing = currencyFixture(
           id: 'get-by-ids-existing',
           code: 'AAA',
@@ -289,7 +283,7 @@ void main() {
     group('update', () {
       test('updates an existing asset', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final original = currencyFixture(id: 'update-asset', code: 'AAA');
         await repository.create(original);
         final updated = currencyFixture(
@@ -313,7 +307,7 @@ void main() {
         'returns RecordNotFoundFailure when the asset does not exist',
         () async {
           // Given
-          final repository = InMemoryAssetRepository();
+          final repository = _createRepository();
           final missing = currencyFixture(id: 'update-missing');
 
           // When
@@ -328,15 +322,12 @@ void main() {
         'returns RecordAlreadyExistsFailure for a conflicting code',
         () async {
           // Given
-          final repository = InMemoryAssetRepository();
+          final repository = _createRepository();
           final original = currencyFixture(
             id: 'update-code-original',
             code: 'AAA',
           );
-          final other = currencyFixture(
-            id: 'update-code-other',
-            code: 'BBB',
-          );
+          final other = currencyFixture(id: 'update-code-other', code: 'BBB');
           await repository.createAll([original, other]);
           final conflicting = currencyFixture(
             id: original.id.value,
@@ -359,7 +350,7 @@ void main() {
     group('updateAll', () {
       test('updates several assets together', () async {
         // Given
-        final repository = InMemoryAssetRepository();
+        final repository = _createRepository();
         final first = currencyFixture(id: 'update-all-first', code: 'AAA');
         final second = currencyFixture(id: 'update-all-second', code: 'BBB');
         await repository.createAll([first, second]);
@@ -393,7 +384,7 @@ void main() {
         'returns RecordAlreadyExistsFailure for duplicate update IDs',
         () async {
           // Given
-          final repository = InMemoryAssetRepository();
+          final repository = _createRepository();
           final original = currencyFixture(
             id: 'update-all-duplicate',
             code: 'AAA',
@@ -429,7 +420,7 @@ void main() {
         'returns RecordAlreadyExistsFailure when a code belongs to another asset',
         () async {
           // Given
-          final repository = InMemoryAssetRepository();
+          final repository = _createRepository();
           final original = currencyFixture(
             id: 'update-all-existing-code',
             code: 'AAA',
@@ -456,7 +447,7 @@ void main() {
         'returns RecordNotFoundFailure when an asset does not exist',
         () async {
           // Given
-          final repository = InMemoryAssetRepository();
+          final repository = _createRepository();
           final existing = currencyFixture(
             id: 'update-all-existing',
             code: 'AAA',
@@ -486,11 +477,8 @@ void main() {
 
       test('rejects conflicting codes without partial mutation', () async {
         // Given
-        final repository = InMemoryAssetRepository();
-        final first = currencyFixture(
-          id: 'update-all-code-first',
-          code: 'AAA',
-        );
+        final repository = _createRepository();
+        final first = currencyFixture(id: 'update-all-code-first', code: 'AAA');
         final second = currencyFixture(
           id: 'update-all-code-second',
           code: 'BBB',
@@ -509,4 +497,14 @@ void main() {
       });
     });
   });
+}
+
+InMemoryAssetRepositoryImpl _createRepository() {
+  return InMemoryAssetRepositoryImpl(
+    initialAssets: [
+      currencyFixture(id: 'asset-eur', name: 'Euro', code: 'EUR'),
+      currencyFixture(id: 'asset-chf', name: 'Swiss franc', code: 'CHF'),
+      currencyFixture(id: 'asset-usd', name: 'US dollar', code: 'USD'),
+    ],
+  );
 }
