@@ -19,7 +19,7 @@ void main() {
 
     test('delegates the batch to the repository', () async {
       // Given
-      final transactions = [transactionFixture(id: 'first'), transactionFixture(id: 'second')];
+      final transactions = [newTransactionFixture(), newTransactionFixture()];
       when(() => repository.createAll(transactions)).thenAnswer((_) async => const Success(null));
 
       // When
@@ -32,7 +32,7 @@ void main() {
 
     test('propagates repository failures', () async {
       // Given
-      final transactions = [transactionFixture(id: 'duplicate')];
+      final transactions = [newTransactionFixture()];
       const failure = TransactionAlreadyExistsFailure(message: 'duplicate');
       when(() => repository.createAll(transactions)).thenAnswer((_) async => failure);
 

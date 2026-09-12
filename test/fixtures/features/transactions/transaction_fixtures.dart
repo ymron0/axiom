@@ -4,6 +4,7 @@ import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
+import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
@@ -46,5 +47,34 @@ Transaction transactionFixture({
     createdAt: createdAt,
     modifiedAt: createdAt,
     entityVersion: 1,
+  );
+}
+
+/// Creates a valid new expense transaction through [Transaction.create].
+Transaction newTransactionFixture({DateTime? effectiveAt}) {
+  final createdAt = DateTime.utc(2026, 1, 1);
+  final amount = AssetAmount(
+    assetId: AssetId.fromString('asset-eur'),
+    amount: Decimal.fromInt(10),
+    direction: AssetAmountDirection.outgoing,
+  );
+
+  return Transaction.create(
+    kind: TransactionKind.expense,
+    merchantId: MerchantId.self,
+    effectiveAt: effectiveAt ?? createdAt,
+    description: 'Test transaction',
+    state: TransactionState.actual,
+    splits: const [],
+    ledgerEntries: [
+      LedgerEntry(
+        accountId: AccountId.fromString('account-eur'),
+        transactionAmount: amount,
+        accountAmount: amount,
+        valuationAmount: amount,
+        role: LedgerEntryRole.primary,
+      ),
+    ],
+    clock: FixedClock(createdAt),
   );
 }

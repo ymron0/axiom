@@ -19,7 +19,7 @@ void main() {
 
     test('delegates creation to the repository', () async {
       // Given
-      final transaction = transactionFixture(id: 'create');
+      final transaction = newTransactionFixture();
       when(() => repository.create(transaction)).thenAnswer((_) async => const Success(null));
 
       // When
@@ -32,7 +32,7 @@ void main() {
 
     test('propagates repository failures', () async {
       // Given
-      final transaction = transactionFixture(id: 'duplicate');
+      final transaction = newTransactionFixture();
       const failure = TransactionAlreadyExistsFailure(message: 'duplicate');
       when(() => repository.create(transaction)).thenAnswer((_) async => failure);
 
