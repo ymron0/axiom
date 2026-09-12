@@ -1,4 +1,7 @@
+import 'package:axiom/src/core/di/clock_provider.dart';
+import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/transactions/application/commands/create_all_transactions_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_all_transactions_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/delete_transaction_use_case.dart';
@@ -23,11 +26,17 @@ import 'package:mocktail/mocktail.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
+import '../../../../../fixtures/features/transactions/transaction_command_fixtures.dart';
 import '../../../../../fixtures/features/transactions/transaction_fixtures.dart';
 import '../../../../../mocks/transaction_repository_mock.dart';
 
 void main() {
   group('transaction use-case providers', () {
+    setUpAll(() {
+      registerFallbackValue(newTransactionFixture());
+      registerFallbackValue(<Transaction>[]);
+    });
+
     test('resolves every use case from the default repository', () {
       // Given
       final container = ProviderContainer();
@@ -68,11 +77,15 @@ void main() {
         deletedAt: DateTime.utc(2026, 1, 2),
       );
       final transactions = [transaction];
+      final createCommand = createTransactionCommandFixture();
+      final createAllCommand = CreateAllTransactionsCommand(
+        commands: [createTransactionCommandFixture()],
+      );
       final query = TransactionQuery();
-      when(() => repository.create(transaction)).thenAnswer(
+      when(() => repository.create(any())).thenAnswer(
         (_) async => const Success(null),
       );
-      when(() => repository.createAll(transactions)).thenAnswer(
+      when(() => repository.createAll(any())).thenAnswer(
         (_) async => const Success(null),
       );
       when(() => repository.getAll()).thenAnswer(
@@ -96,13 +109,19 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           transactionRepositoryProvider.overrideWithValue(repository),
+          clockProvider.overrideWithValue(
+            FixedClock(DateTime.utc(2026, 1, 1)),
+          ),
         ],
       );
       addTearDown(container.dispose);
 
       // When
-      await container.read(createTransactionUseCaseProvider)(transaction);
-      await container.read(createAllTransactionsUseCaseProvider)(transactions);
+      final created = await container.read(createTransactionUseCaseProvider)(
+        createCommand,
+      );
+      final createdAll = await container
+          .read(createAllTransactionsUseCaseProvider)(createAllCommand);
       await container.read(getAllTransactionsUseCaseProvider)();
       await container.read(getTransactionByIdUseCaseProvider)(transaction.id);
       await container.read(queryTransactionsUseCaseProvider)(query);
@@ -114,8 +133,8 @@ void main() {
       await container.read(restoreTransactionUseCaseProvider)(deleted);
 
       // Then
-      verify(() => repository.create(transaction)).called(1);
-      verify(() => repository.createAll(transactions)).called(1);
+      verify(() => repository.create(created.valueOrNull!)).called(1);
+      verify(() => repository.createAll(createdAll.valueOrNull!)).called(1);
       verify(() => repository.getAll()).called(1);
       verify(() => repository.getById(transaction.id)).called(2);
       verify(() => repository.query(query)).called(1);
