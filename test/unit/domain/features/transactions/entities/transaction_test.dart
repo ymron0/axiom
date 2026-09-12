@@ -128,6 +128,28 @@ void main() {
       );
     });
 
+    test('rejects a balance correction without exactly one primary entry', () {
+      // Given / When / Then
+      expect(
+        () => _createTransaction(
+          kind: TransactionKind.balanceCorrection,
+          ledgerEntries: [_createLedgerEntry(), _createLedgerEntry()],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('rejects a transfer without opposing primary entries', () {
+      // Given / When / Then
+      expect(
+        () => _createTransaction(
+          kind: TransactionKind.transfer,
+          ledgerEntries: [_createLedgerEntry(), _createLedgerEntry()],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
     test('accepts a split collection that reconciles exactly', () {
       // Given / When
       final transaction = _createTransaction(
@@ -142,6 +164,121 @@ void main() {
 
       // Then
       expect(transaction.splits, hasLength(1));
+    });
+
+    test('rejects splits when a primary ledger amount is unknown', () {
+      // Given
+      final unknownAmount = AssetAmount.outgoing(
+        assetId: AssetId.fromString('asset-eur'),
+        amount: Decimal.fromInt(-1),
+      );
+
+      // When / Then
+      expect(
+        () => _createTransaction(
+          ledgerEntries: [
+            _createLedgerEntry(amount: unknownAmount),
+          ],
+          splits: [
+            _createSplit(
+              transactionAmount: unknownAmount,
+              valuationAmount: unknownAmount,
+            ),
+          ],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('rejects splits whose valuation total does not reconcile', () {
+      // Given
+      final transactionAmount = _createAmount();
+      final valuationAmount = AssetAmount.outgoing(
+        assetId: AssetId.fromString('asset-chf'),
+        amount: Decimal.fromInt(10),
+      );
+
+      // When / Then
+      expect(
+        () => _createTransaction(
+          ledgerEntries: [
+            _createLedgerEntry(
+              transactionAmount: transactionAmount,
+              valuationAmount: valuationAmount,
+            ),
+          ],
+          splits: [
+            _createSplit(
+              transactionAmount: transactionAmount,
+              valuationAmount: AssetAmount.outgoing(
+                assetId: AssetId.fromString('asset-chf'),
+                amount: Decimal.fromInt(9),
+              ),
+            ),
+          ],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('rejects a split with an unknown transaction amount', () {
+      // Given
+      final unknownAmount = AssetAmount.outgoing(
+        assetId: AssetId.fromString('asset-eur'),
+        amount: Decimal.fromInt(-1),
+      );
+
+      // When / Then
+      expect(
+        () => _createTransaction(
+          splits: [
+            _createSplit(
+              transactionAmount: unknownAmount,
+              valuationAmount: unknownAmount,
+            ),
+          ],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('rejects a split with a different transaction asset', () {
+      // Given / When / Then
+      expect(
+        () => _createTransaction(
+          splits: [
+            _createSplit(
+              transactionAmount: AssetAmount.outgoing(
+                assetId: AssetId.fromString('asset-usd'),
+                amount: Decimal.fromInt(10),
+              ),
+              valuationAmount: _createAmount(),
+            ),
+          ],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
+    });
+
+    test('rejects a split with a different transaction direction', () {
+      // Given / When / Then
+      expect(
+        () => _createTransaction(
+          splits: [
+            _createSplit(
+              transactionAmount: AssetAmount.incoming(
+                assetId: AssetId.fromString('asset-eur'),
+                amount: Decimal.fromInt(10),
+              ),
+              valuationAmount: AssetAmount.incoming(
+                assetId: AssetId.fromString('asset-eur'),
+                amount: Decimal.fromInt(10),
+              ),
+            ),
+          ],
+        ),
+        throwsA(isA<ArgumentError>()),
+      );
     });
 
     test('rejects unsupported splits', () {
@@ -251,20 +388,38 @@ Transaction _createTransaction({
   );
 }
 
-LedgerEntry _createLedgerEntry({bool incoming = false}) {
-  final amount = incoming
+LedgerEntry _createLedgerEntry({
+  bool incoming = false,
+  AssetAmount? amount,
+  AssetAmount? transactionAmount,
+  AssetAmount? valuationAmount,
+  LedgerEntryRole role = LedgerEntryRole.primary,
+}) {
+  final defaultAmount = incoming
       ? AssetAmount.incoming(
           assetId: AssetId.fromString('asset-eur'),
           amount: Decimal.fromInt(10),
         )
       : _createAmount();
+  final resolvedTransactionAmount = transactionAmount ?? amount ?? defaultAmount;
 
   return LedgerEntry(
     accountId: AccountId.fromString('account-1'),
-    transactionAmount: amount,
-    accountAmount: amount,
-    valuationAmount: amount,
-    role: LedgerEntryRole.primary,
+    transactionAmount: resolvedTransactionAmount,
+    accountAmount: resolvedTransactionAmount,
+    valuationAmount: valuationAmount ?? resolvedTransactionAmount,
+    role: role,
+  );
+}
+
+TransactionSplit _createSplit({
+  required AssetAmount transactionAmount,
+  required AssetAmount valuationAmount,
+}) {
+  return TransactionSplit(
+    transactionAmount: transactionAmount,
+    valuationAmount: valuationAmount,
+    budgetId: BudgetId.fromString('budget-1'),
   );
 }
 

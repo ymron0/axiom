@@ -69,6 +69,14 @@ part 'transaction.mapper.dart';
 /// Ledger entries remain responsible for account and asset impact, while splits
 /// remain responsible for allocation.
 ///
+/// ## Transfer semantics
+///
+/// A transfer requires opposing primary entries, but the assets and magnitudes
+/// on the two sides may differ when the accounts use different currencies. For
+/// example, a signed movement of -10 CHF and +9.20 EUR is represented by an
+/// outgoing CHF 10 amount and an incoming EUR 9.20 amount. [AssetAmount.amount]
+/// stores the magnitude; [AssetAmount.direction] carries the sign.
+///
 /// ## Merchant semantics
 ///
 /// Merchant identity is intentionally non-nullable. Financial events without an

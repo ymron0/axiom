@@ -10,37 +10,42 @@ import 'package:axiom/src/features/transactions/domain/repositories/transaction_
 ///
 /// ## Semantics
 ///
-/// Deleted transactions are retained and can be restored. Normal retrieval
-/// excludes deleted transactions.
+/// Transactions with a non-null [Transaction.deletedAt] are absent from
+/// persistence. Deletion is physical: this interface does not retain the
+/// deleted snapshot. A caller that needs restoration must retain the deleted
+/// snapshot and pass it to [restore].
 ///
 /// ## Contract
 ///
-/// Batch creation is atomic. Updates use [Transaction.entityVersion] for
-/// optimistic concurrency.
+/// Batch creation is atomic. Updates preserve [Transaction.entityVersion],
+/// which identifies the aggregate's class version rather than an update count.
+/// Delete and restore use a caller-owned deleted snapshot.
 abstract interface class TransactionRepository {
-  /// Stores [transaction].
+  /// Stores the active [transaction].
   ///
-  /// Fails when its identity already exists.
+  /// Fails when its identity already exists or [Transaction.deletedAt] is not
+  /// `null`.
   Future<Result<void, TransactionFailure>> create(Transaction transaction);
 
   /// Atomically stores every transaction in [transactions].
   ///
-  /// If any transaction cannot be stored, none are stored.
+  /// If any transaction is deleted or otherwise cannot be stored, none are
+  /// stored.
   Future<Result<void, TransactionFailure>> createAll(
     List<Transaction> transactions,
   );
 
-  /// Returns all non-deleted transactions.
+  /// Returns all persisted transactions.
   ///
   /// Returns an empty list when none exist.
   Future<Result<List<Transaction>, TransactionFailure>> getAll();
 
-  /// Returns the non-deleted transaction identified by [id].
+  /// Returns the persisted transaction identified by [id].
   ///
   /// Returns `null` when no matching transaction exists.
   Future<Result<Transaction?, TransactionFailure>> getById(TransactionId id);
 
-  /// Returns non-deleted transactions matching [query].
+  /// Returns persisted transactions matching [query].
   ///
   /// Matching semantics are defined by [TransactionQuery].
   Future<Result<List<Transaction>, TransactionFailure>> query(
@@ -49,17 +54,24 @@ abstract interface class TransactionRepository {
 
   /// Replaces the stored snapshot of [transaction].
   ///
-  /// Fails when the transaction does not exist or its entity version conflicts
-  /// with the persisted version.
+  /// Fails when the transaction is deleted, does not exist, or its class
+  /// version differs from the persisted version. An update never increments
+  /// [Transaction.entityVersion].
   Future<Result<void, TransactionFailure>> update(Transaction transaction);
 
-  /// Marks the transaction identified by [id] as deleted.
+  /// Physically removes the transaction identified by [id].
   ///
-  /// Fails when the transaction does not exist or is already deleted.
+  /// The removed snapshot is not retained by the repository and is not marked
+  /// deleted by this operation.
+  ///
+  /// Fails when the transaction does not exist.
   Future<Result<void, TransactionFailure>> delete(TransactionId id);
 
-  /// Restores the deleted transaction identified by [id].
+  /// Restores the caller-retained deleted [transaction] after it was physically
+  /// deleted.
   ///
-  /// Fails when the transaction does not exist or is not deleted.
-  Future<Result<void, TransactionFailure>> restore(TransactionId id);
+  /// On success, stores an active copy with [Transaction.deletedAt] set to
+  /// `null`. Fails when [Transaction.deletedAt] is `null` or its identity
+  /// already exists in persistence.
+  Future<Result<void, TransactionFailure>> restore(Transaction transaction);
 }
