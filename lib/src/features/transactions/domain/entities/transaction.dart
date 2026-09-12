@@ -1,7 +1,7 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
-import 'package:axiom/src/core/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/core/domain/mixins/deletable.dart';
-import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';

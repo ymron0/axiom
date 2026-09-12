@@ -1,4 +1,4 @@
-import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/budget_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
