@@ -3,7 +3,7 @@ import 'package:dart_mappable/dart_mappable.dart';
 import 'package:nanoid/nanoid.dart';
 import 'package:test/test.dart';
 
-import '../../../../fixtures/core/domain/value_objects/test_unique_id.dart';
+import '../../../fixtures/core/domain/value_objects/test_unique_id.dart';
 
 part 'unique_id_test.mapper.dart';
 
