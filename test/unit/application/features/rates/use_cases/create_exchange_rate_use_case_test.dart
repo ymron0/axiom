@@ -39,6 +39,7 @@ void main() {
           validateRateAssets: ValidateRateAssetsService(
             getAssetsByIds: GetAssetsByIdsUseCase(assetRepository),
           ),
+          canonicalBridgeAssetId: AssetId.fromString('USD'),
         ),
         clock: FixedClock(timestamp),
       );
