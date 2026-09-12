@@ -1,6 +1,6 @@
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/features/assets/data/repositories/in_memory_asset_repository_impl.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:test/test.dart';
 
@@ -23,7 +23,7 @@ void main() {
       });
 
       test(
-        'returns RecordAlreadyExistsFailure when the asset exists',
+        'returns AssetAlreadyExistsFailure when the asset exists',
         () async {
           // Given
           final repository = _createRepository();
@@ -39,7 +39,7 @@ void main() {
           final result = await repository.create(duplicate);
 
           // Then
-          expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+          expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
           expect(
             (await repository.getById(original.id)).valueOrNull,
             same(original),
@@ -47,7 +47,7 @@ void main() {
         },
       );
 
-      test('returns RecordAlreadyExistsFailure when the code exists', () async {
+      test('returns AssetAlreadyExistsFailure when the code exists', () async {
         // Given
         final repository = _createRepository();
         final original = currencyFixture(
@@ -64,7 +64,7 @@ void main() {
         final result = await repository.create(duplicate);
 
         // Then
-        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
         expect((await repository.getById(duplicate.id)).valueOrNull, isNull);
       });
     });
@@ -101,12 +101,12 @@ void main() {
         final result = await repository.createAll([first, duplicate]);
 
         // Then
-        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
         expect((await repository.getById(first.id)).valueOrNull, isNull);
       });
 
       test(
-        'returns RecordAlreadyExistsFailure when one asset already exists',
+        'returns AssetAlreadyExistsFailure when one asset already exists',
         () async {
           // Given
           final repository = _createRepository();
@@ -117,7 +117,7 @@ void main() {
           final result = await repository.createAll([newAsset, existingAsset]);
 
           // Then
-          expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+          expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
           expect((await repository.getById(newAsset.id)).valueOrNull, isNull);
         },
       );
@@ -135,7 +135,7 @@ void main() {
         final result = await repository.createAll([first, duplicate]);
 
         // Then
-        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
         expect((await repository.getById(first.id)).valueOrNull, isNull);
         expect((await repository.getById(duplicate.id)).valueOrNull, isNull);
       });
@@ -152,7 +152,7 @@ void main() {
         final result = await repository.createAll([duplicate]);
 
         // Then
-        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
         expect((await repository.getById(duplicate.id)).valueOrNull, isNull);
       });
     });
@@ -304,7 +304,7 @@ void main() {
       });
 
       test(
-        'returns RecordNotFoundFailure when the asset does not exist',
+        'returns AssetNotFoundFailure when the asset does not exist',
         () async {
           // Given
           final repository = _createRepository();
@@ -314,12 +314,12 @@ void main() {
           final result = await repository.update(missing);
 
           // Then
-          expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+          expect(result.failureOrNull, isA<AssetNotFoundFailure>());
         },
       );
 
       test(
-        'returns RecordAlreadyExistsFailure for a conflicting code',
+        'returns AssetAlreadyExistsFailure for a conflicting code',
         () async {
           // Given
           final repository = _createRepository();
@@ -338,7 +338,7 @@ void main() {
           final result = await repository.update(conflicting);
 
           // Then
-          expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+          expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
           expect(
             (await repository.getById(original.id)).valueOrNull,
             same(original),
@@ -381,7 +381,7 @@ void main() {
       });
 
       test(
-        'returns RecordAlreadyExistsFailure for duplicate update IDs',
+        'returns AssetAlreadyExistsFailure for duplicate update IDs',
         () async {
           // Given
           final repository = _createRepository();
@@ -408,7 +408,7 @@ void main() {
           ]);
 
           // Then
-          expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+          expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
           expect(
             (await repository.getById(original.id)).valueOrNull,
             same(original),
@@ -417,7 +417,7 @@ void main() {
       );
 
       test(
-        'returns RecordAlreadyExistsFailure when a code belongs to another asset',
+        'returns AssetAlreadyExistsFailure when a code belongs to another asset',
         () async {
           // Given
           final repository = _createRepository();
@@ -435,7 +435,7 @@ void main() {
           final result = await repository.updateAll([conflicting]);
 
           // Then
-          expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+          expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
           expect(
             (await repository.getById(original.id)).valueOrNull,
             same(original),
@@ -444,7 +444,7 @@ void main() {
       );
 
       test(
-        'returns RecordNotFoundFailure when an asset does not exist',
+        'returns AssetNotFoundFailure when an asset does not exist',
         () async {
           // Given
           final repository = _createRepository();
@@ -467,7 +467,7 @@ void main() {
           final result = await repository.updateAll([existingUpdate, missing]);
 
           // Then
-          expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+          expect(result.failureOrNull, isA<AssetNotFoundFailure>());
           expect(
             (await repository.getById(existing.id)).valueOrNull,
             same(existing),
@@ -491,7 +491,7 @@ void main() {
         final result = await repository.updateAll([firstUpdate, secondUpdate]);
 
         // Then
-        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
         expect((await repository.getById(first.id)).valueOrNull, same(first));
         expect((await repository.getById(second.id)).valueOrNull, same(second));
       });

@@ -1,5 +1,4 @@
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/update_asset_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
@@ -37,10 +36,8 @@ void main() {
     test('propagates not-found failures', () async {
       // Given
       final asset = currencyFixture(id: 'missing-update', code: 'AAA');
-      const failure = RecordNotFoundFailure(message: 'asset not found');
-      when(
-        () => repository.update(asset),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetNotFoundFailure(message: 'asset not found');
+      when(() => repository.update(asset)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(asset);
@@ -52,10 +49,8 @@ void main() {
     test('propagates repository failures', () async {
       // Given
       final asset = currencyFixture(id: 'failed-update', code: 'AAA');
-      const failure = UnexpectedPersistenceFailure(message: 'update failed');
-      when(
-        () => repository.update(asset),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetNotFoundFailure(message: 'update failed');
+      when(() => repository.update(asset)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(asset);

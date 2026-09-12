@@ -1,5 +1,4 @@
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/update_all_assets_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
@@ -40,10 +39,8 @@ void main() {
     test('propagates not-found failures for a batch', () async {
       // Given
       final assets = [currencyFixture(id: 'missing-update-batch', code: 'AAA')];
-      const failure = RecordNotFoundFailure(message: 'asset not found');
-      when(
-        () => repository.updateAll(assets),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetNotFoundFailure(message: 'asset not found');
+      when(() => repository.updateAll(assets)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(assets);
@@ -55,10 +52,8 @@ void main() {
     test('propagates repository failures', () async {
       // Given
       final assets = [currencyFixture(id: 'failed-update-batch', code: 'AAA')];
-      const failure = UnexpectedPersistenceFailure(message: 'batch failed');
-      when(
-        () => repository.updateAll(assets),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetNotFoundFailure(message: 'batch failed');
+      when(() => repository.updateAll(assets)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(assets);

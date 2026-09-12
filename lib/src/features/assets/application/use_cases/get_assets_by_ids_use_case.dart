@@ -1,7 +1,7 @@
-import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_failure.dart';
 import 'package:axiom/src/features/assets/domain/repositories/asset_repository.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 
@@ -15,8 +15,8 @@ class GetAssetsByIdsUseCase {
 
   final AssetRepository _repository;
 
-  /// Returns found assets and missing identifiers, or a [BaseFailure].
-  Future<Result<BatchLookup<Asset, AssetId>, BaseFailure>> call(
+  /// Returns found assets and missing identifiers, or an [AssetFailure].
+  Future<Result<BatchLookup<Asset, AssetId>, AssetFailure>> call(
     List<AssetId> ids,
   ) {
     return _repository.getByIds(ids);

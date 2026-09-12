@@ -1,4 +1,4 @@
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
@@ -43,10 +43,8 @@ void main() {
     test('propagates repository failures', () async {
       // Given
       final ids = [AssetId.fromString('batch-failed')];
-      const failure = UnexpectedPersistenceFailure(message: 'batch failed');
-      when(
-        () => repository.getByIds(ids),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetAlreadyExistsFailure(message: 'batch failed');
+      when(() => repository.getByIds(ids)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(ids);

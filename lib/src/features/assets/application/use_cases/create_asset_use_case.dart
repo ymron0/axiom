@@ -1,6 +1,6 @@
-import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_failure.dart';
 import 'package:axiom/src/features/assets/domain/repositories/asset_repository.dart';
 
 /// Creates and stores one asset through the asset repository.
@@ -12,8 +12,8 @@ class CreateAssetUseCase {
 
   final AssetRepository _repository;
 
-  /// Stores [asset] and returns it, or the repository's [BaseFailure].
-  Future<Result<Asset, BaseFailure>> call(Asset asset) {
+  /// Stores [asset] and returns it, or an [AssetFailure].
+  Future<Result<Asset, AssetFailure>> call(Asset asset) {
     return _repository.create(asset);
   }
 }

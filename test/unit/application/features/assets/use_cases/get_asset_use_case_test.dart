@@ -1,4 +1,4 @@
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_asset_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
@@ -35,10 +35,8 @@ void main() {
 
     test('propagates repository failures', () async {
       // Given
-      const failure = UnexpectedPersistenceFailure(message: 'read failed');
-      when(
-        () => repository.getAll(),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetAlreadyExistsFailure(message: 'read failed');
+      when(() => repository.getAll()).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call();
