@@ -4,7 +4,7 @@ import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/clock.dart';
-import 'package:axiom/src/core/ports/clock/system_clock.dart';
+import 'package:axiom/src/core/ports/clock/clock_factory.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'currency.dart';
@@ -92,9 +92,9 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
     required this.decimalPlaces,
     String? remoteLogoUrl,
     String? bundledLogoAsset,
-    }) : name = normalizeRequiredText(name, 'name'),
+  }) : name = normalizeRequiredText(name, 'name'),
        symbol = normalizeOptionalText(symbol, 'symbol'),
-      remoteLogoUrl = normalizeOptionalHttpUrl(remoteLogoUrl, 'remoteLogoUrl'),
+       remoteLogoUrl = normalizeOptionalHttpUrl(remoteLogoUrl, 'remoteLogoUrl'),
        bundledLogoAsset = normalizeOptionalText(
          bundledLogoAsset,
          'bundledLogoAsset',
@@ -106,5 +106,36 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
         'Decimal places cannot be negative',
       );
     }
+  }
+
+  /// Creates a new currency asset with generated identity and audit metadata.
+  ///
+  /// The asset starts at entity version `1`. The resolved clock is sampled once
+  /// in UTC and the resulting timestamp is used for both [createdAt] and
+  /// [modifiedAt].
+  factory Asset.create({
+    required String name,
+    required AssetCode code,
+    String? symbol,
+    String? remoteLogoUrl,
+    String? bundledLogoAsset,
+    required int decimalPlaces,
+    Clock? clock,
+  }) {
+    final resolvedClock = clock ?? createClock();
+    final now = resolvedClock.nowUtc;
+
+    return Currency(
+      id: AssetId.generate(),
+      entityVersion: 1,
+      createdAt: now,
+      modifiedAt: now,
+      name: name,
+      code: code,
+      symbol: symbol,
+      remoteLogoUrl: remoteLogoUrl,
+      bundledLogoAsset: bundledLogoAsset,
+      decimalPlaces: decimalPlaces,
+    );
   }
 }
