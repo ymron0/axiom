@@ -8,6 +8,40 @@ import '../../../../../fixtures/features/assets/asset_fixtures.dart';
 
 void main() {
   group('InMemoryAssetRepositoryImpl', () {
+    group('constructor', () {
+      test('throws ArgumentError for duplicate seed IDs', () {
+        // Given
+        final first = currencyFixture(id: 'seed-duplicate-id', code: 'AAA');
+        final duplicate = currencyFixture(id: 'seed-duplicate-id', code: 'BBB');
+
+        // When
+        final createRepository = () =>
+            InMemoryAssetRepositoryImpl(initialAssets: [first, duplicate]);
+
+        // Then
+        expect(createRepository, throwsArgumentError);
+      });
+
+      test('throws ArgumentError for duplicate seed codes', () {
+        // Given
+        final first = currencyFixture(
+          id: 'seed-duplicate-code-first',
+          code: 'AAA',
+        );
+        final duplicate = currencyFixture(
+          id: 'seed-duplicate-code-second',
+          code: 'AAA',
+        );
+
+        // When
+        final createRepository = () =>
+            InMemoryAssetRepositoryImpl(initialAssets: [first, duplicate]);
+
+        // Then
+        expect(createRepository, throwsArgumentError);
+      });
+    });
+
     group('create', () {
       test('creates an asset', () async {
         // Given
