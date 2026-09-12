@@ -1,5 +1,4 @@
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/create_all_assets_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
@@ -43,10 +42,8 @@ void main() {
         currencyFixture(id: 'duplicate-first', code: 'AAA'),
         currencyFixture(id: 'duplicate-second', code: 'AAA'),
       ];
-      const failure = RecordAlreadyExistsFailure(message: 'duplicate code');
-      when(
-        () => repository.createAll(assets),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetAlreadyExistsFailure(message: 'duplicate code');
+      when(() => repository.createAll(assets)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(assets);
@@ -58,10 +55,8 @@ void main() {
     test('propagates repository failures', () async {
       // Given
       final assets = [currencyFixture(id: 'failed-batch', code: 'AAA')];
-      const failure = UnexpectedPersistenceFailure(message: 'batch failed');
-      when(
-        () => repository.createAll(assets),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetAlreadyExistsFailure(message: 'batch failed');
+      when(() => repository.createAll(assets)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(assets);

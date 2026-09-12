@@ -1,9 +1,9 @@
 import 'package:axiom/src/core/failures/referenced_asset_not_found_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -102,7 +102,7 @@ void main() {
     test('propagates an asset lookup failure unchanged', () async {
       // Given
       final rate = exchangeRateFixture();
-      const failure = UnexpectedPersistenceFailure(message: 'lookup failed');
+      const failure = AssetNotFoundFailure(message: 'lookup failed');
       when(
         () => repository.getByIds(any()),
       ).thenAnswer((_) async => failure);

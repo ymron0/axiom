@@ -4,6 +4,7 @@ import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -98,7 +99,7 @@ void main() {
       // Given
       final assetId = AssetId.fromString('unreadable-valuation');
       final settings = Settings(valuationCurrencyId: assetId);
-      const failure = UnexpectedPersistenceFailure(message: 'read failed');
+      const failure = AssetNotFoundFailure(message: 'read failed');
       when(() => getSettings()).thenAnswer((_) async => Success(settings));
       when(() => getAssetById(assetId)).thenAnswer((_) async => failure);
 

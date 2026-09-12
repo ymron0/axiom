@@ -1,9 +1,9 @@
-import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/assets/domain/repositories/asset_repository.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
@@ -36,14 +36,14 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   final List<Asset> _assets;
 
   @override
-  Future<Result<Asset, BaseFailure>> create(Asset asset) async {
+  Future<Result<Asset, AssetFailure>> create(Asset asset) async {
     if ((await getById(asset.id)).valueOrNull != null) {
-      return RecordAlreadyExistsFailure(
+      return AssetAlreadyExistsFailure(
         message: 'Asset ID already exists: ${asset.id.value}',
       );
     }
     if (_assets.any((storedAsset) => storedAsset.code == asset.code)) {
-      return RecordAlreadyExistsFailure(
+      return AssetAlreadyExistsFailure(
         message: 'Asset code already exists: ${asset.code.value}',
       );
     }
@@ -53,17 +53,17 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   }
 
   @override
-  Future<Result<List<Asset>, BaseFailure>> createAll(List<Asset> assets) async {
+  Future<Result<List<Asset>, AssetFailure>> createAll(List<Asset> assets) async {
     final requestedIds = <String>{};
     final requestedCodes = <String>{};
     for (final asset in assets) {
       if (!requestedIds.add(asset.id.value)) {
-        return RecordAlreadyExistsFailure(
+        return AssetAlreadyExistsFailure(
           message: 'Asset ID is duplicated: ${asset.id.value}',
         );
       }
       if (!requestedCodes.add(asset.code.value)) {
-        return RecordAlreadyExistsFailure(
+        return AssetAlreadyExistsFailure(
           message: 'Asset code is duplicated: ${asset.code.value}',
         );
       }
@@ -71,7 +71,7 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
 
     final lookup = _lookupByIds(assets.map((asset) => asset.id).toList());
     if (lookup.found.isNotEmpty) {
-      return RecordAlreadyExistsFailure(
+      return AssetAlreadyExistsFailure(
         message: 'Asset ID already exists: ${lookup.found.first.id.value}',
       );
     }
@@ -81,7 +81,7 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
       final duplicate = _assets.firstWhere(
         (storedAsset) => requestedCodes.contains(storedAsset.code.value),
       );
-      return RecordAlreadyExistsFailure(
+      return AssetAlreadyExistsFailure(
         message: 'Asset code already exists: ${duplicate.code.value}',
       );
     }
@@ -91,12 +91,12 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   }
 
   @override
-  Future<Result<List<Asset>, BaseFailure>> getAll() async {
+  Future<Result<List<Asset>, AssetFailure>> getAll() async {
     return Success(List.unmodifiable(_assets));
   }
 
   @override
-  Future<Result<List<Asset>, BaseFailure>> getByCode(AssetCode code) async {
+  Future<Result<List<Asset>, AssetFailure>> getByCode(AssetCode code) async {
     final matchingAssets = _assets
         .where((asset) => asset.code.value == code.value)
         .toList();
@@ -105,7 +105,7 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   }
 
   @override
-  Future<Result<Asset?, BaseFailure>> getById(AssetId id) async {
+  Future<Result<Asset?, AssetFailure>> getById(AssetId id) async {
     for (final asset in _assets) {
       if (asset.id.value == id.value) {
         return Success(asset);
@@ -116,19 +116,19 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   }
 
   @override
-  Future<Result<BatchLookup<Asset, AssetId>, BaseFailure>> getByIds(
+  Future<Result<BatchLookup<Asset, AssetId>, AssetFailure>> getByIds(
     List<AssetId> ids,
   ) async {
     return Success(_lookupByIds(ids));
   }
 
   @override
-  Future<Result<Asset, BaseFailure>> update(Asset asset) async {
+  Future<Result<Asset, AssetFailure>> update(Asset asset) async {
     final index = _assets.indexWhere(
       (storedAsset) => storedAsset.id.value == asset.id.value,
     );
     if (index == -1) {
-      return RecordNotFoundFailure(
+      return AssetNotFoundFailure(
         message: 'Asset ID was not found: ${asset.id.value}',
       );
     }
@@ -136,7 +136,7 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
       (storedAsset) =>
           storedAsset.id != asset.id && storedAsset.code == asset.code,
     )) {
-      return RecordAlreadyExistsFailure(
+      return AssetAlreadyExistsFailure(
         message: 'Asset code already exists: ${asset.code.value}',
       );
     }
@@ -146,17 +146,17 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   }
 
   @override
-  Future<Result<List<Asset>, BaseFailure>> updateAll(List<Asset> assets) async {
+  Future<Result<List<Asset>, AssetFailure>> updateAll(List<Asset> assets) async {
     final requestedIds = <String>{};
     final requestedCodes = <String>{};
     for (final asset in assets) {
       if (!requestedIds.add(asset.id.value)) {
-        return RecordAlreadyExistsFailure(
+        return AssetAlreadyExistsFailure(
           message: 'Asset ID is duplicated: ${asset.id.value}',
         );
       }
       if (!requestedCodes.add(asset.code.value)) {
-        return RecordAlreadyExistsFailure(
+        return AssetAlreadyExistsFailure(
           message: 'Asset code is duplicated: ${asset.code.value}',
         );
       }
@@ -165,7 +165,7 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
     final lookup = _lookupByIds(assets.map((asset) => asset.id).toList());
     if (lookup.missing.isNotEmpty) {
       final missingIds = lookup.missing.map((id) => id.value).join(', ');
-      return RecordNotFoundFailure(
+      return AssetNotFoundFailure(
         message: 'Asset IDs were not found: $missingIds',
       );
     }
@@ -179,7 +179,7 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
             !requestedIds.contains(storedAsset.id.value) &&
             requestedCodes.contains(storedAsset.code.value),
       );
-      return RecordAlreadyExistsFailure(
+      return AssetAlreadyExistsFailure(
         message: 'Asset code already exists: ${duplicate.code.value}',
       );
     }

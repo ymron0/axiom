@@ -1,5 +1,4 @@
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/create_asset_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
@@ -37,10 +36,8 @@ void main() {
     test('propagates duplicate failures', () async {
       // Given
       final asset = currencyFixture(id: 'duplicate-asset', code: 'AAA');
-      const failure = RecordAlreadyExistsFailure(message: 'duplicate asset');
-      when(
-        () => repository.create(asset),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetAlreadyExistsFailure(message: 'duplicate asset');
+      when(() => repository.create(asset)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(asset);
@@ -52,10 +49,8 @@ void main() {
     test('propagates repository failures', () async {
       // Given
       final asset = currencyFixture(id: 'failed-create', code: 'AAA');
-      const failure = UnexpectedPersistenceFailure(message: 'write failed');
-      when(
-        () => repository.create(asset),
-      ).thenAnswer((_) async => failure);
+      const failure = AssetAlreadyExistsFailure(message: 'write failed');
+      when(() => repository.create(asset)).thenAnswer((_) async => failure);
 
       // When
       final result = await useCase.call(asset);

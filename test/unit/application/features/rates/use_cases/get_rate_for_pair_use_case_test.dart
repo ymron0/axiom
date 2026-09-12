@@ -6,6 +6,7 @@ import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_code_use_case.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
 import 'package:axiom/src/features/rates/application/failures/unsupported_persisted_rate_quote_failure.dart';
@@ -191,7 +192,7 @@ void main() {
 
     test('propagates a USD asset lookup failure unchanged', () async {
       // Given
-      const failure = RecordNotFoundFailure(message: 'asset lookup failed');
+      const failure = AssetNotFoundFailure(message: 'asset lookup failed');
       when(
         () => assetRepository.getByCode(any()),
       ).thenAnswer((_) async => failure);

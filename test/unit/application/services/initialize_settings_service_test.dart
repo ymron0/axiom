@@ -1,10 +1,10 @@
 import 'package:axiom/src/application/services/initialize_settings_service.dart';
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -52,7 +52,7 @@ void main() {
     test('propagates asset retrieval failures', () async {
       // Given
       final valuationAssetId = AssetId.fromString('missing-lookup');
-      const failure = UnexpectedPersistenceFailure(message: 'read failed');
+      const failure = AssetNotFoundFailure(message: 'read failed');
       when(
         () => getAssetById(valuationAssetId),
       ).thenAnswer((_) async => failure);
