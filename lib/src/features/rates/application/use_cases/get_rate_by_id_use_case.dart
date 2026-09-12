@@ -11,8 +11,6 @@ import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dar
 /// pairs, apply temporal lookup semantics, invert rates, or calculate
 /// cross-rates.
 ///
-/// A successful result containing `null` indicates that no persisted rate
-/// exists with the requested [RateId].
 final class GetRateByIdUseCase {
   /// Creates a use case backed by [repository].
   const GetRateByIdUseCase({
@@ -28,14 +26,14 @@ final class GetRateByIdUseCase {
   /// Retrieves the persisted rate identified by [id].
   ///
   /// Asset-reference validation failures are returned unchanged.
-  Future<Result<Rate?, BaseFailure>> call(RateId id) async {
+  Future<Result<Rate, BaseFailure>> call(RateId id) async {
     final rateResult = await _repository.getById(id);
 
-    return rateResult.when<Future<Result<Rate?, BaseFailure>>>(
+    return rateResult.when<Future<Result<Rate, BaseFailure>>>(
       success: (rate) async {
         final validationResult = await _validateRateAssets([rate]);
 
-        return validationResult.when<Result<Rate?, BaseFailure>>(
+        return validationResult.when<Result<Rate, BaseFailure>>(
           success: (_) => Success(rate),
           failure: (failure) => failure,
         );
