@@ -10,11 +10,63 @@ import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entr
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('Transaction', () {
+    test('creates a new transaction with generated identity and audit metadata', () {
+      // Given
+      final effectiveAt = DateTime.parse('2024-01-02T03:04:05+01:00');
+      final createdAt = DateTime.utc(2026, 9, 12, 10, 11, 12);
+
+      // When
+      final transaction = Transaction.create(
+        kind: TransactionKind.expense,
+        merchantId: MerchantId.self,
+        effectiveAt: effectiveAt,
+        description: '  groceries  ',
+        note: '  weekly shop  ',
+        state: TransactionState.actual,
+        splits: const [],
+        ledgerEntries: [_createLedgerEntry()],
+        clock: FixedClock(createdAt),
+      );
+
+      // Then
+      expect(transaction.id, isA<TransactionId>());
+      expect(transaction.id.value, isNotEmpty);
+      expect(transaction.kind, TransactionKind.expense);
+      expect(transaction.merchantId, same(MerchantId.self));
+      expect(transaction.effectiveAt, effectiveAt.toUtc());
+      expect(transaction.description, 'groceries');
+      expect(transaction.note, 'weekly shop');
+      expect(transaction.state, TransactionState.actual);
+      expect(transaction.splits, isEmpty);
+      expect(transaction.ledgerEntries, hasLength(1));
+      expect(transaction.createdAt, createdAt);
+      expect(transaction.modifiedAt, createdAt);
+      expect(transaction.entityVersion, 1);
+      expect(transaction.deletedAt, isNull);
+    });
+
+    test('creates a transaction with the default clock when none is supplied', () {
+      // When
+      final transaction = Transaction.create(
+        kind: TransactionKind.expense,
+        merchantId: MerchantId.self,
+        effectiveAt: DateTime.utc(2024),
+        state: TransactionState.actual,
+        splits: const [],
+        ledgerEntries: [_createLedgerEntry()],
+      );
+
+      // Then
+      expect(transaction.createdAt.isUtc, isTrue);
+      expect(transaction.modifiedAt, transaction.createdAt);
+    });
+
     test('constructs a valid immutable aggregate', () {
       // Given / When
       final transaction = _createTransaction();

@@ -4,6 +4,8 @@ import 'package:axiom/src/core/domain/mixins/deletable.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/ports/clock/clock.dart';
+import 'package:axiom/src/core/ports/clock/clock_factory.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
@@ -191,6 +193,37 @@ final class Transaction extends AuditedEntity<TransactionId>
     _validateLedgerEntries();
     _validateSplits();
     _validateSplitReconciliation();
+  }
+
+  /// Creates a new transaction with generated identity and audit metadata.
+  factory Transaction.create({
+    required TransactionKind kind,
+    required MerchantId merchantId,
+    required DateTime effectiveAt,
+    String? description,
+    String? note,
+    required TransactionState state,
+    required List<TransactionSplit> splits,
+    required List<LedgerEntry> ledgerEntries,
+    Clock? clock,
+  }) {
+    final resolvedClock = clock ?? createClock();
+    final now = resolvedClock.nowUtc;
+
+    return Transaction(
+      id: TransactionId.generate(),
+      kind: kind,
+      merchantId: merchantId,
+      effectiveAt: effectiveAt,
+      description: description,
+      note: note,
+      state: state,
+      splits: splits,
+      ledgerEntries: ledgerEntries,
+      createdAt: now,
+      modifiedAt: now,
+      entityVersion: 1,
+    );
   }
 
   /// Validates ledger-entry structure against the transaction kind.
