@@ -15,6 +15,9 @@ part of 'asset.dart';
 /// ```dart
 /// final euro = Currency(
 ///   id: AssetId.generate(),
+///   entityVersion: 1,
+///   createdAt: DateTime.utc(2024, 1, 1),
+///   modifiedAt: DateTime.utc(2024, 1, 1),
 ///   name: 'Euro',
 ///   code: AssetCode('EUR'),
 ///   symbol: '€',
@@ -29,6 +32,9 @@ final class Currency extends Asset with CurrencyMappable {
   /// [code] does not contain exactly three ASCII letters.
   Currency({
     required super.id,
+    required super.entityVersion,
+    required super.createdAt,
+    required super.modifiedAt,
     required super.name,
     required super.code,
     super.symbol,

@@ -12,6 +12,9 @@ Currency currencyFixture({
 }) {
   return Currency(
     id: AssetId.fromString(id),
+    entityVersion: 1,
+    createdAt: DateTime.utc(2024, 1, 1),
+    modifiedAt: DateTime.utc(2024, 1, 1),
     name: name,
     code: AssetCode(code),
     decimalPlaces: 2,

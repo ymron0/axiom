@@ -5,13 +5,38 @@ import 'package:test/test.dart';
 
 void main() {
   group('Asset', () {
+    test('generates an asset with a new identity and supplied metadata', () {
+      // Given / When
+      final asset = _createCurrency(
+        id: AssetId.generate(),
+        name: ' Euro ',
+        code: AssetCode('EUR'),
+        symbol: ' € ',
+        remoteLogoUrl: 'https://example.com/euro.png',
+        bundledLogoAsset: ' assets/logos/euro.png ',
+        decimalPlaces: 2,
+      );
+
+      // Then
+      expect(asset.id.value, isNotEmpty);
+      expect(asset.entityVersion, 1);
+      expect(asset.createdAt.isUtc, isTrue);
+      expect(asset.modifiedAt, same(asset.createdAt));
+      expect(asset.name, 'Euro');
+      expect(asset.code.value, 'EUR');
+      expect(asset.symbol, '€');
+      expect(asset.remoteLogoUrl, 'https://example.com/euro.png');
+      expect(asset.bundledLogoAsset, 'assets/logos/euro.png');
+      expect(asset.decimalPlaces, 2);
+    });
+
     test('preserves all supplied metadata through Currency', () {
       // Given
       final assetId = AssetId.fromString('currency-eur');
       final assetCode = AssetCode('EUR');
 
       // When
-      final currency = Currency(
+      final currency = _createCurrency(
         id: assetId,
         name: 'Euro',
         code: assetCode,
@@ -34,7 +59,7 @@ void main() {
 
     test('represents a concrete currency asset subtype', () {
       // Given / When
-      final currency = Currency(
+      final currency = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: 'Euro',
         code: AssetCode('EUR'),
@@ -48,7 +73,7 @@ void main() {
 
     test('round trips through dart_mappable serialization', () {
       // Given
-      final currency = Currency(
+      final currency = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: 'Euro',
         code: AssetCode('EUR'),
@@ -65,19 +90,19 @@ void main() {
 
     test('compares currencies by their mapped domain values', () {
       // Given
-      final first = Currency(
+      final first = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: 'Euro',
         code: AssetCode('EUR'),
         decimalPlaces: 2,
       );
-      final equivalent = Currency(
+      final equivalent = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: 'Euro',
         code: AssetCode('EUR'),
         decimalPlaces: 2,
       );
-      final different = Currency(
+      final different = _createCurrency(
         id: AssetId.fromString('currency-usd'),
         name: 'US Dollar',
         code: AssetCode('USD'),
@@ -91,7 +116,7 @@ void main() {
 
     test('allows optional metadata to be omitted through Currency', () {
       // Given / When
-      final currency = Currency(
+      final currency = _createCurrency(
         id: AssetId.fromString('currency-jpy'),
         name: 'Japanese Yen',
         code: AssetCode('JPY'),
@@ -107,7 +132,7 @@ void main() {
 
     test('accepts any three ASCII letters as the currency code', () {
       // Given / When
-      final currency = Currency(
+      final currency = _createCurrency(
         id: AssetId.fromString('currency-chf'),
         name: 'Swiss Franc',
         code: AssetCode('CHF'),
@@ -120,7 +145,7 @@ void main() {
 
     test('trims the display name and symbol', () {
       // Given / When
-      final currency = Currency(
+      final currency = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: ' Euro ',
         code: AssetCode('EUR'),
@@ -135,7 +160,7 @@ void main() {
 
     test('normalizes optional metadata through the shared text validator', () {
       // Given / When
-      final currency = Currency(
+      final currency = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: 'Euro',
         code: AssetCode('EUR'),
@@ -152,7 +177,7 @@ void main() {
     test('rejects a blank display name', () {
       // Given / When / Then
       expect(
-        () => Currency(
+        () => _createCurrency(
           id: AssetId.fromString('currency-eur'),
           name: '  ',
           code: AssetCode('EUR'),
@@ -167,7 +192,7 @@ void main() {
     test('rejects a negative decimal place count', () {
       // Given / When / Then
       expect(
-        () => Currency(
+        () => _createCurrency(
           id: AssetId.fromString('currency-eur'),
           name: 'Euro',
           code: AssetCode('EUR'),
@@ -185,7 +210,7 @@ void main() {
 
     test('allows decimal place counts above 18', () {
       // Given / When
-      final currency = Currency(
+      final currency = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: 'Euro',
         code: AssetCode('EUR'),
@@ -199,7 +224,7 @@ void main() {
     test('rejects a blank optional symbol', () {
       // Given / When / Then
       expect(
-        () => Currency(
+        () => _createCurrency(
           id: AssetId.fromString('currency-eur'),
           name: 'Euro',
           code: AssetCode('EUR'),
@@ -216,7 +241,7 @@ void main() {
       // Given / When / Then
       for (final field in ['remoteLogoUrl', 'bundledLogoAsset']) {
         expect(
-          () => Currency(
+          () => _createCurrency(
             id: AssetId.fromString('currency-eur'),
             name: 'Euro',
             code: AssetCode('EUR'),
@@ -239,7 +264,7 @@ void main() {
         'ftp://example.com/logo.png',
       ]) {
         expect(
-          () => Currency(
+          () => _createCurrency(
             id: AssetId.fromString('currency-eur'),
             name: 'Euro',
             code: AssetCode('EUR'),
@@ -260,7 +285,7 @@ void main() {
 
     test('trims valid logo metadata', () {
       // Given / When
-      final currency = Currency(
+      final currency = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: 'Euro',
         code: AssetCode('EUR'),
@@ -277,14 +302,14 @@ void main() {
     test('keeps identity independent from display metadata', () {
       // Given
       final assetId = AssetId.fromString('currency-eur');
-      final first = Currency(
+      final first = _createCurrency(
         id: assetId,
         name: 'Euro',
         code: AssetCode('EUR'),
         symbol: '€',
         decimalPlaces: 2,
       );
-      final second = Currency(
+      final second = _createCurrency(
         id: assetId,
         name: 'Euro (updated display name)',
         code: AssetCode('EUR'),
@@ -301,7 +326,7 @@ void main() {
       // Given / When / Then
       for (final value in ['EU', 'EURO', 'EU1', '€UR']) {
         expect(
-          () => Currency(
+          () => _createCurrency(
             id: AssetId.fromString('currency-invalid'),
             name: 'Invalid currency',
             code: AssetCode(value),
@@ -315,4 +340,29 @@ void main() {
       }
     });
   });
+}
+
+Currency _createCurrency({
+  required AssetId id,
+  required String name,
+  required AssetCode code,
+  String? symbol,
+  String? remoteLogoUrl,
+  String? bundledLogoAsset,
+  required int decimalPlaces,
+}) {
+  final createdAt = DateTime.utc(2024);
+
+  return Currency(
+    id: id,
+    entityVersion: 1,
+    createdAt: createdAt,
+    modifiedAt: createdAt,
+    name: name,
+    code: code,
+    symbol: symbol,
+    remoteLogoUrl: remoteLogoUrl,
+    bundledLogoAsset: bundledLogoAsset,
+    decimalPlaces: decimalPlaces,
+  );
 }
