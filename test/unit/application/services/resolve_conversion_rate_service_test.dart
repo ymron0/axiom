@@ -2,14 +2,14 @@ import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/features/rates/application/services/resolve_conversion_rate_service.dart';
+import 'package:axiom/src/application/services/resolve_conversion_rate_service.dart';
 import 'package:axiom/src/features/rates/domain/services/rate_conversion_service.dart';
 import 'package:decimal/decimal.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-import '../../../../../fixtures/features/rates/rate_fixtures.dart';
-import '../../../../../mocks/rate_repository_mock.dart';
+import '../../../fixtures/features/rates/rate_fixtures.dart';
+import '../../../mocks/rate_repository_mock.dart';
 
 void main() {
   setUpAll(() {
