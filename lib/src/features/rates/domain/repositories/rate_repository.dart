@@ -1,7 +1,8 @@
 // coverage:ignore-file
 
 import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
+import 'package:axiom/src/core/failures/rate_already_exists_failure.dart';
+import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
@@ -103,7 +104,7 @@ abstract interface class RateRepository {
   ///
   /// The caller must ensure that the quote asset is USD.
   ///
-  /// Returns [RecordAlreadyExistsFailure] when a rate with the same [RateId]
+  /// Returns [RateAlreadyExistsFailure] when a rate with the same [RateId]
   /// already exists.
   ///
   /// Other storage-independent failures are represented by [BaseFailure].
@@ -115,7 +116,7 @@ abstract interface class RateRepository {
   ///
   /// If any rate cannot be created, no rate from the batch may be persisted.
   ///
-  /// Returns [RecordAlreadyExistsFailure] when any supplied [RateId] already
+  /// Returns [RateAlreadyExistsFailure] when any supplied [RateId] already
   /// exists.
   Future<Result<void, BaseFailure>> createAll(List<Rate> rates);
 
