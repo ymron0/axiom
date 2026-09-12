@@ -1,5 +1,5 @@
 import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
+import 'package:axiom/src/core/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
@@ -20,7 +20,7 @@ final class ValidateRateAssetsService {
 
   /// Validates the referenced assets of every supplied rate.
   ///
-  /// Returns [RecordNotFoundFailure] when a referenced asset does not exist.
+  /// Returns [ReferencedAssetNotFoundFailure] when a referenced asset does not exist.
   Future<Result<void, BaseFailure>> call(Iterable<Rate> rates) async {
     final exchangeRates = rates.whereType<ExchangeRate>().toList();
     if (exchangeRates.isEmpty) {
@@ -38,7 +38,7 @@ final class ValidateRateAssetsService {
     return assetsResult.when<Result<void, BaseFailure>>(
       success: (lookup) {
         if (lookup.missing.isNotEmpty) {
-          return RecordNotFoundFailure(
+          return ReferencedAssetNotFoundFailure(
             message:
                 'Referenced rate asset was not found: '
                 '${lookup.missing.first.value}',

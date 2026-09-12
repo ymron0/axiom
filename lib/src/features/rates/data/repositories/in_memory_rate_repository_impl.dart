@@ -1,6 +1,6 @@
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
+import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
@@ -75,7 +75,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
       }
     }
 
-    return RecordNotFoundFailure(message: 'Rate ID was not found: ${id.value}');
+    return RateNotFoundFailure(message: 'Rate ID was not found: ${id.value}');
   }
 
   @override
@@ -131,7 +131,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
       quoteAssetId: quoteAssetId,
     )).valueOrNull;
     if (matchingRates == null || matchingRates.isEmpty) {
-      return RecordNotFoundFailure(
+      return RateNotFoundFailure(
         message: 'No rate was found for the requested asset pair.',
       );
     }
@@ -154,7 +154,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
         .toList();
 
     if (eligibleRates == null || eligibleRates.isEmpty) {
-      return RecordNotFoundFailure(
+      return RateNotFoundFailure(
         message: 'No rate was found at or before the requested instant.',
       );
     }

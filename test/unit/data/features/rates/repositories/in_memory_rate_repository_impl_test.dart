@@ -1,5 +1,5 @@
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
+import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/features/rates/data/repositories/in_memory_rate_repository_impl.dart';
@@ -42,14 +42,14 @@ void main() {
       );
     });
 
-    test('returns RecordNotFoundFailure for a missing ID', () async {
+    test('returns RateNotFoundFailure for a missing ID', () async {
       final repository = InMemoryRateRepositoryImpl();
 
       final result = await repository.getById(
         RateId.fromString('missing-rate'),
       );
 
-      expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+      expect(result.failureOrNull, isA<RateNotFoundFailure>());
     });
 
     test('createAll is atomic when a requested ID already exists', () async {
@@ -65,7 +65,7 @@ void main() {
         (await repository.getById(
           RateId.fromString(newRate.id.value),
         )).failureOrNull,
-        isA<RecordNotFoundFailure>(),
+        isA<RateNotFoundFailure>(),
       );
     });
 
@@ -86,7 +86,7 @@ void main() {
           (await repository.getById(
             RateId.fromString(first.id.value),
           )).failureOrNull,
-          isA<RecordNotFoundFailure>(),
+          isA<RateNotFoundFailure>(),
         );
       },
     );
@@ -229,7 +229,7 @@ void main() {
     );
 
     test(
-      'returns RecordNotFoundFailure when the pair has no latest rate',
+      'returns RateNotFoundFailure when the pair has no latest rate',
       () async {
         final repository = InMemoryRateRepositoryImpl();
 
@@ -238,7 +238,7 @@ void main() {
           quoteAssetId: AssetId.fromString('MISSING-LATEST-QUOTE'),
         );
 
-        expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+        expect(result.failureOrNull, isA<RateNotFoundFailure>());
       },
     );
 
@@ -276,7 +276,7 @@ void main() {
           effectiveAt: DateTime.utc(2020),
         );
 
-        expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+        expect(result.failureOrNull, isA<RateNotFoundFailure>());
       },
     );
   });

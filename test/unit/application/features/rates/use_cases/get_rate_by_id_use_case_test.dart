@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
+import 'package:axiom/src/core/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
@@ -81,7 +82,7 @@ void main() {
       final result = await useCase(rateId);
 
       // Then
-      expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+      expect(result.failureOrNull, isA<ReferencedAssetNotFoundFailure>());
     });
 
     test('propagates a missing-rate failure unchanged', () async {
