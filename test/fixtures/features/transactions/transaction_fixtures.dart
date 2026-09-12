@@ -15,6 +15,7 @@ import 'package:decimal/decimal.dart';
 Transaction transactionFixture({
   required String id,
   DateTime? deletedAt,
+  DateTime? effectiveAt,
 }) {
   final amount = AssetAmount(
     assetId: AssetId.fromString('asset-eur'),
@@ -27,6 +28,7 @@ Transaction transactionFixture({
     id: TransactionId.fromString(id),
     kind: TransactionKind.expense,
     merchantId: MerchantId.self,
+    effectiveAt: effectiveAt ?? createdAt,
     description: 'Test transaction',
     note: null,
     state: TransactionState.actual,

@@ -30,17 +30,20 @@ void main() {
       expect(transaction.isDeleted, isFalse);
     });
 
-    test('preserves a deletion timestamp and reports the aggregate deleted', () {
-      // Given
-      final deletedAt = DateTime.utc(2024, 1, 2);
+    test(
+      'preserves a deletion timestamp and reports the aggregate deleted',
+      () {
+        // Given
+        final deletedAt = DateTime.utc(2024, 1, 2);
 
-      // When
-      final transaction = _createTransaction(deletedAt: deletedAt);
+        // When
+        final transaction = _createTransaction(deletedAt: deletedAt);
 
-      // Then
-      expect(transaction.deletedAt, same(deletedAt));
-      expect(transaction.isDeleted, isTrue);
-    });
+        // Then
+        expect(transaction.deletedAt, same(deletedAt));
+        expect(transaction.isDeleted, isTrue);
+      },
+    );
 
     test('rejects a deletion timestamp before creation', () {
       // Given
@@ -176,9 +179,7 @@ void main() {
       // When / Then
       expect(
         () => _createTransaction(
-          ledgerEntries: [
-            _createLedgerEntry(amount: unknownAmount),
-          ],
+          ledgerEntries: [_createLedgerEntry(amount: unknownAmount)],
           splits: [
             _createSplit(
               transactionAmount: unknownAmount,
@@ -376,6 +377,7 @@ Transaction _createTransaction({
     id: TransactionId.fromString('transaction-1'),
     kind: kind,
     merchantId: MerchantId.self,
+    effectiveAt: DateTime.utc(2024),
     description: description,
     note: note,
     state: TransactionState.actual,
@@ -401,7 +403,8 @@ LedgerEntry _createLedgerEntry({
           amount: Decimal.fromInt(10),
         )
       : _createAmount();
-  final resolvedTransactionAmount = transactionAmount ?? amount ?? defaultAmount;
+  final resolvedTransactionAmount =
+      transactionAmount ?? amount ?? defaultAmount;
 
   return LedgerEntry(
     accountId: AccountId.fromString('account-1'),

@@ -24,6 +24,9 @@ import 'package:axiom/src/features/transactions/domain/enums/transaction_state.d
 /// - are either an expense OR an income; AND
 /// - affect [accountId].
 ///
+/// When supplied, [effectiveFrom] is inclusive and [effectiveUntil] is
+/// exclusive. Both bounds compare [Transaction.effectiveAt] as UTC instants.
+///
 /// An empty criterion means that property is unrestricted.
 final class TransactionQuery {
   /// Creates transaction query criteria.
@@ -32,10 +35,24 @@ final class TransactionQuery {
     Set<TransactionState> states = const {},
     Set<MerchantId> merchantIds = const {},
     Set<AccountId> accountIds = const {},
+    DateTime? effectiveFrom,
+    DateTime? effectiveUntil,
   }) : kinds = Set.unmodifiable(kinds),
        states = Set.unmodifiable(states),
        merchantIds = Set.unmodifiable(merchantIds),
-       accountIds = Set.unmodifiable(accountIds);
+       accountIds = Set.unmodifiable(accountIds),
+       effectiveFrom = effectiveFrom?.toUtc(),
+       effectiveUntil = effectiveUntil?.toUtc() {
+    if (this.effectiveFrom != null &&
+        this.effectiveUntil != null &&
+        this.effectiveUntil!.isBefore(this.effectiveFrom!)) {
+      throw ArgumentError.value(
+        effectiveUntil,
+        'effectiveUntil',
+        'Effective end time cannot precede effective start time.',
+      );
+    }
+  }
 
   /// Transaction kinds to include.
   ///
@@ -60,10 +77,18 @@ final class TransactionQuery {
   /// Empty means transactions affecting any account.
   final Set<AccountId> accountIds;
 
+  /// Inclusive lower bound for [Transaction.effectiveAt].
+  final DateTime? effectiveFrom;
+
+  /// Exclusive upper bound for [Transaction.effectiveAt].
+  final DateTime? effectiveUntil;
+
   /// Whether this query contains no restrictions.
   bool get isEmpty =>
       kinds.isEmpty &&
       states.isEmpty &&
       merchantIds.isEmpty &&
-      accountIds.isEmpty;
+      accountIds.isEmpty &&
+      effectiveFrom == null &&
+      effectiveUntil == null;
 }

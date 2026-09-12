@@ -20,7 +20,8 @@ import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
 void main() {
-  InMemoryTransactionRepositoryImpl createRepository() => InMemoryTransactionRepositoryImpl(initialTransactions: const []);
+  InMemoryTransactionRepositoryImpl createRepository() =>
+      InMemoryTransactionRepositoryImpl(initialTransactions: const []);
   final createdAt = DateTime.utc(2026, 1, 1);
   final deletedAt = DateTime.utc(2026, 1, 2);
 
@@ -32,6 +33,7 @@ void main() {
     String merchantId = 'self',
     TransactionState state = TransactionState.actual,
     String accountId = 'account-eur-checking',
+    DateTime? effectiveAt,
     DateTime? deletedAt,
     int entityVersion = 1,
     DateTime? modifiedAt,
@@ -50,6 +52,7 @@ void main() {
       merchantId: merchantId == 'self'
           ? MerchantId.self
           : MerchantId.fromString(merchantId),
+      effectiveAt: effectiveAt ?? createdAt,
       description: description,
       note: note,
       state: state,
@@ -84,17 +87,20 @@ void main() {
         expect(result.valueOrNull, isEmpty);
       });
 
-      test('loads the external transaction fixtures when no seed is supplied', () async {
-        // Given
-        final repository = InMemoryTransactionRepositoryImpl();
+      test(
+        'loads the external transaction fixtures when no seed is supplied',
+        () async {
+          // Given
+          final repository = InMemoryTransactionRepositoryImpl();
 
-        // When
-        final result = await repository.getAll();
+          // When
+          final result = await repository.getAll();
 
-        // Then
-        expect(result.isSuccess, isTrue);
-        expect(result.valueOrNull, isNotEmpty);
-      });
+          // Then
+          expect(result.isSuccess, isTrue);
+          expect(result.valueOrNull, isNotEmpty);
+        },
+      );
 
       test('stores valid supplied seed transactions in order', () async {
         // Given
@@ -120,9 +126,8 @@ void main() {
 
         // When / Then
         expect(
-          () => InMemoryTransactionRepositoryImpl(
-            initialTransactions: [deleted],
-          ),
+          () =>
+              InMemoryTransactionRepositoryImpl(initialTransactions: [deleted]),
           throwsA(isA<ArgumentError>()),
         );
       });
@@ -164,26 +169,29 @@ void main() {
         expect(stored!.entityVersion, 7);
       });
 
-      test('rejects a duplicate identity without replacing the original', () async {
-        // Given
-        final repository = createRepository();
-        final original = transactionFixture(id: 'duplicate-transaction');
-        final duplicate = transactionFixture(
-          id: original.id.value,
-          description: 'replacement',
-        );
-        await repository.create(original);
+      test(
+        'rejects a duplicate identity without replacing the original',
+        () async {
+          // Given
+          final repository = createRepository();
+          final original = transactionFixture(id: 'duplicate-transaction');
+          final duplicate = transactionFixture(
+            id: original.id.value,
+            description: 'replacement',
+          );
+          await repository.create(original);
 
-        // When
-        final result = await repository.create(duplicate);
+          // When
+          final result = await repository.create(duplicate);
 
-        // Then
-        expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
-        expect(
-          (await repository.getById(original.id)).valueOrNull,
-          same(original),
-        );
-      });
+          // Then
+          expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
+          expect(
+            (await repository.getById(original.id)).valueOrNull,
+            same(original),
+          );
+        },
+      );
 
       test('accepts null description and note', () async {
         // Given
@@ -204,23 +212,23 @@ void main() {
         expect(stored?.note, isNull);
       });
 
-      test('rejects an empty description and note when constructing a transaction', () {
-        // Given / When / Then
-        expect(
-          () => transactionFixture(
-            id: 'empty-description-transaction',
-            description: '',
-          ),
-          throwsArgumentError,
-        );
-        expect(
-          () => transactionFixture(
-            id: 'empty-note-transaction',
-            note: '',
-          ),
-          throwsArgumentError,
-        );
-      });
+      test(
+        'rejects an empty description and note when constructing a transaction',
+        () {
+          // Given / When / Then
+          expect(
+            () => transactionFixture(
+              id: 'empty-description-transaction',
+              description: '',
+            ),
+            throwsArgumentError,
+          );
+          expect(
+            () => transactionFixture(id: 'empty-note-transaction', note: ''),
+            throwsArgumentError,
+          );
+        },
+      );
 
       test('rejects a deleted transaction', () async {
         // Given
@@ -279,22 +287,25 @@ void main() {
         expect((await repository.getAll()).valueOrNull, isEmpty);
       });
 
-      test('rejects duplicate IDs within the request without partial mutation', () async {
-        // Given
-        final repository = createRepository();
-        final first = transactionFixture(id: 'create-all-duplicate');
-        final duplicate = transactionFixture(
-          id: first.id.value,
-          description: 'duplicate transaction',
-        );
+      test(
+        'rejects duplicate IDs within the request without partial mutation',
+        () async {
+          // Given
+          final repository = createRepository();
+          final first = transactionFixture(id: 'create-all-duplicate');
+          final duplicate = transactionFixture(
+            id: first.id.value,
+            description: 'duplicate transaction',
+          );
 
-        // When
-        final result = await repository.createAll([first, duplicate]);
+          // When
+          final result = await repository.createAll([first, duplicate]);
 
-        // Then
-        expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
-        expect((await repository.getAll()).valueOrNull, isEmpty);
-      });
+          // Then
+          expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
+          expect((await repository.getAll()).valueOrNull, isEmpty);
+        },
+      );
 
       test('rejects an ID already stored without partial mutation', () async {
         // Given
@@ -366,44 +377,47 @@ void main() {
     });
 
     group('query', () {
-      test('applies AND across criteria and OR within each criterion', () async {
-        // Given
-        final repository = createRepository();
-        final expense = transactionFixture(
-          id: 'query-expense',
-          merchantId: 'merchant-grocery',
-          accountId: 'account-eur-checking',
-        );
-        final income = transactionFixture(
-          id: 'query-income',
-          kind: TransactionKind.income,
-          state: TransactionState.planned,
-          merchantId: 'merchant-employer',
-          accountId: 'account-chf-checking',
-        );
-        final unrelated = transactionFixture(
-          id: 'query-unrelated',
-          merchantId: 'merchant-other',
-          accountId: 'account-chf-checking',
-        );
-        await repository.createAll([expense, income, unrelated]);
+      test(
+        'applies AND across criteria and OR within each criterion',
+        () async {
+          // Given
+          final repository = createRepository();
+          final expense = transactionFixture(
+            id: 'query-expense',
+            merchantId: 'merchant-grocery',
+            accountId: 'account-eur-checking',
+          );
+          final income = transactionFixture(
+            id: 'query-income',
+            kind: TransactionKind.income,
+            state: TransactionState.planned,
+            merchantId: 'merchant-employer',
+            accountId: 'account-chf-checking',
+          );
+          final unrelated = transactionFixture(
+            id: 'query-unrelated',
+            merchantId: 'merchant-other',
+            accountId: 'account-chf-checking',
+          );
+          await repository.createAll([expense, income, unrelated]);
 
-        // When
-        final result = await repository.query(
-          TransactionQuery(
-            kinds: {TransactionKind.expense, TransactionKind.income},
-            states: {TransactionState.actual, TransactionState.planned},
-            merchantIds: {
-              MerchantId.fromString('merchant-grocery'),
-              MerchantId.fromString('merchant-employer'),
-            },
-            accountIds: {AccountId.fromString('account-chf-checking')},
-          ),
-        );
+          // When
+          final result = await repository.query(
+            TransactionQuery(
+              kinds: {TransactionKind.expense, TransactionKind.income},
+              states: {TransactionState.actual, TransactionState.planned},
+              merchantIds: {
+                MerchantId.fromString('merchant-grocery'),
+                MerchantId.fromString('merchant-employer'),
+              },
+              accountIds: {AccountId.fromString('account-chf-checking')},
+            ),
+          );
 
-        // Then
-        expect(result.valueOrNull, [same(income)]);
-      });
+          // Then
+          expect(result.valueOrNull, [same(income)]);
+        },
+      );
 
       test('matches transactions affecting a requested account', () async {
         // Given
@@ -429,6 +443,56 @@ void main() {
         expect(result.valueOrNull, [same(second)]);
       });
 
+      test(
+        'matches the inclusive effective-time start and excludes the end',
+        () async {
+          // Given
+          final repository = createRepository();
+          final start = DateTime.utc(2026, 1, 10);
+          final atStart = transactionFixture(
+            id: 'query-effective-start',
+            effectiveAt: start,
+          );
+          final atEnd = transactionFixture(
+            id: 'query-effective-end',
+            effectiveAt: DateTime.utc(2026, 1, 11),
+          );
+          await repository.createAll([atStart, atEnd]);
+
+          // When
+          final result = await repository.query(
+            TransactionQuery(
+              effectiveFrom: start,
+              effectiveUntil: DateTime.utc(2026, 1, 11),
+            ),
+          );
+
+          // Then
+          expect(result.valueOrNull, [same(atStart)]);
+        },
+      );
+
+      test('compares effective-time criteria by instant', () async {
+        // Given
+        final repository = createRepository();
+        final transaction = transactionFixture(
+          id: 'query-effective-zone',
+          effectiveAt: DateTime.utc(2026, 1, 10, 12),
+        );
+        await repository.create(transaction);
+
+        // When
+        final result = await repository.query(
+          TransactionQuery(
+            effectiveFrom: DateTime.parse('2026-01-10T14:00:00+02:00'),
+            effectiveUntil: DateTime.parse('2026-01-10T15:00:00+02:00'),
+          ),
+        );
+
+        // Then
+        expect(result.valueOrNull, [same(transaction)]);
+      });
+
       test('returns all transactions for an unrestricted query', () async {
         // Given
         final repository = createRepository();
@@ -445,30 +509,33 @@ void main() {
     });
 
     group('update', () {
-      test('replaces an existing transaction without changing its entity version', () async {
-        // Given
-        final repository = createRepository();
-        final original = transactionFixture(
-          id: 'update-transaction',
-          entityVersion: 4,
-        );
-        final replacement = transactionFixture(
-          id: original.id.value,
-          description: 'updated description',
-          entityVersion: original.entityVersion,
-          modifiedAt: DateTime.utc(2026, 1, 2),
-        );
-        await repository.create(original);
+      test(
+        'replaces an existing transaction without changing its entity version',
+        () async {
+          // Given
+          final repository = createRepository();
+          final original = transactionFixture(
+            id: 'update-transaction',
+            entityVersion: 4,
+          );
+          final replacement = transactionFixture(
+            id: original.id.value,
+            description: 'updated description',
+            entityVersion: original.entityVersion,
+            modifiedAt: DateTime.utc(2026, 1, 2),
+          );
+          await repository.create(original);
 
-        // When
-        final result = await repository.update(replacement);
+          // When
+          final result = await repository.update(replacement);
 
-        // Then
-        expect(result.isSuccess, isTrue);
-        final stored = (await repository.getById(original.id)).valueOrNull;
-        expect(stored, same(replacement));
-        expect(stored!.entityVersion, 4);
-      });
+          // Then
+          expect(result.isSuccess, isTrue);
+          final stored = (await repository.getById(original.id)).valueOrNull;
+          expect(stored, same(replacement));
+          expect(stored!.entityVersion, 4);
+        },
+      );
 
       test('rejects an entity version conflict without mutation', () async {
         // Given
@@ -488,10 +555,7 @@ void main() {
         final result = await repository.update(conflicting);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionVersionConflictFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionVersionConflictFailure>());
         expect(
           (await repository.getById(original.id)).valueOrNull,
           same(original),
@@ -519,18 +583,21 @@ void main() {
         );
       });
 
-      test('returns TransactionNotFoundFailure for a missing transaction', () async {
-        // Given
-        final repository = createRepository();
+      test(
+        'returns TransactionNotFoundFailure for a missing transaction',
+        () async {
+          // Given
+          final repository = createRepository();
 
-        // When
-        final result = await repository.update(
-          transactionFixture(id: 'update-missing-transaction'),
-        );
+          // When
+          final result = await repository.update(
+            transactionFixture(id: 'update-missing-transaction'),
+          );
 
-        // Then
-        expect(result.failureOrNull, isA<TransactionNotFoundFailure>());
-      });
+          // Then
+          expect(result.failureOrNull, isA<TransactionNotFoundFailure>());
+        },
+      );
     });
 
     group('delete', () {
@@ -563,48 +630,57 @@ void main() {
     });
 
     group('restore', () {
-      test('restores only a deleted transaction and preserves its entity version', () async {
-        // Given
-        final repository = createRepository();
-        final active = transactionFixture(
-          id: 'restore-transaction',
-          entityVersion: 9,
-        );
-        final deleted = transactionFixture(
-          id: active.id.value,
-          entityVersion: active.entityVersion,
-          deletedAt: deletedAt,
-        );
-        await repository.create(active);
-        await repository.delete(active.id);
+      test(
+        'restores only a deleted transaction and preserves its entity version',
+        () async {
+          // Given
+          final repository = createRepository();
+          final active = transactionFixture(
+            id: 'restore-transaction',
+            entityVersion: 9,
+          );
+          final deleted = transactionFixture(
+            id: active.id.value,
+            entityVersion: active.entityVersion,
+            deletedAt: deletedAt,
+          );
+          await repository.create(active);
+          await repository.delete(active.id);
 
-        // When
-        final result = await repository.restore(deleted);
+          // When
+          final result = await repository.restore(deleted);
 
-        // Then
-        expect(result.isSuccess, isTrue);
-        final restored = (await repository.getById(active.id)).valueOrNull;
-        expect(restored?.isDeleted, isFalse);
-        expect(restored?.entityVersion, 9);
-      });
+          // Then
+          expect(result.isSuccess, isTrue);
+          final restored = (await repository.getById(active.id)).valueOrNull;
+          expect(restored?.isDeleted, isFalse);
+          expect(restored?.entityVersion, 9);
+        },
+      );
 
-      test('rejects restoring a deleted transaction over an existing ID', () async {
-        // Given
-        final repository = createRepository();
-        final active = transactionFixture(id: 'restore-existing-transaction');
-        final deleted = transactionFixture(
-          id: active.id.value,
-          deletedAt: deletedAt,
-        );
-        await repository.create(active);
+      test(
+        'rejects restoring a deleted transaction over an existing ID',
+        () async {
+          // Given
+          final repository = createRepository();
+          final active = transactionFixture(id: 'restore-existing-transaction');
+          final deleted = transactionFixture(
+            id: active.id.value,
+            deletedAt: deletedAt,
+          );
+          await repository.create(active);
 
-        // When
-        final result = await repository.restore(deleted);
+          // When
+          final result = await repository.restore(deleted);
 
-        // Then
-        expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
-        expect((await repository.getById(active.id)).valueOrNull, same(active));
-      });
+          // Then
+          expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
+          expect(
+            (await repository.getById(active.id)).valueOrNull,
+            same(active),
+          );
+        },
+      );
 
       test('rejects an active transaction', () async {
         // Given
