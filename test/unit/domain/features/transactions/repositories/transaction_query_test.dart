@@ -17,6 +17,8 @@ void main() {
       expect(query.states, isEmpty);
       expect(query.merchantIds, isEmpty);
       expect(query.accountIds, isEmpty);
+      expect(query.effectiveFrom, isNull);
+      expect(query.effectiveUntil, isNull);
     });
 
     test('is not empty when kinds contains a criterion', () {
@@ -55,6 +57,37 @@ void main() {
 
       // Then
       expect(query.isEmpty, isFalse);
+    });
+
+    test('is not empty when effective bounds contain a criterion', () {
+      // Given / When
+      final query = TransactionQuery(effectiveFrom: DateTime.utc(2026, 1, 1));
+
+      // Then
+      expect(query.isEmpty, isFalse);
+    });
+
+    test('normalizes effective bounds to UTC', () {
+      // Given
+      final query = TransactionQuery(
+        effectiveFrom: DateTime.parse('2026-01-01T01:00:00+01:00'),
+        effectiveUntil: DateTime.parse('2026-01-02T01:00:00+01:00'),
+      );
+
+      // Then
+      expect(query.effectiveFrom, DateTime.utc(2026, 1, 1));
+      expect(query.effectiveUntil, DateTime.utc(2026, 1, 2));
+    });
+
+    test('rejects an effective end before its start', () {
+      // Given / When
+      TransactionQuery construct() => TransactionQuery(
+        effectiveFrom: DateTime.utc(2026, 1, 2),
+        effectiveUntil: DateTime.utc(2026, 1, 1),
+      );
+
+      // Then
+      expect(construct, throwsArgumentError);
     });
 
     test('copies and exposes all criteria as unmodifiable sets', () {

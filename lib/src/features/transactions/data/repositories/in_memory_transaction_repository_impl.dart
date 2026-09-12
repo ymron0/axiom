@@ -143,7 +143,11 @@ final class InMemoryTransactionRepositoryImpl
           (query.accountIds.isEmpty ||
               transaction.ledgerEntries.any(
                 (entry) => query.accountIds.contains(entry.accountId),
-              ));
+              )) &&
+            (query.effectiveFrom == null ||
+              !transaction.effectiveAt.isBefore(query.effectiveFrom!)) &&
+            (query.effectiveUntil == null ||
+              transaction.effectiveAt.isBefore(query.effectiveUntil!));
     }).toList(growable: false);
 
     return Success(List.unmodifiable(matches));
@@ -214,6 +218,7 @@ final class InMemoryTransactionRepositoryImpl
       id: TransactionId.fromString(fixture.id),
       kind: TransactionKind.values.byName(fixture.kind),
       merchantId: MerchantId.fromString(fixture.merchantId),
+      effectiveAt: fixture.effectiveAt,
       description: fixture.description,
       note: fixture.note,
       state: TransactionState.values.byName(fixture.state),

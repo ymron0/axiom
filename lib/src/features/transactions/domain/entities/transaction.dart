@@ -41,6 +41,8 @@ part 'transaction.mapper.dart';
 /// - [merchantId] is always present.
 /// - A transaction without an external merchant uses the designated self
 ///   merchant identifier rather than a nullable merchant.
+/// - [effectiveAt] is normalized to UTC and represents the financial event
+///   time, independently of the audit timestamps.
 /// - At least one ledger entry exists.
 /// - Ledger entries satisfy the structural rules associated with [kind].
 /// - Expense transactions contain exactly one outgoing primary ledger entry.
@@ -104,6 +106,12 @@ final class Transaction extends AuditedEntity<TransactionId>
   /// merchant identifier.
   final MerchantId merchantId;
 
+  /// The instant at which this transaction is financially effective.
+  ///
+  /// The supplied value is normalized to UTC and is distinct from
+  /// [createdAt] and [modifiedAt], which describe application persistence.
+  final DateTime effectiveAt;
+
   /// An optional short description of the transaction.
   ///
   /// When present, the value is trimmed and cannot be blank.
@@ -158,6 +166,7 @@ final class Transaction extends AuditedEntity<TransactionId>
     required super.id,
     required this.kind,
     required this.merchantId,
+    required DateTime effectiveAt,
     String? description,
     String? note,
     required this.state,
@@ -167,7 +176,8 @@ final class Transaction extends AuditedEntity<TransactionId>
     required super.createdAt,
     required super.modifiedAt,
     required super.entityVersion,
-  }) : description = normalizeOptionalText(description, 'description'),
+  }) : effectiveAt = effectiveAt.toUtc(),
+      description = normalizeOptionalText(description, 'description'),
        note = normalizeOptionalText(note, 'note'),
        splits = List.unmodifiable(splits),
        ledgerEntries = List.unmodifiable(ledgerEntries) {

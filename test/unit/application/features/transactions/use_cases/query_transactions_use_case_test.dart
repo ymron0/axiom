@@ -23,13 +23,32 @@ void main() {
       // Given
       final query = TransactionQuery();
       final transactions = [transactionFixture(id: 'query')];
-      when(() => repository.query(query)).thenAnswer((_) async => Success<List<Transaction>>(transactions));
+      when(
+        () => repository.query(query),
+      ).thenAnswer((_) async => Success<List<Transaction>>(transactions));
 
       // When
       final result = await useCase.call(query);
 
       // Then
       expect(result.valueOrNull, same(transactions));
+      verify(() => repository.query(query)).called(1);
+    });
+
+    test('forwards effective-time criteria to the repository', () async {
+      // Given
+      final query = TransactionQuery(
+        effectiveFrom: DateTime.utc(2026, 1, 1),
+        effectiveUntil: DateTime.utc(2026, 2, 1),
+      );
+      when(
+        () => repository.query(query),
+      ).thenAnswer((_) async => const Success([]));
+
+      // When
+      await useCase.call(query);
+
+      // Then
       verify(() => repository.query(query)).called(1);
     });
 
