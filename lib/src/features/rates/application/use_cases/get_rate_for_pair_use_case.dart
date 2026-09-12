@@ -2,9 +2,9 @@ import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/application/failures/invalid_valuation_currency_failure.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_code_use_case.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
+import 'package:axiom/src/features/rates/application/failures/unsupported_persisted_rate_quote_failure.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dart';
@@ -52,7 +52,7 @@ final class GetRateForPairUseCase {
 
         final usd = assets.first;
         if (quoteAssetId != usd.id) {
-          return InvalidValuationCurrencyFailure(
+          return UnsupportedPersistedRateQuoteFailure(
             message: 'Persisted rates must be quoted in USD.',
           );
         }

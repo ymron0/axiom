@@ -1,4 +1,3 @@
-import 'package:axiom/src/application/failures/invalid_valuation_currency_failure.dart';
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/failures/referenced_asset_not_found_failure.dart';
@@ -9,6 +8,7 @@ import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_cod
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
+import 'package:axiom/src/features/rates/application/failures/unsupported_persisted_rate_quote_failure.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_for_pair_use_case.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -158,7 +158,10 @@ void main() {
       final result = await useCase(baseAssetId: chf, quoteAssetId: eur);
 
       // Then
-      expect(result.failureOrNull, isA<InvalidValuationCurrencyFailure>());
+      expect(
+        result.failureOrNull,
+        isA<UnsupportedPersistedRateQuoteFailure>(),
+      );
       verifyNever(
         () => rateRepository.getByPair(
           baseAssetId: any(named: 'baseAssetId'),
