@@ -9,7 +9,7 @@ part 'identified_entity.mapper.dart';
 /// An entity is distinguished by its identity rather than by every field value;
 /// snapshots with different mutable state can therefore represent the same
 /// entity when they have the same [id]. In addition to its identity, each entity
-/// inherits the optimistic concurrency revision defined by [BaseEntity].
+/// inherits the class-version metadata defined by [BaseEntity].
 ///
 /// ## Invariants
 ///
@@ -36,7 +36,7 @@ abstract class IdentifiedEntity<TId extends UniqueId> extends BaseEntity
   /// The stable identity assigned to this entity.
   final TId id;
 
-  /// Initializes an entity with its [id] and current [entityVersion].
+  /// Initializes an entity with its [id] and current class [entityVersion].
   ///
   /// Throws an [ArgumentError] when [entityVersion] is less than one.
   IdentifiedEntity({required this.id, required int entityVersion})
