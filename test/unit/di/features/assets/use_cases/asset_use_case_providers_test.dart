@@ -1,3 +1,6 @@
+import 'package:axiom/src/core/di/clock_provider.dart';
+import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
+import 'package:axiom/src/features/assets/application/commands/create_all_assets_command.dart';
 import 'package:axiom/src/features/assets/application/use_cases/create_all_assets_use_case.dart';
 import 'package:axiom/src/features/assets/application/use_cases/create_asset_use_case.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_code_use_case.dart';
@@ -22,11 +25,15 @@ import 'package:mocktail/mocktail.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
-import '../../../../../fixtures/features/assets/asset_fixtures.dart';
+import '../../../../../fixtures/features/assets/asset_command_fixtures.dart';
 import '../../../../../mocks/asset_repository_mock.dart';
 
 void main() {
   group('asset use-case providers', () {
+    setUpAll(() {
+      registerFallbackValue(<Asset>[]);
+    });
+
     test('resolves every use case from the default repository', () {
       // Given
       final container = ProviderContainer();
@@ -61,22 +68,31 @@ void main() {
     test('uses an overridden repository for the create-all use case', () async {
       // Given
       final repository = MockAssetRepository();
-      final assets = [currencyFixture(id: 'provider-asset', code: 'AAA')];
+      final command = CreateAllAssetsCommand(
+        commands: [createAssetCommandFixture(code: 'AAA')],
+      );
       when(
-        () => repository.createAll(assets),
-      ).thenAnswer((_) async => Success<List<Asset>>(assets));
+        () => repository.createAll(any()),
+      ).thenAnswer((_) async => const Success<List<Asset>>([]));
       final container = ProviderContainer(
-        overrides: [assetRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          assetRepositoryProvider.overrideWithValue(repository),
+          clockProvider.overrideWithValue(
+            FixedClock(DateTime.utc(2026, 1, 1)),
+          ),
+        ],
       );
       addTearDown(container.dispose);
 
       // When
       final result = await container
           .read(createAllAssetsUseCaseProvider)
-          .call(assets);
+          .call(command);
 
       // Then
-      expect(result.valueOrNull, same(assets));
+      final assets = result.valueOrNull!;
+      expect(assets, hasLength(1));
+      expect(assets.single.code, command.commands.single.code);
       verify(() => repository.createAll(assets)).called(1);
     });
   });
