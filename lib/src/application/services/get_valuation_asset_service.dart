@@ -18,9 +18,10 @@ import 'package:axiom/src/features/settings/application/use_cases/get_settings_u
 final class GetValuationAssetService {
   /// Creates a valuation asset service.
   const GetValuationAssetService({
-    required this._getSettings,
-    required this._getAssetById,
-  });
+    required GetSettingsUseCase getSettings,
+    required GetAssetByIdUseCase getAssetById,
+  }) : _getSettings = getSettings, // ignore: prefer_initializing_formals
+       _getAssetById = getAssetById; // ignore: prefer_initializing_formals
 
   final GetSettingsUseCase _getSettings;
   final GetAssetByIdUseCase _getAssetById;
