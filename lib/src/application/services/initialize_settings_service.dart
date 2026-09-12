@@ -45,9 +45,10 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 final class InitializeSettingsService {
   /// Creates an initialization service.
   const InitializeSettingsService({
-    required this._getAssetById,
-    required this._createSettings,
-  });
+    required GetAssetByIdUseCase getAssetById,
+    required CreateSettingsUseCase createSettings,
+  }) : _getAssetById = getAssetById, // ignore: prefer_initializing_formals
+       _createSettings = createSettings; // ignore: prefer_initializing_formals
 
   final GetAssetByIdUseCase _getAssetById;
   final CreateSettingsUseCase _createSettings;
