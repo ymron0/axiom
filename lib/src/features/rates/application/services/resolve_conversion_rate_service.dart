@@ -1,32 +1,33 @@
 import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/features/rates/application/use_cases/get_rate_at_use_case.dart';
+import 'package:axiom/src/features/rates/domain/entities/rate.dart';
+import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dart';
 import 'package:axiom/src/features/rates/domain/services/rate_conversion_service.dart';
 import 'package:decimal/decimal.dart';
 
 /// Resolves the conversion rate between two assets at a point in time.
 ///
-/// Resolution follows these rules:
-///
-/// 1. Converting an asset to itself resolves to `1`.
-/// 2. The direct rate is attempted first.
-/// 3. If the direct rate does not exist, the reverse rate is attempted
-///    and inverted.
-/// 4. Other failures are propagated unchanged.
+/// Resolution uses persisted rates quoted in the canonical bridge asset.
 final class ResolveConversionRateService {
   /// Creates a conversion-rate resolver.
   const ResolveConversionRateService({
-    required GetRateAtUseCase getRateAt,
+    required RateRepository repository,
+    required AssetId canonicalBridgeAssetId,
     required RateConversionService rateConversion,
-  }) : _getRateAt = getRateAt, // ignore: prefer_initializing_formals
+  }) : _repository = repository, // ignore: prefer_initializing_formals
+       _canonicalBridgeAssetId = // ignore: prefer_initializing_formals
+           canonicalBridgeAssetId,
        _rateConversion = rateConversion; // ignore: prefer_initializing_formals
 
-  final GetRateAtUseCase _getRateAt;
+  final RateRepository _repository;
+  final AssetId _canonicalBridgeAssetId;
   final RateConversionService _rateConversion;
 
   /// Resolves the number of [toAssetId] units per one [fromAssetId] unit.
+  ///
+  /// Loads only the required asset-to-bridge observations and delegates
+  /// inversion and cross-rate calculations to [RateConversionService].
   Future<Result<Decimal, BaseFailure>> call({
     required AssetId fromAssetId,
     required AssetId toAssetId,
@@ -36,32 +37,43 @@ final class ResolveConversionRateService {
       return Success(Decimal.one);
     }
 
-    final directResult = await _getRateAt(
-      baseAssetId: fromAssetId,
-      quoteAssetId: toAssetId,
-      at: at,
+    Rate? baseBridgeRate;
+    if (fromAssetId != _canonicalBridgeAssetId) {
+      final result = await _getBridgeRate(fromAssetId, at);
+      if (result case final Failure<BaseFailure> failure) {
+        return failure;
+      }
+      baseBridgeRate = result.valueOrNull;
+    }
+
+    Rate? quoteBridgeRate;
+    if (toAssetId != _canonicalBridgeAssetId) {
+      final result = await _getBridgeRate(toAssetId, at);
+      if (result case final Failure<BaseFailure> failure) {
+        return failure;
+      }
+      quoteBridgeRate = result.valueOrNull;
+    }
+
+    return Success(
+      _rateConversion.resolve(
+        baseAssetId: fromAssetId,
+        quoteAssetId: toAssetId,
+        bridgeAssetId: _canonicalBridgeAssetId,
+        baseBridgeRate: baseBridgeRate,
+        quoteBridgeRate: quoteBridgeRate,
+      ),
     );
+  }
 
-    return directResult.when<Future<Result<Decimal, BaseFailure>>>(
-      success: (directRate) async => Success(directRate.rate),
-      failure: (failure) async {
-        if (failure is! RecordNotFoundFailure) {
-          return failure;
-        }
-
-        final reverseResult = await _getRateAt(
-          baseAssetId: toAssetId,
-          quoteAssetId: fromAssetId,
-          at: at,
-        );
-
-        return reverseResult.when<Result<Decimal, BaseFailure>>(
-          success: (reverseRate) {
-            return Success(_rateConversion.invert(reverseRate));
-          },
-          failure: (failure) => failure,
-        );
-      },
+  Future<Result<Rate, BaseFailure>> _getBridgeRate(
+    AssetId baseAssetId,
+    DateTime at,
+  ) {
+    return _repository.getAtOrBefore(
+      baseAssetId: baseAssetId,
+      quoteAssetId: _canonicalBridgeAssetId,
+      effectiveAt: at,
     );
   }
 }

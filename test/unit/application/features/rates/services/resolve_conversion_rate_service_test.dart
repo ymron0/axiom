@@ -1,63 +1,40 @@
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
-import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/rates/application/services/resolve_conversion_rate_service.dart';
-import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
-import 'package:axiom/src/features/rates/application/use_cases/get_rate_at_use_case.dart';
 import 'package:axiom/src/features/rates/domain/services/rate_conversion_service.dart';
 import 'package:decimal/decimal.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../../../../fixtures/features/rates/rate_fixtures.dart';
-import '../../../../../fixtures/features/assets/asset_fixtures.dart';
-import '../../../../../mocks/asset_repository_mock.dart';
 import '../../../../../mocks/rate_repository_mock.dart';
 
 void main() {
   setUpAll(() {
     registerFallbackValue(AssetId.fromString('fallback'));
-    registerFallbackValue(<AssetId>[]);
     registerFallbackValue(DateTime.utc(1970));
   });
 
   group('ResolveConversionRateService', () {
     late MockRateRepository repository;
-    late MockAssetRepository assetRepository;
     late ResolveConversionRateService service;
     late AssetId eur;
+    late AssetId chf;
     late AssetId usd;
     late DateTime at;
 
     setUp(() {
-      assetRepository = MockAssetRepository();
       repository = MockRateRepository();
-      service = ResolveConversionRateService(
-        getRateAt: GetRateAtUseCase(
-          repository: repository,
-          validateRateAssets: ValidateRateAssetsService(
-            getAssetsByIds: GetAssetsByIdsUseCase(assetRepository),
-          ),
-        ),
-        rateConversion: const RateConversionService(),
-      );
-      eur = AssetId.fromString('EUR');
-      usd = AssetId.fromString('USD');
+      eur = AssetId.fromString('asset-eur');
+      chf = AssetId.fromString('asset-chf');
+      usd = AssetId.fromString('asset-usd');
       at = DateTime.utc(2026, 9, 10, 12);
-
-      when(() => assetRepository.getByIds(any())).thenAnswer(
-        (_) async => Success(
-          BatchLookup(
-            found: [
-              currencyFixture(id: 'EUR', code: 'EUR'),
-              currencyFixture(id: 'USD', code: 'USD'),
-            ],
-            missing: [],
-          ),
-        ),
+      service = ResolveConversionRateService(
+        repository: repository,
+        canonicalBridgeAssetId: usd,
+        rateConversion: const RateConversionService(),
       );
     });
 
@@ -74,190 +51,137 @@ void main() {
       );
     });
 
-    test(
-      'returns the direct rate and does not query the reverse pair',
-      () async {
-        final direct = exchangeRateFixture(
-          id: 'direct-rate',
-          baseAssetId: 'EUR',
-          quoteAssetId: 'USD',
-          rate: '0.8',
-        );
-        when(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).thenAnswer((_) async => Success(direct));
+    test('resolves a direct-to-USD conversion', () async {
+      final eurUsd = exchangeRateFixture(
+        id: 'eur-usd',
+        baseAssetId: 'asset-eur',
+        quoteAssetId: 'asset-usd',
+        rate: '0.8',
+      );
+      when(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          effectiveAt: at,
+        ),
+      ).thenAnswer((_) async => Success(eurUsd));
 
-        final result = await service(fromAssetId: eur, toAssetId: usd, at: at);
+      final result = await service(fromAssetId: eur, toAssetId: usd, at: at);
 
-        expect(result.valueOrNull, Decimal.parse('0.8'));
-        verify(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).called(1);
-        verifyNever(
-          () => repository.getAtOrBefore(
-            baseAssetId: usd,
-            quoteAssetId: eur,
-            effectiveAt: at,
-          ),
-        );
-      },
-    );
+      expect(result.valueOrNull, Decimal.parse('0.8'));
+      verify(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          effectiveAt: at,
+        ),
+      ).called(1);
+    });
 
-    test(
-      'inverts a reverse rate precisely when direct rate is missing',
-      () async {
-        final reverse = exchangeRateFixture(
-          id: 'reverse-rate',
-          baseAssetId: 'USD',
-          quoteAssetId: 'EUR',
-          rate: '0.8',
-        );
-        when(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).thenAnswer((_) async => const RecordNotFoundFailure());
-        when(
-          () => repository.getAtOrBefore(
-            baseAssetId: usd,
-            quoteAssetId: eur,
-            effectiveAt: at,
-          ),
-        ).thenAnswer((_) async => Success(reverse));
+    test('resolves an inverse-from-USD conversion', () async {
+      final eurUsd = exchangeRateFixture(
+        id: 'eur-usd',
+        baseAssetId: 'asset-eur',
+        quoteAssetId: 'asset-usd',
+        rate: '0.8',
+      );
+      when(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          effectiveAt: at,
+        ),
+      ).thenAnswer((_) async => Success(eurUsd));
 
-        final result = await service(fromAssetId: eur, toAssetId: usd, at: at);
+      final result = await service(fromAssetId: usd, toAssetId: eur, at: at);
 
-        expect(result.valueOrNull, Decimal.parse('1.25'));
-        verify(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).called(1);
-        verify(
-          () => repository.getAtOrBefore(
-            baseAssetId: usd,
-            quoteAssetId: eur,
-            effectiveAt: at,
-          ),
-        ).called(1);
-      },
-    );
+      expect(result.valueOrNull, Decimal.parse('1.25'));
+      verify(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          effectiveAt: at,
+        ),
+      ).called(1);
+      verifyNever(
+        () => repository.getAtOrBefore(
+          baseAssetId: usd,
+          quoteAssetId: eur,
+          effectiveAt: at,
+        ),
+      );
+    });
 
-    test(
-      'preserves configured precision when inverting a repeating reverse rate',
-      () async {
-        final reverse = exchangeRateFixture(
-          id: 'reverse-rate',
-          baseAssetId: 'USD',
-          quoteAssetId: 'EUR',
-          rate: '3',
-        );
-        when(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).thenAnswer((_) async => const RecordNotFoundFailure());
-        when(
-          () => repository.getAtOrBefore(
-            baseAssetId: usd,
-            quoteAssetId: eur,
-            effectiveAt: at,
-          ),
-        ).thenAnswer((_) async => Success(reverse));
+    test('resolves a cross-rate through USD', () async {
+      final eurUsd = exchangeRateFixture(
+        id: 'eur-usd',
+        baseAssetId: 'asset-eur',
+        quoteAssetId: 'asset-usd',
+        rate: '1.18',
+      );
+      final chfUsd = exchangeRateFixture(
+        id: 'chf-usd',
+        baseAssetId: 'asset-chf',
+        quoteAssetId: 'asset-usd',
+        rate: '1.26',
+      );
+      when(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          effectiveAt: at,
+        ),
+      ).thenAnswer((_) async => Success(eurUsd));
+      when(
+        () => repository.getAtOrBefore(
+          baseAssetId: chf,
+          quoteAssetId: usd,
+          effectiveAt: at,
+        ),
+      ).thenAnswer((_) async => Success(chfUsd));
 
-        final result = await service(fromAssetId: eur, toAssetId: usd, at: at);
+      final result = await service(fromAssetId: eur, toAssetId: chf, at: at);
 
-        expect(result.valueOrNull, Decimal.parse('0.333333333333333333'));
-      },
-    );
+      expect(result.valueOrNull, Decimal.parse('0.936507936507936507'));
+      verifyNever(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: chf,
+          effectiveAt: at,
+        ),
+      );
+      verifyNever(
+        () => repository.getAtOrBefore(
+          baseAssetId: chf,
+          quoteAssetId: eur,
+          effectiveAt: at,
+        ),
+      );
+    });
 
-    test(
-      'returns reverse not-found when both directions are missing',
-      () async {
-        const directFailure = RecordNotFoundFailure(message: 'direct');
-        const reverseFailure = RecordNotFoundFailure(message: 'reverse');
-        when(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).thenAnswer((_) async => directFailure);
-        when(
-          () => repository.getAtOrBefore(
-            baseAssetId: usd,
-            quoteAssetId: eur,
-            effectiveAt: at,
-          ),
-        ).thenAnswer((_) async => reverseFailure);
+    test('returns the missing canonical bridge rate failure', () async {
+      const failure = RecordNotFoundFailure(message: 'EUR/USD missing');
+      when(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          effectiveAt: at,
+        ),
+      ).thenAnswer((_) async => failure);
 
-        final result = await service(fromAssetId: eur, toAssetId: usd, at: at);
+      final result = await service(fromAssetId: eur, toAssetId: chf, at: at);
 
-        expect(result.failureOrNull, same(reverseFailure));
-        verify(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).called(1);
-        verify(
-          () => repository.getAtOrBefore(
-            baseAssetId: usd,
-            quoteAssetId: eur,
-            effectiveAt: at,
-          ),
-        ).called(1);
-      },
-    );
+      expect(result.failureOrNull, same(failure));
+      verifyNever(
+        () => repository.getAtOrBefore(
+          baseAssetId: chf,
+          quoteAssetId: usd,
+          effectiveAt: at,
+        ),
+      );
+    });
 
-    test(
-      'propagates a direct non-not-found failure without reverse lookup',
-      () async {
-        const failure = RecordAlreadyExistsFailure(message: 'storage failure');
-        when(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).thenAnswer((_) async => failure);
-
-        final result = await service(fromAssetId: eur, toAssetId: usd, at: at);
-
-        expect(result.failureOrNull, same(failure));
-        verify(
-          () => repository.getAtOrBefore(
-            baseAssetId: eur,
-            quoteAssetId: usd,
-            effectiveAt: at,
-          ),
-        ).called(1);
-        verifyNever(
-          () => repository.getAtOrBefore(
-            baseAssetId: usd,
-            quoteAssetId: eur,
-            effectiveAt: at,
-          ),
-        );
-      },
-    );
-
-    test('propagates a reverse non-not-found failure unchanged', () async {
+    test('propagates non-not-found failures unchanged', () async {
       const failure = RecordAlreadyExistsFailure(message: 'storage failure');
       when(
         () => repository.getAtOrBefore(
@@ -265,32 +189,11 @@ void main() {
           quoteAssetId: usd,
           effectiveAt: at,
         ),
-      ).thenAnswer((_) async => RecordNotFoundFailure());
-      when(
-        () => repository.getAtOrBefore(
-          baseAssetId: usd,
-          quoteAssetId: eur,
-          effectiveAt: at,
-        ),
       ).thenAnswer((_) async => failure);
 
-      final result = await service(fromAssetId: eur, toAssetId: usd, at: at);
+      final result = await service(fromAssetId: eur, toAssetId: chf, at: at);
 
       expect(result.failureOrNull, same(failure));
-      verify(
-        () => repository.getAtOrBefore(
-          baseAssetId: eur,
-          quoteAssetId: usd,
-          effectiveAt: at,
-        ),
-      ).called(1);
-      verify(
-        () => repository.getAtOrBefore(
-          baseAssetId: usd,
-          quoteAssetId: eur,
-          effectiveAt: at,
-        ),
-      ).called(1);
     });
   });
 }
