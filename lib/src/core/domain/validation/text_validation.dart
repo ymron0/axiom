@@ -18,3 +18,19 @@ String? normalizeOptionalText(String? value, String name) {
 
   return normalized;
 }
+
+/// Normalizes required text for domain objects.
+///
+/// Trims [value] and rejects it when the result is empty.
+///
+/// Throws an [ArgumentError] when [value] is blank after trimming. The [name]
+/// is used as the error's argument name.
+String normalizeRequiredText(String value, String name) {
+  final normalized = value.trim();
+
+  if (normalized.isEmpty) {
+    throw ArgumentError.value(value, name, '$name cannot be blank.');
+  }
+
+  return normalized;
+}

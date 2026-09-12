@@ -92,9 +92,9 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
     required this.decimalPlaces,
     String? remoteLogoUrl,
     String? bundledLogoAsset,
-  }) : name = _requireNonBlank(name, 'name'),
+    }) : name = normalizeRequiredText(name, 'name'),
        symbol = normalizeOptionalText(symbol, 'symbol'),
-       remoteLogoUrl = _normalizeOptionalUrl(remoteLogoUrl),
+      remoteLogoUrl = normalizeOptionalHttpUrl(remoteLogoUrl, 'remoteLogoUrl'),
        bundledLogoAsset = normalizeOptionalText(
          bundledLogoAsset,
          'bundledLogoAsset',
@@ -107,34 +107,4 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
       );
     }
   }
-}
-
-// Trims text and rejects blank values for required or optional fields.
-String _requireNonBlank(String value, String name) {
-  final normalized = value.trim();
-
-  if (normalized.isEmpty) {
-    throw ArgumentError.value(value, name, '$name cannot be blank');
-  }
-
-  return normalized;
-}
-
-// Trims an optional URL and accepts only absolute HTTP(S) URLs with a host.
-String? _normalizeOptionalUrl(String? value) {
-  if (value == null) {
-    return null;
-  }
-
-  final normalized = _requireNonBlank(value, 'remoteLogoUrl');
-
-  if (!isValidHttpUrl(normalized)) {
-    throw ArgumentError.value(
-      value,
-      'remoteLogoUrl',
-      'Remote logo URL must be an absolute HTTP(S) URL',
-    );
-  }
-
-  return normalized;
 }
