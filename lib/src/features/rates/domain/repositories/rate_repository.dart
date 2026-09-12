@@ -2,7 +2,6 @@
 
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
@@ -66,8 +65,7 @@ import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 /// ## Missing-rate semantics
 ///
 /// Single-result operations such as [getById], [getLatestByPair], and
-/// [getAtOrBefore] return a [RecordNotFoundFailure] when no matching rate
-/// exists.
+/// [getAtOrBefore] return [RateNotFoundFailure] when no matching rate exists.
 ///
 /// Collection queries such as [getByPair] do not treat an empty result as a
 /// failure. When no observations exist for the requested pair, they return a
@@ -123,7 +121,7 @@ abstract interface class RateRepository {
 
   /// Returns the rate identified by [id].
   ///
-  /// Returns [RecordNotFoundFailure] when no rate exists for [id].
+  /// Returns [RateNotFoundFailure] when no rate exists for [id].
   Future<Result<Rate, BaseFailure>> getById(RateId id);
 
   /// Resolves multiple rates by identity.
@@ -164,7 +162,7 @@ abstract interface class RateRepository {
   ///
   /// The repository must not search or invert the opposite pair.
   ///
-  /// Returns [RecordNotFoundFailure] when the pair has no stored rates.
+  /// Returns [RateNotFoundFailure] when the pair has no stored rates.
   Future<Result<Rate, BaseFailure>> getLatestByPair({
     required AssetId baseAssetId,
     required AssetId quoteAssetId,
@@ -198,7 +196,7 @@ abstract interface class RateRepository {
   /// A rate whose effective timestamp is later than the requested instant must
   /// never be returned.
   ///
-  /// Returns [RecordNotFoundFailure] when no rate exists for the pair at or
+  /// Returns [RateNotFoundFailure] when no rate exists for the pair at or
   /// before the requested instant.
   Future<Result<Rate, BaseFailure>> getAtOrBefore({
     required AssetId baseAssetId,

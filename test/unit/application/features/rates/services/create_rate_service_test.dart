@@ -1,4 +1,4 @@
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
+import 'package:axiom/src/core/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
@@ -75,7 +75,7 @@ void main() {
       final result = await service(rate);
 
       // Then
-      expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+      expect(result.failureOrNull, isA<ReferencedAssetNotFoundFailure>());
       verifyNever(() => rateRepository.create(rate));
     });
 
