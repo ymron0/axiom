@@ -1,9 +1,9 @@
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/settings/application/use_cases/update_settings_use_case.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -41,7 +41,9 @@ void main() {
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('missing-settings'),
       );
-      const failure = RecordNotFoundFailure(message: 'settings not found');
+      const failure = SettingsNotInitializedFailure(
+        message: 'settings not found',
+      );
       when(() => repository.update(settings)).thenAnswer((_) async => failure);
 
       // When
@@ -56,7 +58,7 @@ void main() {
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('failed-settings-update'),
       );
-      const failure = UnexpectedPersistenceFailure(message: 'update failed');
+      const failure = SettingsPersistenceFailure(message: 'update failed');
       when(() => repository.update(settings)).thenAnswer((_) async => failure);
 
       // When

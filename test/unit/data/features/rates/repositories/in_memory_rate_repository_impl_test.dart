@@ -1,5 +1,5 @@
-import 'package:axiom/src/core/failures/rate_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_already_exists_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/features/rates/data/repositories/in_memory_rate_repository_impl.dart';

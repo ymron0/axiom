@@ -1,4 +1,4 @@
-import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:test/test.dart';
 
 void main() {

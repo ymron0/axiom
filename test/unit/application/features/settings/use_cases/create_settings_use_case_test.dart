@@ -1,9 +1,9 @@
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/settings/application/use_cases/create_settings_use_case.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_already_initialized_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -41,7 +41,9 @@ void main() {
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('duplicate-settings'),
       );
-      const failure = RecordAlreadyExistsFailure(message: 'settings exist');
+      const failure = SettingsAlreadyInitializedFailure(
+        message: 'settings exist',
+      );
       when(() => repository.create(settings)).thenAnswer((_) async => failure);
 
       // When
@@ -56,7 +58,7 @@ void main() {
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('failed-settings'),
       );
-      const failure = UnexpectedPersistenceFailure(message: 'write failed');
+      const failure = SettingsPersistenceFailure(message: 'write failed');
       when(() => repository.create(settings)).thenAnswer((_) async => failure);
 
       // When

@@ -1,13 +1,13 @@
 // coverage:ignore-file
 
-import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/rate_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_already_exists_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 
 /// Domain-facing repository contract for storing and resolving [Rate] entities.
 ///
@@ -107,8 +107,7 @@ abstract interface class RateRepository {
   /// Returns [RateAlreadyExistsFailure] when a rate with the same [RateId]
   /// already exists.
   ///
-  /// Other storage-independent failures are represented by [BaseFailure].
-  Future<Result<void, BaseFailure>> create(Rate rate);
+  Future<Result<void, RateFailure>> create(Rate rate);
 
   /// Atomically stores every rate in [rates].
   ///
@@ -118,19 +117,19 @@ abstract interface class RateRepository {
   ///
   /// Returns [RateAlreadyExistsFailure] when any supplied [RateId] already
   /// exists.
-  Future<Result<void, BaseFailure>> createAll(List<Rate> rates);
+  Future<Result<void, RateFailure>> createAll(List<Rate> rates);
 
   /// Returns the rate identified by [id].
   ///
   /// Returns [RateNotFoundFailure] when no rate exists for [id].
-  Future<Result<Rate, BaseFailure>> getById(RateId id);
+  Future<Result<Rate, RateFailure>> getById(RateId id);
 
   /// Resolves multiple rates by identity.
   ///
   /// Found and missing identifiers are represented independently through
   /// [BatchLookup]. A missing individual ID therefore does not cause the
   /// entire lookup to fail.
-  Future<Result<BatchLookup<Rate, RateId>, BaseFailure>> getByIds(
+  Future<Result<BatchLookup<Rate, RateId>, RateFailure>> getByIds(
     List<RateId> ids,
   );
 
@@ -151,7 +150,7 @@ abstract interface class RateRepository {
   /// newest.
   ///
   /// Returns an empty list when no observations exist for the pair.
-  Future<Result<List<Rate>, BaseFailure>> getByPair({
+  Future<Result<List<Rate>, RateFailure>> getByPair({
     required AssetId baseAssetId,
     required AssetId quoteAssetId,
   });
@@ -164,7 +163,7 @@ abstract interface class RateRepository {
   /// The repository must not search or invert the opposite pair.
   ///
   /// Returns [RateNotFoundFailure] when the pair has no stored rates.
-  Future<Result<Rate, BaseFailure>> getLatestByPair({
+  Future<Result<Rate, RateFailure>> getLatestByPair({
     required AssetId baseAssetId,
     required AssetId quoteAssetId,
   });
@@ -199,7 +198,7 @@ abstract interface class RateRepository {
   ///
   /// Returns [RateNotFoundFailure] when no rate exists for the pair at or
   /// before the requested instant.
-  Future<Result<Rate, BaseFailure>> getAtOrBefore({
+  Future<Result<Rate, RateFailure>> getAtOrBefore({
     required AssetId baseAssetId,
     required AssetId quoteAssetId,
     required DateTime effectiveAt,

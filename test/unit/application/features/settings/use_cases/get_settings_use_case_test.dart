@@ -1,8 +1,8 @@
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/settings/application/use_cases/get_settings_use_case.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -52,7 +52,7 @@ void main() {
 
     test('propagates repository failures', () async {
       // Given
-      const failure = UnexpectedPersistenceFailure(message: 'read failed');
+      const failure = SettingsPersistenceFailure(message: 'read failed');
       when(() => repository.get()).thenAnswer((_) async => failure);
 
       // When

@@ -1,4 +1,3 @@
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
@@ -8,6 +7,7 @@ import 'package:axiom/src/features/rates/application/commands/create_exchange_ra
 import 'package:axiom/src/features/rates/application/services/create_rate_service.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
 import 'package:axiom/src/features/rates/application/use_cases/create_exchange_rate_use_case.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
 import 'package:decimal/decimal.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -92,7 +92,7 @@ void main() {
         rate: Decimal.parse('1.18'),
         effectiveAt: DateTime.utc(2026, 9, 11),
       );
-      const failure = UnexpectedPersistenceFailure(message: 'write failed');
+      const failure = RatePersistenceFailure(message: 'write failed');
       when(() => rateRepository.create(any())).thenAnswer((_) async => failure);
 
       // When

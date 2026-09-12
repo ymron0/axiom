@@ -1,6 +1,6 @@
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:axiom/src/features/settings/data/repositories/in_memory_settings_repository_impl.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_already_initialized_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:fixtures/fixtures/settings_fixtures.dart';
 import 'package:test/test.dart';
@@ -36,7 +36,10 @@ void main() {
       final result = await repository.create(settings);
 
       // Then
-      expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+      expect(
+        result.failureOrNull,
+        isA<SettingsAlreadyInitializedFailure>(),
+      );
       expect((await repository.get()).valueOrNull, same(original));
     });
 

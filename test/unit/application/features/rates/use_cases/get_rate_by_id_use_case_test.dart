@@ -1,5 +1,3 @@
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
@@ -8,6 +6,8 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_by_id_use_case.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -87,7 +87,7 @@ void main() {
 
     test('propagates a missing-rate failure unchanged', () async {
       // Given
-      const failure = RecordNotFoundFailure(message: 'rate missing');
+      const failure = RateNotFoundFailure(message: 'rate missing');
       when(() => repository.getById(rateId)).thenAnswer((_) async => failure);
 
       // When
@@ -99,7 +99,7 @@ void main() {
 
     test('propagates another repository failure unchanged', () async {
       // Given
-      const failure = RecordAlreadyExistsFailure(message: 'storage failure');
+      const failure = RatePersistenceFailure(message: 'storage failure');
       when(() => repository.getById(rateId)).thenAnswer((_) async => failure);
 
       // When
