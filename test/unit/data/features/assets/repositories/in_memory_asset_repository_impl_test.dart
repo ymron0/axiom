@@ -22,30 +22,27 @@ void main() {
         expect((await repository.getById(asset.id)).valueOrNull, same(asset));
       });
 
-      test(
-        'returns AssetAlreadyExistsFailure when the asset exists',
-        () async {
-          // Given
-          final repository = _createRepository();
-          final original = currencyFixture(id: 'create-duplicate', code: 'AAA');
-          await repository.create(original);
-          final duplicate = currencyFixture(
-            id: 'create-duplicate',
-            name: 'Duplicate',
-            code: 'AAA',
-          );
+      test('returns AssetAlreadyExistsFailure when the asset exists', () async {
+        // Given
+        final repository = _createRepository();
+        final original = currencyFixture(id: 'create-duplicate', code: 'AAA');
+        await repository.create(original);
+        final duplicate = currencyFixture(
+          id: 'create-duplicate',
+          name: 'Duplicate',
+          code: 'AAA',
+        );
 
-          // When
-          final result = await repository.create(duplicate);
+        // When
+        final result = await repository.create(duplicate);
 
-          // Then
-          expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
-          expect(
-            (await repository.getById(original.id)).valueOrNull,
-            same(original),
-          );
-        },
-      );
+        // Then
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
+        expect(
+          (await repository.getById(original.id)).valueOrNull,
+          same(original),
+        );
+      });
 
       test('returns AssetAlreadyExistsFailure when the code exists', () async {
         // Given
@@ -66,6 +63,30 @@ void main() {
         // Then
         expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
         expect((await repository.getById(duplicate.id)).valueOrNull, isNull);
+      });
+
+      test('rejects concurrent creates with the same ID', () async {
+        // Given
+        final repository = _createRepository();
+        final first = currencyFixture(id: 'create-concurrent', code: 'AAA');
+        final second = currencyFixture(id: 'create-concurrent', code: 'BBB');
+
+        // When
+        final results = [repository.create(first), repository.create(second)];
+        final completedResults = await Future.wait(results);
+
+        // Then
+        expect(
+          completedResults.where((result) => result.valueOrNull != null),
+          hasLength(1),
+        );
+        expect(
+          completedResults.where(
+            (result) => result.failureOrNull is AssetAlreadyExistsFailure,
+          ),
+          hasLength(1),
+        );
+        expect((await repository.getById(first.id)).valueOrNull, isNotNull);
       });
     });
 

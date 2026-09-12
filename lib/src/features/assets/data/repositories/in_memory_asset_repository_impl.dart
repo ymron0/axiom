@@ -37,7 +37,7 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
 
   @override
   Future<Result<Asset, AssetFailure>> create(Asset asset) async {
-    if ((await getById(asset.id)).valueOrNull != null) {
+    if (_assets.any((storedAsset) => storedAsset.id == asset.id)) {
       return AssetAlreadyExistsFailure(
         message: 'Asset ID already exists: ${asset.id.value}',
       );
@@ -53,7 +53,9 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   }
 
   @override
-  Future<Result<List<Asset>, AssetFailure>> createAll(List<Asset> assets) async {
+  Future<Result<List<Asset>, AssetFailure>> createAll(
+    List<Asset> assets,
+  ) async {
     final requestedIds = <String>{};
     final requestedCodes = <String>{};
     for (final asset in assets) {
@@ -146,7 +148,9 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   }
 
   @override
-  Future<Result<List<Asset>, AssetFailure>> updateAll(List<Asset> assets) async {
+  Future<Result<List<Asset>, AssetFailure>> updateAll(
+    List<Asset> assets,
+  ) async {
     final requestedIds = <String>{};
     final requestedCodes = <String>{};
     for (final asset in assets) {
