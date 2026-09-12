@@ -1,4 +1,4 @@
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
+import 'package:axiom/src/core/failures/rate_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
@@ -33,7 +33,7 @@ void main() {
         exchangeRateFixture(id: 'duplicate-rate', rate: '2.00'),
       );
 
-      expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+      expect(result.failureOrNull, isA<RateAlreadyExistsFailure>());
       expect(
         (await repository.getById(
           RateId.fromString(rate.id.value),
@@ -60,7 +60,7 @@ void main() {
 
       final result = await repository.createAll([newRate, existing]);
 
-      expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+      expect(result.failureOrNull, isA<RateAlreadyExistsFailure>());
       expect(
         (await repository.getById(
           RateId.fromString(newRate.id.value),
@@ -81,7 +81,7 @@ void main() {
 
         final result = await repository.createAll([first, duplicate]);
 
-        expect(result.failureOrNull, isA<RecordAlreadyExistsFailure>());
+        expect(result.failureOrNull, isA<RateAlreadyExistsFailure>());
         expect(
           (await repository.getById(
             RateId.fromString(first.id.value),

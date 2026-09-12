@@ -1,5 +1,5 @@
 import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
+import 'package:axiom/src/core/failures/rate_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
@@ -34,7 +34,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
   @override
   Future<Result<void, BaseFailure>> create(Rate rate) async {
     if (_rates.any((storedRate) => storedRate.id == rate.id)) {
-      return RecordAlreadyExistsFailure(
+      return RateAlreadyExistsFailure(
         message: 'Rate ID already exists: ${rate.id.value}',
       );
     }
@@ -48,7 +48,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
     final requestedIds = <String>{};
     for (final rate in rates) {
       if (!requestedIds.add(rate.id.value)) {
-        return RecordAlreadyExistsFailure(
+        return RateAlreadyExistsFailure(
           message: 'Rate ID is duplicated: ${rate.id.value}',
         );
       }
@@ -58,7 +58,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
       final duplicate = _rates.firstWhere(
         (rate) => requestedIds.contains(rate.id.value),
       );
-      return RecordAlreadyExistsFailure(
+      return RateAlreadyExistsFailure(
         message: 'Rate ID already exists: ${duplicate.id.value}',
       );
     }
