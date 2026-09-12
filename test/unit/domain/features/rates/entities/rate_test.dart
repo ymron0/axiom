@@ -1,7 +1,6 @@
 import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
-import 'package:axiom/src/core/ports/clock/clock.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:dart_mappable/dart_mappable.dart';
