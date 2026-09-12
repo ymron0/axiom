@@ -8,9 +8,9 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-import '../../../fixtures/features/assets/asset_fixtures.dart';
-import '../../../mocks/get_asset_by_id_use_case_mock.dart';
-import '../../../mocks/get_settings_use_case_mock.dart';
+import '../../../../../fixtures/features/assets/asset_fixtures.dart';
+import '../../../../../mocks/get_asset_by_id_use_case_mock.dart';
+import '../../../../../mocks/get_settings_use_case_mock.dart';
 
 void main() {
   group('GetValuationAssetService', () {
