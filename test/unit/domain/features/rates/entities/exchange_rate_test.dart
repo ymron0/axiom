@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
+import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/rates/domain/entities/exchange_rate.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:decimal/decimal.dart';
@@ -7,6 +8,26 @@ import 'package:test/test.dart';
 
 void main() {
   group('ExchangeRate', () {
+    test('generates a new exchange rate with initial metadata', () {
+      // Given
+      final timestamp = DateTime.parse('2024-01-16T12:30:00+02:00');
+
+      // When
+      final exchangeRate = ExchangeRate.generate(
+        baseAssetId: AssetId.fromString('asset-eur'),
+        quoteAssetId: AssetId.fromString('asset-usd'),
+        rate: Decimal.parse('1.18'),
+        effectiveAt: DateTime.utc(2024, 1, 15),
+        clock: FixedClock(timestamp),
+      );
+
+      // Then
+      expect(exchangeRate.id.value, isNotEmpty);
+      expect(exchangeRate.entityVersion, 1);
+      expect(exchangeRate.createdAt, timestamp.toUtc());
+      expect(exchangeRate.modifiedAt, same(exchangeRate.createdAt));
+    });
+
     test('constructs a valid exchange rate', () {
       // Given
       final id = RateId.fromString('rate-eur-usd');

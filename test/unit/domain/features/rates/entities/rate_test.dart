@@ -1,6 +1,8 @@
 import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
+import 'package:axiom/src/core/ports/clock/clock.dart';
+import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
@@ -10,6 +12,27 @@ part 'rate_test.mapper.dart';
 
 void main() {
   group('Rate', () {
+    test('generates metadata for a new rate', () {
+      // Given
+      final timestamp = DateTime.parse('2024-01-15T12:30:00+02:00');
+
+      // When
+      final rate = TestRate.generate(
+        baseAssetId: AssetId.fromString('asset-btc'),
+        quoteAssetId: AssetId.fromString('asset-usd'),
+        rate: Decimal.parse('65000'),
+        effectiveAt: DateTime.utc(2024, 1, 14),
+        clock: FixedClock(timestamp),
+      );
+
+      // Then
+      expect(rate.id.value, isNotEmpty);
+      expect(rate.entityVersion, 1);
+      expect(rate.createdAt, timestamp.toUtc());
+      expect(rate.modifiedAt, timestamp.toUtc());
+      expect(rate.modifiedAt, same(rate.createdAt));
+    });
+
     test('preserves the ordered asset pair, value, and audit metadata', () {
       // Given
       final id = RateId.fromString('rate-btc-usd');
@@ -236,6 +259,7 @@ TestRate _createRate({
 
 @MappableClass(includeCustomMappers: [DecimalMapper()])
 final class TestRate extends Rate with TestRateMappable {
+  @MappableConstructor()
   TestRate({
     required super.id,
     required super.baseAssetId,
@@ -246,4 +270,18 @@ final class TestRate extends Rate with TestRateMappable {
     required super.createdAt,
     required super.modifiedAt,
   });
+
+  TestRate.generate({
+    required AssetId baseAssetId,
+    required AssetId quoteAssetId,
+    required Decimal rate,
+    required DateTime effectiveAt,
+    required Clock clock,
+  }) : super.generate(
+         baseAssetId: baseAssetId,
+         quoteAssetId: quoteAssetId,
+         rate: rate,
+         effectiveAt: effectiveAt,
+         clock: clock,
+       );
 }

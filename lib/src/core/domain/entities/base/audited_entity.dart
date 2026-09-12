@@ -57,4 +57,5 @@ abstract class AuditedEntity<TId extends UniqueId> extends IdentifiedEntity<TId>
       );
     }
   }
+
 }

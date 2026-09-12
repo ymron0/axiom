@@ -68,6 +68,7 @@ final class ExchangeRate extends Rate with ExchangeRateMappable {
   /// Validation that [baseAssetId] and [quoteAssetId] reference currencies
   /// requires access to the corresponding Asset entities and is therefore
   /// performed outside this value itself.
+  @MappableConstructor()
   ExchangeRate({
     required super.id,
     required super.baseAssetId,
@@ -78,4 +79,16 @@ final class ExchangeRate extends Rate with ExchangeRateMappable {
     required super.createdAt,
     required super.modifiedAt,
   });
+
+  /// Creates a new exchange-rate observation.
+  ///
+  /// Generates its identity, initial entity version, and audit timestamps
+  /// according to the [Rate.generate] contract.
+  ExchangeRate.generate({
+    required super.baseAssetId,
+    required super.quoteAssetId,
+    required super.rate,
+    required super.effectiveAt,
+    super.clock,
+  }) : super.generate();
 }

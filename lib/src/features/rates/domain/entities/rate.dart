@@ -2,6 +2,8 @@ import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
+import 'package:axiom/src/core/ports/clock/clock.dart';
+import 'package:axiom/src/core/ports/clock/system_clock.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
 
@@ -101,6 +103,7 @@ abstract class Rate extends AuditedEntity<RateId> with RateMappable {
   /// - [rate] is zero or negative;
   /// - [entityVersion] is less than one; or
   /// - [modifiedAt] precedes [createdAt].
+  @MappableConstructor()
   Rate({
     required super.id,
     required this.baseAssetId,
@@ -114,6 +117,41 @@ abstract class Rate extends AuditedEntity<RateId> with RateMappable {
        effectiveAt = effectiveAt.toUtc() {
     _validateAssetPair();
   }
+
+  /// Creates the common state for a new rate.
+  ///
+  /// Generates a new [RateId], starts [entityVersion] at `1`, and uses one UTC
+  /// instant from [clock] for both [createdAt] and [modifiedAt].
+  Rate.generate({
+    required AssetId baseAssetId,
+    required AssetId quoteAssetId,
+    required Decimal rate,
+    required DateTime effectiveAt,
+    Clock clock = const SystemClock(),
+  }) : this._generated(
+         baseAssetId: baseAssetId,
+         quoteAssetId: quoteAssetId,
+         rate: rate,
+         effectiveAt: effectiveAt,
+         generatedAt: clock.nowUtc,
+       );
+
+  Rate._generated({
+    required AssetId baseAssetId,
+    required AssetId quoteAssetId,
+    required Decimal rate,
+    required DateTime effectiveAt,
+    required DateTime generatedAt,
+  }) : this(
+         id: RateId.generate(),
+         baseAssetId: baseAssetId,
+         quoteAssetId: quoteAssetId,
+         rate: rate,
+         effectiveAt: effectiveAt,
+         entityVersion: 1,
+         createdAt: generatedAt,
+         modifiedAt: generatedAt,
+       );
 
   void _validateAssetPair() {
     if (baseAssetId == quoteAssetId) {
