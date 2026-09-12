@@ -272,16 +272,10 @@ final class TestRate extends Rate with TestRateMappable {
   });
 
   TestRate.generate({
-    required AssetId baseAssetId,
-    required AssetId quoteAssetId,
-    required Decimal rate,
-    required DateTime effectiveAt,
-    required Clock clock,
-  }) : super.generate(
-         baseAssetId: baseAssetId,
-         quoteAssetId: quoteAssetId,
-         rate: rate,
-         effectiveAt: effectiveAt,
-         clock: clock,
-       );
+    required super.baseAssetId,
+    required super.quoteAssetId,
+    required super.rate,
+    required super.effectiveAt,
+    required super.clock,
+  }) : super.generate();
 }
