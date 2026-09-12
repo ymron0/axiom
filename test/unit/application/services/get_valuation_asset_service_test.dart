@@ -1,4 +1,4 @@
-import 'package:axiom/src/features/assets/application/services/get_valuation_asset_service.dart';
+import 'package:axiom/src/application/services/get_valuation_asset_service.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
@@ -8,9 +8,9 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
-import '../../../../../fixtures/features/assets/asset_fixtures.dart';
-import '../../../../../mocks/get_asset_by_id_use_case_mock.dart';
-import '../../../../../mocks/get_settings_use_case_mock.dart';
+import '../../../fixtures/features/assets/asset_fixtures.dart';
+import '../../../mocks/get_asset_by_id_use_case_mock.dart';
+import '../../../mocks/get_settings_use_case_mock.dart';
 
 void main() {
   group('GetValuationAssetService', () {

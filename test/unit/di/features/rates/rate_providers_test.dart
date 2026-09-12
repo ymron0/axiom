@@ -7,7 +7,7 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/di/asset_repository_provider.dart';
 import 'package:axiom/src/features/rates/application/commands/create_exchange_rate_command.dart';
 import 'package:axiom/src/features/rates/application/services/create_rate_service.dart';
-import 'package:axiom/src/features/rates/application/services/resolve_conversion_rate_service.dart';
+import 'package:axiom/src/application/services/resolve_conversion_rate_service.dart';
 import 'package:axiom/src/features/rates/application/use_cases/create_exchange_rate_use_case.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_at_use_case.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_by_id_use_case.dart';
@@ -19,7 +19,7 @@ import 'package:axiom/src/features/rates/di/get_rate_at_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/get_rate_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/get_rate_for_pair_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/rate_repository_provider.dart';
-import 'package:axiom/src/features/rates/di/resolve_conversion_rate_service_provider.dart';
+import 'package:axiom/src/application/di/services/resolve_conversion_rate_service_provider.dart';
 import 'package:decimal/decimal.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -32,6 +32,8 @@ import '../../../../mocks/rate_repository_mock.dart';
 
 void main() {
   setUpAll(() {
+    registerFallbackValue(AssetId.fromString('fallback'));
+    registerFallbackValue(DateTime.utc(1970));
     registerFallbackValue(<AssetId>[]);
     registerFallbackValue(exchangeRateFixture());
   });
