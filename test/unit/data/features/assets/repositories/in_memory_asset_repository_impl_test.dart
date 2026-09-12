@@ -15,7 +15,7 @@ void main() {
         final duplicate = currencyFixture(id: 'seed-duplicate-id', code: 'BBB');
 
         // When
-        final createRepository = () =>
+        InMemoryAssetRepositoryImpl createRepository() =>
             InMemoryAssetRepositoryImpl(initialAssets: [first, duplicate]);
 
         // Then
@@ -34,7 +34,7 @@ void main() {
         );
 
         // When
-        final createRepository = () =>
+        InMemoryAssetRepositoryImpl createRepository() =>
             InMemoryAssetRepositoryImpl(initialAssets: [first, duplicate]);
 
         // Then
@@ -271,11 +271,10 @@ void main() {
         final result = await repository.getByCode(AssetCode('BBB'));
 
         // Then
-        expect(result.valueOrNull, hasLength(1));
-        expect(result.valueOrNull!.single, same(second));
+        expect(result.valueOrNull, same(second));
       });
 
-      test('returns an empty list when the code is not found', () async {
+      test('returns null when the code is not found', () async {
         // Given
         final repository = _createRepository();
 
@@ -283,7 +282,7 @@ void main() {
         final result = await repository.getByCode(AssetCode('MISSING'));
 
         // Then
-        expect(result.valueOrNull, isEmpty);
+        expect(result.valueOrNull, isNull);
       });
     });
 

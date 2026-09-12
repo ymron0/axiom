@@ -19,19 +19,19 @@ void main() {
       useCase = GetAssetByCodeUseCase(repository);
     });
 
-    test('returns matching assets from the injected repository', () async {
+    test('returns the matching asset from the injected repository', () async {
       // Given
       final code = AssetCode('AAA');
-      final assets = [currencyFixture(id: 'by-code-asset', code: 'AAA')];
+      final asset = currencyFixture(id: 'by-code-asset', code: 'AAA');
       when(
         () => repository.getByCode(code),
-      ).thenAnswer((_) async => Success<List<Asset>>(assets));
+      ).thenAnswer((_) async => Success<Asset?>(asset));
 
       // When
       final result = await useCase.call(code);
 
       // Then
-      expect(result.valueOrNull, same(assets));
+      expect(result.valueOrNull, same(asset));
       verify(() => repository.getByCode(code)).called(1);
     });
 

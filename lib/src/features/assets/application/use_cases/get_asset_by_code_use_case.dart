@@ -4,7 +4,7 @@ import 'package:axiom/src/features/assets/domain/failures/asset_failure.dart';
 import 'package:axiom/src/features/assets/domain/repositories/asset_repository.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 
-/// Retrieves all assets matching an asset code.
+/// Retrieves the asset matching an asset code.
 ///
 /// Example:
 /// `final result = await GetAssetByCodeUseCase(repository).call(code);`
@@ -14,8 +14,8 @@ class GetAssetByCodeUseCase {
 
   final AssetRepository _repository;
 
-  /// Returns matching assets, or an [AssetFailure].
-  Future<Result<List<Asset>, AssetFailure>> call(AssetCode code) {
+  /// Returns the matching asset, `null` when absent, or an [AssetFailure].
+  Future<Result<Asset?, AssetFailure>> call(AssetCode code) {
     return _repository.getByCode(code);
   }
 }

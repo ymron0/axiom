@@ -45,13 +45,12 @@ final class GetRateForPairUseCase {
     final usdResult = await _getAssetByCode.call(AssetCode('USD'));
 
     return usdResult.when(
-      success: (assets) async {
-        if (assets.isEmpty) {
+      success: (asset) async {
+        if (asset == null) {
           return RecordNotFoundFailure(message: 'USD asset is not configured.');
         }
 
-        final usd = assets.first;
-        if (quoteAssetId != usd.id) {
+        if (quoteAssetId != asset.id) {
           return UnsupportedPersistedRateQuoteFailure(
             message: 'Persisted rates must be quoted in USD.',
           );

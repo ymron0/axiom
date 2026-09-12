@@ -36,11 +36,10 @@ abstract interface class AssetRepository {
   /// Example: `final result = await repository.getAll();`
   Future<Result<List<Asset>, AssetFailure>> getAll();
 
-  /// Returns every asset with the requested [code].
+  /// Returns the asset with the requested [code], or `null` when it is not found.
   ///
-  /// Returns an empty list when no asset has the requested code.
   /// Example: `final result = await repository.getByCode(assetCode);`
-  Future<Result<List<Asset>, AssetFailure>> getByCode(AssetCode code);
+  Future<Result<Asset?, AssetFailure>> getByCode(AssetCode code);
 
   /// Returns the asset identified by [id], or `null` when it is not found.
   /// Example: `final result = await repository.getById(assetId);`
