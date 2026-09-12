@@ -8,12 +8,12 @@ import 'package:test/test.dart';
 
 void main() {
   group('ExchangeRate', () {
-    test('generates a new exchange rate with initial metadata', () {
+    test('creates a new exchange rate with initial metadata', () {
       // Given
       final timestamp = DateTime.parse('2024-01-16T12:30:00+02:00');
 
       // When
-      final exchangeRate = ExchangeRate.generate(
+      final exchangeRate = ExchangeRate.create(
         baseAssetId: AssetId.fromString('asset-eur'),
         quoteAssetId: AssetId.fromString('asset-usd'),
         rate: Decimal.parse('1.18'),
@@ -25,6 +25,20 @@ void main() {
       expect(exchangeRate.id.value, isNotEmpty);
       expect(exchangeRate.entityVersion, 1);
       expect(exchangeRate.createdAt, timestamp.toUtc());
+      expect(exchangeRate.modifiedAt, same(exchangeRate.createdAt));
+    });
+
+    test('uses the default clock when none is supplied', () {
+      // When
+      final exchangeRate = ExchangeRate.create(
+        baseAssetId: AssetId.fromString('asset-eur'),
+        quoteAssetId: AssetId.fromString('asset-usd'),
+        rate: Decimal.parse('1.18'),
+        effectiveAt: DateTime.utc(2024, 1, 15),
+      );
+
+      // Then
+      expect(exchangeRate.createdAt.isUtc, isTrue);
       expect(exchangeRate.modifiedAt, same(exchangeRate.createdAt));
     });
 
@@ -183,9 +197,7 @@ void main() {
 
       // When / Then
       expect(
-        () => exchangeRate.copyWith(
-          quoteAssetId: exchangeRate.baseAssetId,
-        ),
+        () => exchangeRate.copyWith(quoteAssetId: exchangeRate.baseAssetId),
         throwsA(
           isA<ArgumentError>()
               .having((error) => error.name, 'name', 'quoteAssetId')

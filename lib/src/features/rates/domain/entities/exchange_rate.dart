@@ -1,5 +1,7 @@
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
+import 'package:axiom/src/core/ports/clock/clock.dart';
+import 'package:axiom/src/core/ports/clock/clock_factory.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
@@ -83,12 +85,26 @@ final class ExchangeRate extends Rate with ExchangeRateMappable {
   /// Creates a new exchange-rate observation.
   ///
   /// Generates its identity, initial entity version, and audit timestamps
-  /// according to the [Rate.generate] contract.
-  ExchangeRate.generate({
-    required super.baseAssetId,
-    required super.quoteAssetId,
-    required super.rate,
-    required super.effectiveAt,
-    super.clock,
-  }) : super.generate();
+  /// according to the [Rate.create] contract.
+  factory ExchangeRate.create({
+    required AssetId baseAssetId,
+    required AssetId quoteAssetId,
+    required Decimal rate,
+    required DateTime effectiveAt,
+    Clock? clock,
+  }) {
+    final resolvedClock = clock ?? createClock();
+    final now = resolvedClock.nowUtc;
+
+    return ExchangeRate(
+      id: RateId.generate(),
+      baseAssetId: baseAssetId,
+      quoteAssetId: quoteAssetId,
+      rate: rate,
+      effectiveAt: effectiveAt,
+      entityVersion: 1,
+      createdAt: now,
+      modifiedAt: now,
+    );
+  }
 }

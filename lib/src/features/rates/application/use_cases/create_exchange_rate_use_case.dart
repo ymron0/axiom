@@ -20,14 +20,14 @@ final class CreateExchangeRateUseCase {
   final CreateRateService _createRate;
   final Clock _clock;
 
-  /// Generates and persists an exchange rate from [command].
+  /// Creates and persists an exchange rate from [command].
   ///
-  /// Returns the generated exchange rate on success. Returns the typed
+  /// Returns the created exchange rate on success. Returns the typed
   /// application or domain failure from the delegated workflow unchanged.
   Future<Result<ExchangeRate, BaseFailure>> call(
     CreateExchangeRateCommand command,
   ) async {
-    final exchangeRate = ExchangeRate.generate(
+    final exchangeRate = ExchangeRate.create(
       baseAssetId: command.baseAssetId,
       quoteAssetId: command.quoteAssetId,
       rate: command.rate,
