@@ -11,12 +11,12 @@ part 'rate_test.mapper.dart';
 
 void main() {
   group('Rate', () {
-    test('generates metadata for a new rate', () {
+    test('creates metadata for a new rate', () {
       // Given
       final timestamp = DateTime.parse('2024-01-15T12:30:00+02:00');
 
       // When
-      final rate = TestRate.generate(
+      final rate = Rate.create(
         baseAssetId: AssetId.fromString('asset-btc'),
         quoteAssetId: AssetId.fromString('asset-usd'),
         rate: Decimal.parse('65000'),
@@ -29,6 +29,20 @@ void main() {
       expect(rate.entityVersion, 1);
       expect(rate.createdAt, timestamp.toUtc());
       expect(rate.modifiedAt, timestamp.toUtc());
+      expect(rate.modifiedAt, same(rate.createdAt));
+    });
+
+    test('uses the default clock when none is supplied', () {
+      // When
+      final rate = Rate.create(
+        baseAssetId: AssetId.fromString('asset-btc'),
+        quoteAssetId: AssetId.fromString('asset-usd'),
+        rate: Decimal.parse('65000'),
+        effectiveAt: DateTime.utc(2024, 1, 14),
+      );
+
+      // Then
+      expect(rate.createdAt.isUtc, isTrue);
       expect(rate.modifiedAt, same(rate.createdAt));
     });
 
@@ -221,9 +235,7 @@ void main() {
       final differentIdentity = _createRate(
         id: RateId.fromString('rate-btc-usd-2'),
       );
-      final differentDomainState = _createRate(
-        rate: Decimal.fromInt(65001),
-      );
+      final differentDomainState = _createRate(rate: Decimal.fromInt(65001));
 
       // Then
       expect(rate, equivalent);
@@ -269,12 +281,4 @@ final class TestRate extends Rate with TestRateMappable {
     required super.createdAt,
     required super.modifiedAt,
   });
-
-  TestRate.generate({
-    required super.baseAssetId,
-    required super.quoteAssetId,
-    required super.rate,
-    required super.effectiveAt,
-    required super.clock,
-  }) : super.generate();
 }
