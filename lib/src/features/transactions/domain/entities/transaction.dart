@@ -1,7 +1,6 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/core/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
@@ -84,7 +83,7 @@ part 'transaction.mapper.dart';
 ///
 /// Invalid aggregate states are rejected during construction.
 @MappableClass()
-final class Transaction extends AuditedEntity with TransactionMappable {
+final class Transaction extends AuditedEntity<TransactionId> with TransactionMappable {
   /// The financial meaning of this transaction.
   final TransactionKind kind;
 
@@ -141,7 +140,7 @@ final class Transaction extends AuditedEntity with TransactionMappable {
   /// and audit timestamps.
   @MappableConstructor()
   Transaction({
-    required TransactionId super.id,
+    required super.id,
     required this.kind,
     required this.merchantId,
     String? description,
