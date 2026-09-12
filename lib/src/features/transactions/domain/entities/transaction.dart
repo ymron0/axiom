@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/core/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/core/domain/mixins/deletable.dart';
 import 'package:axiom/src/core/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
@@ -55,6 +56,7 @@ part 'transaction.mapper.dart';
 /// - The complete split collection reconciles exactly with both applicable
 ///   primary ledger amounts.
 /// - [description] and [note], when present, are not blank.
+/// - [deletedAt], when present, cannot precede [createdAt].
 /// - [modifiedAt] cannot precede [createdAt], as enforced by [AuditedEntity].
 /// - [entityVersion] is greater than zero, as enforced by [AuditedEntity].
 ///
@@ -83,7 +85,8 @@ part 'transaction.mapper.dart';
 ///
 /// Invalid aggregate states are rejected during construction.
 @MappableClass()
-final class Transaction extends AuditedEntity<TransactionId> with TransactionMappable {
+final class Transaction extends AuditedEntity<TransactionId>
+    with Deletable, TransactionMappable {
   /// The financial meaning of this transaction.
   final TransactionKind kind;
 
@@ -105,6 +108,10 @@ final class Transaction extends AuditedEntity<TransactionId> with TransactionMap
 
   /// The lifecycle state of the transaction.
   final TransactionState state;
+
+  /// {@macro deletable.deleted_at}
+  @override
+  final DateTime? deletedAt;
 
   /// Allocations of transaction value to domain allocation targets.
   ///
@@ -146,6 +153,7 @@ final class Transaction extends AuditedEntity<TransactionId> with TransactionMap
     String? description,
     String? note,
     required this.state,
+    this.deletedAt,
     required List<TransactionSplit> splits,
     required List<LedgerEntry> ledgerEntries,
     required super.createdAt,
@@ -155,6 +163,13 @@ final class Transaction extends AuditedEntity<TransactionId> with TransactionMap
        note = normalizeOptionalText(note, 'note'),
        splits = List.unmodifiable(splits),
        ledgerEntries = List.unmodifiable(ledgerEntries) {
+    if (deletedAt?.isBefore(createdAt) ?? false) {
+      throw ArgumentError.value(
+        deletedAt,
+        'deletedAt',
+        'Deletion time cannot precede creation time.',
+      );
+    }
     _validateLedgerEntries();
     _validateSplits();
     _validateSplitReconciliation();
