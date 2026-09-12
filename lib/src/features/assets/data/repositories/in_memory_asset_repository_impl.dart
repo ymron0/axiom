@@ -15,25 +15,44 @@ import 'package:fixtures/fixtures.dart';
 final class InMemoryAssetRepositoryImpl implements AssetRepository {
   /// Creates a repository seeded with [initialAssets].
   ///
-  /// When omitted, the repository loads the external asset fixtures.
+  /// When omitted, the repository loads the external asset fixtures. Throws
+  /// [ArgumentError] when the seed contains duplicate IDs or codes.
   InMemoryAssetRepositoryImpl({Iterable<Asset>? initialAssets})
-    : _assets =
-          initialAssets?.toList() ??
-          assetsFixtures
-              .map<Asset>(
-                (fixture) => Currency(
-                  id: AssetId.fromString(fixture.id),
-                  name: fixture.name,
-                  code: AssetCode(fixture.code.value),
-                  symbol: fixture.symbol,
-                  decimalPlaces: fixture.decimalPlaces,
-                  remoteLogoUrl: fixture.remoteLogoUrl,
-                  bundledLogoAsset: fixture.bundledLogoAsset,
-                ),
-              )
-              .toList();
+    : _assets = _validatedSeed(
+        initialAssets ??
+            assetsFixtures
+                .map<Asset>(
+                  (fixture) => Currency(
+                    id: AssetId.fromString(fixture.id),
+                    name: fixture.name,
+                    code: AssetCode(fixture.code.value),
+                    symbol: fixture.symbol,
+                    decimalPlaces: fixture.decimalPlaces,
+                    remoteLogoUrl: fixture.remoteLogoUrl,
+                    bundledLogoAsset: fixture.bundledLogoAsset,
+                  ),
+                )
+                .toList(),
+      );
 
   final List<Asset> _assets;
+
+  static List<Asset> _validatedSeed(Iterable<Asset> assets) {
+    final copiedAssets = assets.toList();
+    final ids = <String>{};
+    final codes = <String>{};
+
+    for (final asset in copiedAssets) {
+      if (!ids.add(asset.id.value)) {
+        throw ArgumentError('Asset ID is duplicated: ${asset.id.value}');
+      }
+      if (!codes.add(asset.code.value)) {
+        throw ArgumentError('Asset code is duplicated: ${asset.code.value}');
+      }
+    }
+
+    return copiedAssets;
+  }
 
   @override
   Future<Result<Asset, AssetFailure>> create(Asset asset) async {
