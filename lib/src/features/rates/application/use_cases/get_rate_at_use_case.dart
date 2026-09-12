@@ -22,13 +22,13 @@ import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dar
 final class GetRateAtUseCase {
   /// Creates a use case backed by [repository].
   const GetRateAtUseCase({
-    required this.repository,
+    required RateRepository repository,
     required ValidateRateAssetsService validateRateAssets,
-  }) : _validateRateAssets = // ignore: prefer_initializing_formals
+  }) : _repository = repository, // ignore: prefer_initializing_formals
+       _validateRateAssets = // ignore: prefer_initializing_formals
            validateRateAssets;
 
-  /// Repository used for rate lookup.
-  final RateRepository repository;
+  final RateRepository _repository;
   final ValidateRateAssetsService _validateRateAssets;
 
   /// Retrieves the applicable rate for
@@ -40,7 +40,7 @@ final class GetRateAtUseCase {
     required AssetId quoteAssetId,
     required DateTime at,
   }) async {
-    final rateResult = await repository.getAtOrBefore(
+    final rateResult = await _repository.getAtOrBefore(
       baseAssetId: baseAssetId,
       quoteAssetId: quoteAssetId,
       effectiveAt: at,

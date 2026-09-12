@@ -1,4 +1,5 @@
 import 'package:axiom/src/core/di/clock_provider.dart';
+import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
@@ -62,9 +63,17 @@ void main() {
       expect(providers[5], isA<ResolveConversionRateService>());
     });
 
-    test('passes an overridden repository to rate use cases', () {
+    test('passes an overridden repository to rate use cases', () async {
       // Given
       final repository = MockRateRepository();
+      const failure = RateNotFoundFailure(message: 'rate missing');
+      when(
+        () => repository.getAtOrBefore(
+          baseAssetId: any(named: 'baseAssetId'),
+          quoteAssetId: any(named: 'quoteAssetId'),
+          effectiveAt: any(named: 'effectiveAt'),
+        ),
+      ).thenAnswer((_) async => failure);
       final container = ProviderContainer(
         overrides: [rateRepositoryProvider.overrideWithValue(repository)],
       );
@@ -74,9 +83,14 @@ void main() {
       final atUseCase = container.read(getRateAtUseCaseProvider);
       final byIdUseCase = container.read(getRateByIdUseCaseProvider);
       final forPairUseCase = container.read(getRateForPairUseCaseProvider);
+      final result = await atUseCase(
+        baseAssetId: AssetId.fromString('asset-eur'),
+        quoteAssetId: AssetId.fromString('asset-usd'),
+        at: DateTime.utc(2026, 9, 12),
+      );
 
       // Then
-      expect(atUseCase.repository, same(repository));
+      expect(result.failureOrNull, same(failure));
       expect(byIdUseCase, isA<GetRateByIdUseCase>());
       expect(forPairUseCase, isA<GetRateForPairUseCase>());
     });
