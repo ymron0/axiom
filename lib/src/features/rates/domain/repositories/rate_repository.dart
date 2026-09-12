@@ -15,6 +15,13 @@ import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 /// caches, or another persistence mechanism. Consumers of this interface must
 /// not depend on those implementation details.
 ///
+/// Persisted rates must always use USD as their quote asset.
+///
+/// This restriction applies only to repository writes. [Rate] itself may
+/// represent any base/quote pair, including rates calculated at runtime.
+/// It is the responsibility of the use case to ensure that quoted rate pairs
+/// conform to this restriction.
+///
 /// ## Pair semantics
 ///
 /// Rate pairs are ordered.
@@ -96,6 +103,8 @@ import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 abstract interface class RateRepository {
   /// Stores [rate].
   ///
+  /// The caller must ensure that the quote asset is USD.
+  ///
   /// Returns [RecordAlreadyExistsFailure] when a rate with the same [RateId]
   /// already exists.
   ///
@@ -103,6 +112,8 @@ abstract interface class RateRepository {
   Future<Result<void, BaseFailure>> create(Rate rate);
 
   /// Atomically stores every rate in [rates].
+  ///
+  /// The caller must ensure that the quote asset is USD.
   ///
   /// If any rate cannot be created, no rate from the batch may be persisted.
   ///
