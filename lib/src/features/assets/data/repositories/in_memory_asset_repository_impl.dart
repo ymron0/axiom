@@ -117,12 +117,14 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
   }
 
   @override
-  Future<Result<List<Asset>, AssetFailure>> getByCode(AssetCode code) async {
-    final matchingAssets = _assets
-        .where((asset) => asset.code.value == code.value)
-        .toList();
+  Future<Result<Asset?, AssetFailure>> getByCode(AssetCode code) async {
+    for (final asset in _assets) {
+      if (asset.code.value == code.value) {
+        return Success(asset);
+      }
+    }
 
-    return Success(List.unmodifiable(matchingAssets));
+    return const Success(null);
   }
 
   @override

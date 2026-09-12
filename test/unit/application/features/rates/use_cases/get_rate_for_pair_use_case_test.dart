@@ -48,7 +48,7 @@ void main() {
       chf = AssetId.fromString('CHF');
 
       when(() => assetRepository.getByCode(any())).thenAnswer(
-        (_) async => Success([currencyFixture(id: 'USD', code: 'USD')]),
+        (_) async => Success(currencyFixture(id: 'USD', code: 'USD')),
       );
       when(() => assetRepository.getByIds(any())).thenAnswer(
         (_) async => Success(
@@ -91,9 +91,8 @@ void main() {
         () => rateRepository.getByPair(baseAssetId: chf, quoteAssetId: usd),
       ).thenAnswer((_) async => Success(rates));
       when(() => assetRepository.getByIds(any())).thenAnswer(
-        (_) async => Success(
-          BatchLookup(found: [], missing: [rates.first.baseAssetId]),
-        ),
+        (_) async =>
+            Success(BatchLookup(found: [], missing: [rates.first.baseAssetId])),
       );
 
       // When
@@ -160,10 +159,7 @@ void main() {
       final result = await useCase(baseAssetId: chf, quoteAssetId: eur);
 
       // Then
-      expect(
-        result.failureOrNull,
-        isA<UnsupportedPersistedRateQuoteFailure>(),
-      );
+      expect(result.failureOrNull, isA<UnsupportedPersistedRateQuoteFailure>());
       verifyNever(
         () => rateRepository.getByPair(
           baseAssetId: any(named: 'baseAssetId'),
@@ -176,7 +172,7 @@ void main() {
       // Given
       when(
         () => assetRepository.getByCode(any()),
-      ).thenAnswer((_) async => const Success([]));
+      ).thenAnswer((_) async => const Success(null));
 
       // When
       final result = await useCase(baseAssetId: chf, quoteAssetId: usd);
