@@ -26,6 +26,38 @@ void main() {
       expect(transaction.ledgerEntries, hasLength(1));
       expect(transaction.splits, isEmpty);
       expect(transaction.entityVersion, 1);
+      expect(transaction.deletedAt, isNull);
+      expect(transaction.isDeleted, isFalse);
+    });
+
+    test('preserves a deletion timestamp and reports the aggregate deleted', () {
+      // Given
+      final deletedAt = DateTime.utc(2024, 1, 2);
+
+      // When
+      final transaction = _createTransaction(deletedAt: deletedAt);
+
+      // Then
+      expect(transaction.deletedAt, same(deletedAt));
+      expect(transaction.isDeleted, isTrue);
+    });
+
+    test('rejects a deletion timestamp before creation', () {
+      // Given
+      final deletedAt = DateTime.utc(2023, 12, 31, 23, 59, 59);
+
+      // When
+      Transaction construct() => _createTransaction(deletedAt: deletedAt);
+
+      // Then
+      expect(
+        construct,
+        throwsA(
+          isA<ArgumentError>()
+              .having((error) => error.invalidValue, 'invalidValue', deletedAt)
+              .having((error) => error.name, 'name', 'deletedAt'),
+        ),
+      );
     });
 
     test('preserves the designated self merchant identity', () {
@@ -182,10 +214,15 @@ void main() {
       final first = _createTransaction(description: 'groceries');
       final equivalent = _createTransaction(description: 'groceries');
       final different = _createTransaction(description: 'rent');
+      final deleted = _createTransaction(
+        description: 'groceries',
+        deletedAt: DateTime.utc(2024, 1, 2),
+      );
 
       // Then
       expect(first, equals(equivalent));
       expect(first, isNot(equals(different)));
+      expect(first, isNot(equals(deleted)));
     });
   });
 }
@@ -193,6 +230,7 @@ void main() {
 Transaction _createTransaction({
   String? description,
   String? note,
+  DateTime? deletedAt,
   TransactionKind kind = TransactionKind.expense,
   List<TransactionSplit> splits = const [],
   List<LedgerEntry>? ledgerEntries,
@@ -204,6 +242,7 @@ Transaction _createTransaction({
     description: description,
     note: note,
     state: TransactionState.actual,
+    deletedAt: deletedAt,
     splits: splits,
     ledgerEntries: ledgerEntries ?? [_createLedgerEntry()],
     createdAt: DateTime.utc(2024),
