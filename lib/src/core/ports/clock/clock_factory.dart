@@ -15,9 +15,9 @@ import 'package:axiom/src/core/ports/clock/system_clock.dart';
 /// ```text
 /// --dart-define=DEBUG_NOW=2026-01-01T08:05:00Z
 /// ```
-Clock createClock() {
-  const debugNow = String.fromEnvironment('DEBUG_NOW');
-
+Clock createClock({
+  String debugNow = const String.fromEnvironment('DEBUG_NOW'),
+}) {
   if (debugNow.isEmpty) {
     return const SystemClock();
   }
