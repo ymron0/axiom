@@ -5,22 +5,14 @@ import 'package:test/test.dart';
 
 void main() {
   group('createClock', () {
-    const debugNow = String.fromEnvironment('DEBUG_NOW');
-
     test('selects the system clock when DEBUG_NOW is absent', () {
-      if (debugNow.isNotEmpty) {
-        return;
-      }
-
-      expect(createClock(), isA<SystemClock>());
+      expect(createClock(debugNow: ''), isA<SystemClock>());
     });
 
     test('selects a fixed clock for a valid DEBUG_NOW timestamp', () {
-      if (debugNow.isEmpty || debugNow == 'invalid') {
-        return;
-      }
+      const debugNow = '2026-01-01T08:05:00Z';
 
-      final clock = createClock();
+      final clock = createClock(debugNow: debugNow);
 
       expect(clock, isA<FixedClock>());
       expect(clock.now, DateTime.parse(debugNow));
@@ -29,11 +21,10 @@ void main() {
     });
 
     test('throws FormatException for an invalid DEBUG_NOW value', () {
-      if (debugNow != 'invalid') {
-        return;
-      }
-
-      expect(createClock, throwsFormatException);
+      expect(
+        () => createClock(debugNow: 'invalid'),
+        throwsFormatException,
+      );
     });
   });
 }
