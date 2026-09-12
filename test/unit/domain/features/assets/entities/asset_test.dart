@@ -1,6 +1,7 @@
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -338,6 +339,60 @@ void main() {
           reason: 'Expected $value to be rejected.',
         );
       }
+    });
+
+    group('Currency.generate', () {
+      test('generates identity, timestamps, and supplied metadata', () {
+        // Given
+        final generatedAt = DateTime.parse('2026-09-10T12:34:56+02:00');
+        final clock = FixedClock(generatedAt);
+
+        // When
+        final currency = Currency.generate(
+          name: ' Euro ',
+          code: AssetCode('EUR'),
+          symbol: ' € ',
+          remoteLogoUrl: ' https://example.com/euro.png ',
+          bundledLogoAsset: ' assets/logos/euro.png ',
+          decimalPlaces: 2,
+          clock: clock,
+        );
+
+        // Then
+        expect(currency.id.value, isNotEmpty);
+        expect(currency.entityVersion, 1);
+        expect(currency.createdAt, generatedAt.toUtc());
+        expect(currency.modifiedAt, same(currency.createdAt));
+        expect(currency.createdAt.isUtc, isTrue);
+        expect(currency.name, 'Euro');
+        expect(currency.code.value, 'EUR');
+        expect(currency.symbol, '€');
+        expect(currency.remoteLogoUrl, 'https://example.com/euro.png');
+        expect(currency.bundledLogoAsset, 'assets/logos/euro.png');
+        expect(currency.decimalPlaces, 2);
+      });
+
+      test('preserves currency-code validation', () {
+        // Given
+        final clock = FixedClock(DateTime.utc(2026, 9, 10));
+
+        // When / Then
+        expect(
+          () => Currency.generate(
+            name: 'Invalid currency',
+            code: AssetCode('EURO'),
+            decimalPlaces: 2,
+            clock: clock,
+          ),
+          throwsA(
+            isA<ArgumentError>().having(
+              (error) => error.name,
+              'name',
+              'code',
+            ),
+          ),
+        );
+      });
     });
   });
 }

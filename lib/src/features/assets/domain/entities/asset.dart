@@ -107,49 +107,6 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
       );
     }
   }
-
-  /// Creates a new asset with a generated [AssetId].
-  ///
-  /// All supplied metadata is passed through the same validation and
-  /// normalization contract as [Asset].
-  Asset.generate({
-    required String name,
-    required AssetCode code,
-    String? symbol,
-    required int decimalPlaces,
-    String? remoteLogoUrl,
-    String? bundledLogoAsset,
-    Clock clock = const SystemClock(),
-  }) : this._generated(
-         name: name,
-         code: code,
-         symbol: symbol,
-         decimalPlaces: decimalPlaces,
-         remoteLogoUrl: remoteLogoUrl,
-         bundledLogoAsset: bundledLogoAsset,
-         generatedAt: clock.nowUtc,
-       );
-
-  Asset._generated({
-    required String name,
-    required AssetCode code,
-    String? symbol,
-    required int decimalPlaces,
-    String? remoteLogoUrl,
-    String? bundledLogoAsset,
-    required DateTime generatedAt,
-  }) : this(
-         id: AssetId.generate(),
-         entityVersion: 1,
-         createdAt: generatedAt,
-         modifiedAt: generatedAt,
-         name: name,
-         code: code,
-         symbol: symbol,
-         decimalPlaces: decimalPlaces,
-         remoteLogoUrl: remoteLogoUrl,
-         bundledLogoAsset: bundledLogoAsset,
-       );
 }
 
 // Trims text and rejects blank values for required or optional fields.

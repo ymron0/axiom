@@ -53,4 +53,49 @@ final class Currency extends Asset with CurrencyMappable {
       );
     }
   }
+
+  /// Creates a currency with a generated identity and audit timestamps.
+  ///
+  /// The generated currency starts at entity version `1`. The supplied clock
+  /// is sampled once in UTC and the resulting timestamp is used for both
+  /// [createdAt] and [modifiedAt]. Throws [ArgumentError] when [code] does
+  /// not contain exactly three ASCII letters.
+  Currency.generate({
+    required String name,
+    required AssetCode code,
+    String? symbol,
+    String? remoteLogoUrl,
+    String? bundledLogoAsset,
+    required int decimalPlaces,
+    Clock clock = const SystemClock(),
+  }) : this._generated(
+         name: name,
+         code: code,
+         symbol: symbol,
+         remoteLogoUrl: remoteLogoUrl,
+         bundledLogoAsset: bundledLogoAsset,
+         decimalPlaces: decimalPlaces,
+         generatedAt: clock.nowUtc,
+       );
+
+  Currency._generated({
+    required String name,
+    required AssetCode code,
+    String? symbol,
+    String? remoteLogoUrl,
+    String? bundledLogoAsset,
+    required int decimalPlaces,
+    required DateTime generatedAt,
+  }) : this(
+         id: AssetId.generate(),
+         entityVersion: 1,
+         createdAt: generatedAt,
+         modifiedAt: generatedAt,
+         name: name,
+         code: code,
+         symbol: symbol,
+         remoteLogoUrl: remoteLogoUrl,
+         bundledLogoAsset: bundledLogoAsset,
+         decimalPlaces: decimalPlaces,
+       );
 }
