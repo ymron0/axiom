@@ -24,6 +24,9 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
                 .map<Asset>(
                   (fixture) => Currency(
                     id: AssetId.fromString(fixture.id),
+                    entityVersion: 1,
+                    createdAt: DateTime.utc(2024, 1, 1),
+                    modifiedAt: DateTime.utc(2024, 1, 1),
                     name: fixture.name,
                     code: AssetCode(fixture.code.value),
                     symbol: fixture.symbol,

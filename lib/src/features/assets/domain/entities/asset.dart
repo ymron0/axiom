@@ -1,7 +1,10 @@
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/domain/validation/url_validation.dart';
+import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/core/ports/clock/clock.dart';
+import 'package:axiom/src/core/ports/clock/system_clock.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'currency.dart';
@@ -17,6 +20,8 @@ part 'asset.mapper.dart';
 /// ## Invariants
 ///
 /// - [id] is a valid, strongly typed [AssetId].
+/// - [entityVersion] is greater than zero.
+/// - [modifiedAt] does not precede [createdAt].
 /// - [name] is non-blank after trimming.
 /// - [code] is a valid [AssetCode].
 /// - [decimalPlaces] is non-negative.
@@ -33,12 +38,16 @@ part 'asset.mapper.dart';
 ///
 /// Subclasses must preserve the immutable asset state established here and
 /// must keep subtype-specific financial rules in the subtype. This type has no
-/// persistence, repository, or presentation responsibilities.
+/// persistence, repository, or presentation responsibilities. Audit metadata
+/// follows the [AuditedEntity] contract.
 ///
 /// Example:
 /// ```dart
 /// final asset = Currency(
 ///   id: AssetId.generate(),
+///   entityVersion: 1,
+///   createdAt: DateTime.utc(2024, 1, 1),
+///   modifiedAt: DateTime.utc(2024, 1, 1),
 ///   name: 'Euro',
 ///   code: AssetCode('EUR'),
 ///   symbol: '€',
@@ -46,10 +55,7 @@ part 'asset.mapper.dart';
 /// );
 /// ```
 @MappableClass()
-sealed class Asset with AssetMappable {
-  /// The typed identifier of the asset.
-  final AssetId id;
-
+sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
   /// The trimmed human-readable name of the asset, e.g., 'Euro'.
   final String name;
 
@@ -76,7 +82,10 @@ sealed class Asset with AssetMappable {
   /// text is blank, when [remoteLogoUrl] is not an absolute HTTP(S) URL, or
   /// when [decimalPlaces] is negative.
   Asset({
-    required this.id,
+    required super.id,
+    required super.entityVersion,
+    required super.createdAt,
+    required super.modifiedAt,
     required String name,
     required this.code,
     String? symbol,
@@ -98,6 +107,49 @@ sealed class Asset with AssetMappable {
       );
     }
   }
+
+  /// Creates a new asset with a generated [AssetId].
+  ///
+  /// All supplied metadata is passed through the same validation and
+  /// normalization contract as [Asset].
+  Asset.generate({
+    required String name,
+    required AssetCode code,
+    String? symbol,
+    required int decimalPlaces,
+    String? remoteLogoUrl,
+    String? bundledLogoAsset,
+    Clock clock = const SystemClock(),
+  }) : this._generated(
+         name: name,
+         code: code,
+         symbol: symbol,
+         decimalPlaces: decimalPlaces,
+         remoteLogoUrl: remoteLogoUrl,
+         bundledLogoAsset: bundledLogoAsset,
+         generatedAt: clock.nowUtc,
+       );
+
+  Asset._generated({
+    required String name,
+    required AssetCode code,
+    String? symbol,
+    required int decimalPlaces,
+    String? remoteLogoUrl,
+    String? bundledLogoAsset,
+    required DateTime generatedAt,
+  }) : this(
+         id: AssetId.generate(),
+         entityVersion: 1,
+         createdAt: generatedAt,
+         modifiedAt: generatedAt,
+         name: name,
+         code: code,
+         symbol: symbol,
+         decimalPlaces: decimalPlaces,
+         remoteLogoUrl: remoteLogoUrl,
+         bundledLogoAsset: bundledLogoAsset,
+       );
 }
 
 // Trims text and rejects blank values for required or optional fields.
