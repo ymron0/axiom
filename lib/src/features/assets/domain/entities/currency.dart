@@ -60,42 +60,29 @@ final class Currency extends Asset with CurrencyMappable {
   /// is sampled once in UTC and the resulting timestamp is used for both
   /// [createdAt] and [modifiedAt]. Throws [ArgumentError] when [code] does
   /// not contain exactly three ASCII letters.
-  Currency.generate({
+  factory Currency.create({
     required String name,
     required AssetCode code,
     String? symbol,
     String? remoteLogoUrl,
     String? bundledLogoAsset,
     required int decimalPlaces,
-    Clock clock = const SystemClock(),
-  }) : this._generated(
-         name: name,
-         code: code,
-         symbol: symbol,
-         remoteLogoUrl: remoteLogoUrl,
-         bundledLogoAsset: bundledLogoAsset,
-         decimalPlaces: decimalPlaces,
-         generatedAt: clock.nowUtc,
-       );
+    Clock? clock,
+  }) {
+    final resolvedClock = clock ?? createClock();
+    final now = resolvedClock.nowUtc;
 
-  Currency._generated({
-    required String name,
-    required AssetCode code,
-    String? symbol,
-    String? remoteLogoUrl,
-    String? bundledLogoAsset,
-    required int decimalPlaces,
-    required DateTime generatedAt,
-  }) : this(
-         id: AssetId.generate(),
-         entityVersion: 1,
-         createdAt: generatedAt,
-         modifiedAt: generatedAt,
-         name: name,
-         code: code,
-         symbol: symbol,
-         remoteLogoUrl: remoteLogoUrl,
-         bundledLogoAsset: bundledLogoAsset,
-         decimalPlaces: decimalPlaces,
-       );
+    return Currency(
+      id: AssetId.generate(),
+      entityVersion: 1,
+      createdAt: now,
+      modifiedAt: now,
+      name: name,
+      code: code,
+      symbol: symbol,
+      remoteLogoUrl: remoteLogoUrl,
+      bundledLogoAsset: bundledLogoAsset,
+      decimalPlaces: decimalPlaces,
+    );
+  }
 }

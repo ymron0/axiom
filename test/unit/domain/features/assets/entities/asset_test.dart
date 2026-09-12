@@ -341,14 +341,49 @@ void main() {
       }
     });
 
-    group('Currency.generate', () {
-      test('generates identity, timestamps, and supplied metadata', () {
+    group('Asset.create', () {
+      test('creates a currency with generated identity and metadata', () {
+        // Given
+        final createdAt = DateTime.parse('2026-09-10T12:34:56+02:00');
+
+        // When
+        final asset = Asset.create(
+          name: 'Euro',
+          code: AssetCode('EUR'),
+          decimalPlaces: 2,
+          clock: FixedClock(createdAt),
+        );
+
+        // Then
+        expect(asset, isA<Currency>());
+        expect(asset.id.value, isNotEmpty);
+        expect(asset.entityVersion, 1);
+        expect(asset.createdAt, createdAt.toUtc());
+        expect(asset.modifiedAt, same(asset.createdAt));
+      });
+
+      test('uses the default clock when none is supplied', () {
+        // When
+        final asset = Asset.create(
+          name: 'Euro',
+          code: AssetCode('EUR'),
+          decimalPlaces: 2,
+        );
+
+        // Then
+        expect(asset.createdAt.isUtc, isTrue);
+        expect(asset.modifiedAt, same(asset.createdAt));
+      });
+    });
+
+    group('Currency.create', () {
+      test('creates identity, timestamps, and supplied metadata', () {
         // Given
         final generatedAt = DateTime.parse('2026-09-10T12:34:56+02:00');
         final clock = FixedClock(generatedAt);
 
         // When
-        final currency = Currency.generate(
+        final currency = Currency.create(
           name: ' Euro ',
           code: AssetCode('EUR'),
           symbol: ' € ',
@@ -372,24 +407,33 @@ void main() {
         expect(currency.decimalPlaces, 2);
       });
 
+      test('uses the default clock when none is supplied', () {
+        // When
+        final currency = Currency.create(
+          name: 'Euro',
+          code: AssetCode('EUR'),
+          decimalPlaces: 2,
+        );
+
+        // Then
+        expect(currency.createdAt.isUtc, isTrue);
+        expect(currency.modifiedAt, same(currency.createdAt));
+      });
+
       test('preserves currency-code validation', () {
         // Given
         final clock = FixedClock(DateTime.utc(2026, 9, 10));
 
         // When / Then
         expect(
-          () => Currency.generate(
+          () => Currency.create(
             name: 'Invalid currency',
             code: AssetCode('EURO'),
             decimalPlaces: 2,
             clock: clock,
           ),
           throwsA(
-            isA<ArgumentError>().having(
-              (error) => error.name,
-              'name',
-              'code',
-            ),
+            isA<ArgumentError>().having((error) => error.name, 'name', 'code'),
           ),
         );
       });
