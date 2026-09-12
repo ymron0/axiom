@@ -122,9 +122,50 @@ void main() {
         );
         expect((await repository.getById(first.id)).valueOrNull, isNotNull);
       });
+
+      test('rejects concurrent creates with the same code', () async {
+        // Given
+        final repository = _createRepository();
+        final first = currencyFixture(
+          id: 'create-concurrent-first',
+          code: 'AAA',
+        );
+        final second = currencyFixture(
+          id: 'create-concurrent-second',
+          code: 'AAA',
+        );
+
+        // When
+        final results = [repository.create(first), repository.create(second)];
+        final completedResults = await Future.wait(results);
+
+        // Then
+        expect(
+          completedResults.where((result) => result.valueOrNull != null),
+          hasLength(1),
+        );
+        expect(
+          completedResults.where(
+            (result) => result.failureOrNull is AssetAlreadyExistsFailure,
+          ),
+          hasLength(1),
+        );
+        expect((await repository.getByCode(first.code)).valueOrNull, isNotNull);
+      });
     });
 
     group('createAll', () {
+      test('returns an empty list when given no assets', () async {
+        // Given
+        final repository = _createRepository();
+
+        // When
+        final result = await repository.createAll([]);
+
+        // Then
+        expect(result.valueOrNull, isEmpty);
+      });
+
       test('creates two assets at the same time', () async {
         // Given
         final repository = _createRepository();
@@ -402,6 +443,17 @@ void main() {
     });
 
     group('updateAll', () {
+      test('returns an empty list when given no assets', () async {
+        // Given
+        final repository = _createRepository();
+
+        // When
+        final result = await repository.updateAll([]);
+
+        // Then
+        expect(result.valueOrNull, isEmpty);
+      });
+
       test('updates several assets together', () async {
         // Given
         final repository = _createRepository();
