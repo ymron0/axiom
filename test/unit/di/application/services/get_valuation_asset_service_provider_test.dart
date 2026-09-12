@@ -1,4 +1,4 @@
-import 'package:axiom/src/application/di/services/get_valuation_asset_service_provider.dart';
+import 'package:axiom/src/features/assets/di/get_valuation_asset_service_provider.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/di/get_asset_by_id_use_case_provider.dart';
