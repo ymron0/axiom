@@ -6,7 +6,7 @@ part 'audited_entity.mapper.dart';
 
 /// Base type for identified entities that record immutable lifecycle metadata.
 ///
-/// Each entity inherits an identifier and concurrency revision from
+/// Each entity inherits an identifier and class version from
 /// [IdentifiedEntity], then adds its creation and most recent modification
 /// time. These timestamps describe the entity's lifecycle, not its identity.
 ///
@@ -39,7 +39,8 @@ abstract class AuditedEntity<TId extends UniqueId> extends IdentifiedEntity<TId>
   /// The instant when the entity was most recently modified.
   final DateTime modifiedAt;
 
-  /// Initializes an audited entity with its identity, revision, and timestamps.
+  /// Initializes an audited entity with its identity, class version, and
+  /// timestamps.
   ///
   /// Throws an [ArgumentError] when [entityVersion] is less than one or
   /// [modifiedAt] precedes [createdAt].
