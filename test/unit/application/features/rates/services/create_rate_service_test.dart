@@ -3,6 +3,7 @@ import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/application/failures/invalid_valuation_currency_failure.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/rates/application/services/create_rate_service.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
@@ -32,6 +33,7 @@ void main() {
         validateRateAssets: ValidateRateAssetsService(
           getAssetsByIds: GetAssetsByIdsUseCase(assetRepository),
         ),
+        canonicalBridgeAssetId: AssetId.fromString('USD'),
       );
     });
 
@@ -65,9 +67,8 @@ void main() {
       // Given
       final rate = exchangeRateFixture();
       when(() => assetRepository.getByIds(any())).thenAnswer(
-        (_) async => Success(
-          BatchLookup(found: [], missing: [rate.baseAssetId]),
-        ),
+        (_) async =>
+            Success(BatchLookup(found: [], missing: [rate.baseAssetId])),
       );
 
       // When
@@ -75,6 +76,18 @@ void main() {
 
       // Then
       expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+      verifyNever(() => rateRepository.create(rate));
+    });
+
+    test('does not persist a rate quoted in a non-USD asset', () async {
+      // Given
+      final rate = exchangeRateFixture(baseAssetId: 'CHF', quoteAssetId: 'EUR');
+
+      // When
+      final result = await service(rate);
+
+      // Then
+      expect(result.failureOrNull, isA<InvalidValuationCurrencyFailure>());
       verifyNever(() => rateRepository.create(rate));
     });
 

@@ -90,8 +90,8 @@ void main() {
         (_) async => Success(
           BatchLookup(
             found: [
-              currencyFixture(id: 'EUR', code: 'EUR'),
-              currencyFixture(id: 'USD', code: 'USD'),
+              currencyFixture(id: 'asset-eur', code: 'EUR'),
+              currencyFixture(id: 'asset-usd', code: 'USD'),
             ],
             missing: [],
           ),
@@ -109,8 +109,8 @@ void main() {
       );
       addTearDown(container.dispose);
       final command = CreateExchangeRateCommand(
-        baseAssetId: AssetId.fromString('EUR'),
-        quoteAssetId: AssetId.fromString('USD'),
+        baseAssetId: AssetId.fromString('asset-eur'),
+        quoteAssetId: AssetId.fromString('asset-usd'),
         rate: Decimal.parse('1.18'),
         effectiveAt: DateTime.utc(2026, 9, 11),
       );
