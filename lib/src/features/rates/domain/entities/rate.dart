@@ -2,7 +2,6 @@ import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
-import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
 
@@ -64,7 +63,7 @@ part 'rate.mapper.dart';
 /// 1 base asset = rate × quote asset
 /// ```
 @MappableClass(includeCustomMappers: [DecimalMapper()])
-abstract class Rate extends AuditedEntity with RateMappable {
+abstract class Rate extends AuditedEntity<RateId> with RateMappable {
   /// The asset for which one unit is being valued.
   ///
   /// In BTC/USD, BTC is the base asset.
@@ -103,7 +102,7 @@ abstract class Rate extends AuditedEntity with RateMappable {
   /// - [entityVersion] is less than one; or
   /// - [modifiedAt] precedes [createdAt].
   Rate({
-    required RateId super.id,
+    required super.id,
     required this.baseAssetId,
     required this.quoteAssetId,
     required Decimal rate,

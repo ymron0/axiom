@@ -1,4 +1,3 @@
-
 import 'package:axiom/src/core/domain/entities/base/base_entity.dart';
 import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
@@ -32,10 +31,10 @@ part 'identified_entity.mapper.dart';
 /// identity. They should expose immutable state and create a new snapshot when
 /// domain changes are applied.
 @MappableClass()
-abstract class IdentifiedEntity extends BaseEntity
+abstract class IdentifiedEntity<TId extends UniqueId> extends BaseEntity
     with IdentifiedEntityMappable {
   /// The stable identity assigned to this entity.
-  final UniqueId id;
+  final TId id;
 
   /// Initializes an entity with its [id] and current [entityVersion].
   ///

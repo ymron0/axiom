@@ -1,5 +1,4 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
-import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:test/test.dart';
 
@@ -80,7 +79,7 @@ void main() {
 
 /// Concrete entity used to exercise the abstract audited constructor.
 @MappableClass()
-final class TestAuditedEntity extends AuditedEntity
+final class TestAuditedEntity extends AuditedEntity<TestUniqueId>
     with TestAuditedEntityMappable {
   TestAuditedEntity({
     required super.id,

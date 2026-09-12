@@ -31,7 +31,7 @@ part 'audited_entity.mapper.dart';
 /// provide values that satisfy the chronology invariant. Updating audit
 /// metadata produces a new entity snapshot rather than mutating this one.
 @MappableClass()
-abstract class AuditedEntity extends IdentifiedEntity
+abstract class AuditedEntity<TId extends UniqueId> extends IdentifiedEntity<TId>
     with AuditedEntityMappable {
   /// The instant when the entity was first created.
   final DateTime createdAt;

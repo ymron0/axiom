@@ -1,5 +1,4 @@
 import 'package:axiom/src/core/domain/entities/base/identified_entity.dart';
-import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:test/test.dart';
 
@@ -46,7 +45,7 @@ void main() {
 
 /// Concrete entity used to exercise the abstract identified constructor.
 @MappableClass()
-final class TestIdentifiedEntity extends IdentifiedEntity
+final class TestIdentifiedEntity extends IdentifiedEntity<TestUniqueId>
     with TestIdentifiedEntityMappable {
   TestIdentifiedEntity({required super.id, required super.entityVersion});
 }
