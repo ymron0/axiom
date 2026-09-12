@@ -1,9 +1,9 @@
-import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_already_initialized_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
 import 'package:axiom/src/features/settings/domain/repositories/settings_repository.dart';
 import 'package:fixtures/fixtures.dart';
 
@@ -19,9 +19,9 @@ final class InMemorySettingsRepositoryImpl implements SettingsRepository {
   );
 
   @override
-  Future<Result<Settings, BaseFailure>> create(Settings settings) async {
+  Future<Result<Settings, SettingsFailure>> create(Settings settings) async {
     if (_settings != null) {
-      return const RecordAlreadyExistsFailure(
+      return const SettingsAlreadyInitializedFailure(
         message: 'Settings have already been initialized.',
       );
     }
@@ -31,14 +31,14 @@ final class InMemorySettingsRepositoryImpl implements SettingsRepository {
   }
 
   @override
-  Future<Result<Settings?, BaseFailure>> get() async {
+  Future<Result<Settings?, SettingsFailure>> get() async {
     return Success(_settings);
   }
 
   @override
-  Future<Result<Settings, BaseFailure>> update(Settings settings) async {
+  Future<Result<Settings, SettingsFailure>> update(Settings settings) async {
     if (_settings == null) {
-      return const RecordNotFoundFailure(
+      return const SettingsNotInitializedFailure(
         message: 'Settings have not been initialized.',
       );
     }

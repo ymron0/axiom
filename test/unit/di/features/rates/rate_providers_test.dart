@@ -1,5 +1,5 @@
 import 'package:axiom/src/core/di/clock_provider.dart';
-import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';

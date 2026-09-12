@@ -1,12 +1,12 @@
-import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/rate_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/rates/domain/entities/exchange_rate.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_already_exists_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dart';
 import 'package:decimal/decimal.dart';
 import 'package:fixtures/fixtures.dart';
@@ -32,7 +32,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
       .toList();
 
   @override
-  Future<Result<void, BaseFailure>> create(Rate rate) async {
+  Future<Result<void, RateFailure>> create(Rate rate) async {
     if (_rates.any((storedRate) => storedRate.id == rate.id)) {
       return RateAlreadyExistsFailure(
         message: 'Rate ID already exists: ${rate.id.value}',
@@ -44,7 +44,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
   }
 
   @override
-  Future<Result<void, BaseFailure>> createAll(List<Rate> rates) async {
+  Future<Result<void, RateFailure>> createAll(List<Rate> rates) async {
     final requestedIds = <String>{};
     for (final rate in rates) {
       if (!requestedIds.add(rate.id.value)) {
@@ -68,7 +68,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
   }
 
   @override
-  Future<Result<Rate, BaseFailure>> getById(RateId id) async {
+  Future<Result<Rate, RateFailure>> getById(RateId id) async {
     for (final rate in _rates) {
       if (rate.id == id) {
         return Success(rate);
@@ -79,7 +79,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
   }
 
   @override
-  Future<Result<BatchLookup<Rate, RateId>, BaseFailure>> getByIds(
+  Future<Result<BatchLookup<Rate, RateId>, RateFailure>> getByIds(
     List<RateId> ids,
   ) async {
     final requestedIds = <String>{};
@@ -102,7 +102,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
   }
 
   @override
-  Future<Result<List<Rate>, BaseFailure>> getByPair({
+  Future<Result<List<Rate>, RateFailure>> getByPair({
     required AssetId baseAssetId,
     required AssetId quoteAssetId,
   }) async {
@@ -122,7 +122,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
   }
 
   @override
-  Future<Result<Rate, BaseFailure>> getLatestByPair({
+  Future<Result<Rate, RateFailure>> getLatestByPair({
     required AssetId baseAssetId,
     required AssetId quoteAssetId,
   }) async {
@@ -140,7 +140,7 @@ final class InMemoryRateRepositoryImpl implements RateRepository {
   }
 
   @override
-  Future<Result<Rate, BaseFailure>> getAtOrBefore({
+  Future<Result<Rate, RateFailure>> getAtOrBefore({
     required AssetId baseAssetId,
     required AssetId quoteAssetId,
     required DateTime effectiveAt,

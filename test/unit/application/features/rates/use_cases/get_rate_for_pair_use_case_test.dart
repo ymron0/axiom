@@ -1,6 +1,5 @@
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/failures/referenced_asset_not_found_failure.dart';
+import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
@@ -11,6 +10,8 @@ import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
 import 'package:axiom/src/features/rates/application/failures/unsupported_persisted_rate_quote_failure.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_for_pair_use_case.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -104,7 +105,7 @@ void main() {
 
     test('propagates a pair-not-found failure unchanged', () async {
       // Given
-      const failure = RecordNotFoundFailure(message: 'pair missing');
+      const failure = RateNotFoundFailure(message: 'pair missing');
       when(
         () => rateRepository.getByPair(baseAssetId: chf, quoteAssetId: usd),
       ).thenAnswer((_) async => failure);
@@ -118,7 +119,7 @@ void main() {
 
     test('propagates another repository failure unchanged', () async {
       // Given
-      const failure = RecordAlreadyExistsFailure(message: 'storage failure');
+      const failure = RatePersistenceFailure(message: 'storage failure');
       when(
         () => rateRepository.getByPair(baseAssetId: chf, quoteAssetId: usd),
       ).thenAnswer((_) async => failure);
@@ -136,7 +137,7 @@ void main() {
         // Given
         when(
           () => rateRepository.getByPair(baseAssetId: chf, quoteAssetId: usd),
-        ).thenAnswer((_) async => RecordNotFoundFailure());
+        ).thenAnswer((_) async => RateNotFoundFailure());
 
         // When
         await useCase(baseAssetId: chf, quoteAssetId: usd);
