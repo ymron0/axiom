@@ -2,7 +2,6 @@ import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.da
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
-import 'package:axiom/src/core/identity/ids/budget_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
@@ -175,17 +174,6 @@ final class InMemoryTransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
-  Future<Result<List<Transaction>, TransactionFailure>>
-  getTransactionsByBudgetId(BudgetId budgetId) async {
-    return Success(
-      _matchingTransactions(
-        (transaction) =>
-            transaction.splits.any((split) => split.budgetId == budgetId),
-      ),
-    );
-  }
-
-  @override
   Future<Result<List<Transaction>, TransactionFailure>> getTransactionsByJarId(
     JarId jarId,
   ) async {
@@ -229,18 +217,6 @@ final class InMemoryTransactionRepositoryImpl implements TransactionRepository {
       _transactions.values.any(
         (transaction) =>
             transaction.splits.any((split) => split.categoryId == categoryId),
-      ),
-    );
-  }
-
-  @override
-  Future<Result<bool, TransactionFailure>> existsByBudgetId(
-    BudgetId budgetId,
-  ) async {
-    return Success(
-      _transactions.values.any(
-        (transaction) =>
-            transaction.splits.any((split) => split.budgetId == budgetId),
       ),
     );
   }
@@ -383,9 +359,6 @@ final class InMemoryTransactionRepositoryImpl implements TransactionRepository {
     return TransactionSplit(
       transactionAmount: _amountFromFixture(fixture.transactionAmount),
       valuationAmount: _amountFromFixture(fixture.valuationAmount),
-      budgetId: fixture.budgetId == null
-          ? null
-          : BudgetId.fromString(fixture.budgetId!),
       categoryId: fixture.categoryId == null
           ? null
           : CategoryId.fromString(fixture.categoryId!),

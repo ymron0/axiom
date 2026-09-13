@@ -27,7 +27,7 @@ part 'transaction.mapper.dart';
 /// - transaction metadata describes the financial event itself;
 /// - [ledgerEntries] describe account and asset impact;
 /// - [splits] describe allocation of transaction value to domain concepts such
-///   as budgets, categories, or jars.
+///   as categories, or jars.
 ///
 /// A [LedgerEntry] therefore changes or describes an account position, while a
 /// [TransactionSplit] does not. A split only assigns part of the transaction

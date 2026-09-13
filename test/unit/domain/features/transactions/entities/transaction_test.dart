@@ -1,6 +1,6 @@
+import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
-import 'package:axiom/src/core/identity/ids/budget_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
@@ -212,7 +212,7 @@ void main() {
           TransactionSplit(
             transactionAmount: _createAmount(),
             valuationAmount: _createAmount(),
-            budgetId: BudgetId.fromString('budget-1'),
+            categoryId: CategoryId.fromString('category-1'),
           ),
         ],
       );
@@ -347,7 +347,7 @@ void main() {
             TransactionSplit(
               transactionAmount: _createAmount(),
               valuationAmount: _createAmount(),
-              budgetId: BudgetId.fromString('budget-1'),
+              categoryId: CategoryId.fromString('category-1'),
             ),
           ],
         ),
@@ -369,7 +369,7 @@ void main() {
                 assetId: AssetId.fromString('asset-eur'),
                 amount: Decimal.fromInt(9),
               ),
-              budgetId: BudgetId.fromString('budget-1'),
+              categoryId: CategoryId.fromString('category-1'),
             ),
           ],
         ),
@@ -474,7 +474,7 @@ TransactionSplit _createSplit({
   return TransactionSplit(
     transactionAmount: transactionAmount,
     valuationAmount: valuationAmount,
-    budgetId: BudgetId.fromString('budget-1'),
+    categoryId: CategoryId.fromString('category-1'),
   );
 }
 
