@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
-import 'package:axiom/src/core/identity/ids/budget_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
@@ -20,18 +19,12 @@ void main() {
       assetId: AssetId.fromString('valuation-asset'),
       amount: Decimal.parse('10.00'),
     );
-    final budgetId = BudgetId.fromString('budget-123');
     final categoryId = CategoryId.fromString('category-123');
     final jarId = JarId.fromString('jar-123');
 
     test('accepts each allocation target independently', () {
       // Given
       final splits = [
-        TransactionSplit(
-          transactionAmount: transactionAmount,
-          valuationAmount: valuationAmount,
-          budgetId: budgetId,
-        ),
         TransactionSplit(
           transactionAmount: transactionAmount,
           valuationAmount: valuationAmount,
@@ -47,19 +40,12 @@ void main() {
       // Then
       expect(splits[0].transactionAmount, same(transactionAmount));
       expect(splits[0].valuationAmount, same(valuationAmount));
-      expect(splits[0].budgetId, same(budgetId));
-      expect(splits[0].categoryId, isNull);
+      expect(splits[0].categoryId, same(categoryId));
       expect(splits[0].jarId, isNull);
       expect(splits[1].transactionAmount, same(transactionAmount));
       expect(splits[1].valuationAmount, same(valuationAmount));
-      expect(splits[1].budgetId, isNull);
-      expect(splits[1].categoryId, same(categoryId));
-      expect(splits[1].jarId, isNull);
-      expect(splits[2].transactionAmount, same(transactionAmount));
-      expect(splits[2].valuationAmount, same(valuationAmount));
-      expect(splits[2].budgetId, isNull);
-      expect(splits[2].categoryId, isNull);
-      expect(splits[2].jarId, same(jarId));
+      expect(splits[1].categoryId, isNull);
+      expect(splits[1].jarId, same(jarId));
     });
 
     test('accepts multiple allocation targets without multiplying amount', () {
@@ -67,7 +53,6 @@ void main() {
       final split = TransactionSplit(
         transactionAmount: transactionAmount,
         valuationAmount: valuationAmount,
-        budgetId: budgetId,
         categoryId: categoryId,
         jarId: jarId,
       );
@@ -75,7 +60,6 @@ void main() {
       // Then
       expect(split.transactionAmount, same(transactionAmount));
       expect(split.valuationAmount, same(valuationAmount));
-      expect(split.budgetId, same(budgetId));
       expect(split.categoryId, same(categoryId));
       expect(split.jarId, same(jarId));
     });
@@ -106,7 +90,7 @@ void main() {
             assetId: AssetId.fromString('valuation-asset'),
             amount: Decimal.parse('10.00'),
           ),
-          budgetId: budgetId,
+          categoryId: categoryId,
         ),
         throwsA(
           isA<ArgumentError>().having(
@@ -128,7 +112,7 @@ void main() {
             assetId: transactionAmount.assetId,
             amount: Decimal.parse('10.00'),
           ),
-          budgetId: budgetId,
+          categoryId: categoryId,
         ),
         throwsA(
           isA<ArgumentError>().having(
@@ -157,7 +141,7 @@ void main() {
       final split = TransactionSplit(
         transactionAmount: transactionAmount,
         valuationAmount: valuationAmount,
-        budgetId: budgetId,
+        categoryId: categoryId,
       );
 
       // Then
@@ -170,7 +154,6 @@ void main() {
       final first = TransactionSplit(
         transactionAmount: transactionAmount,
         valuationAmount: valuationAmount,
-        budgetId: budgetId,
         categoryId: categoryId,
       );
       final same = TransactionSplit(
@@ -182,7 +165,6 @@ void main() {
           assetId: AssetId.fromString('valuation-asset'),
           amount: Decimal.parse('10.00'),
         ),
-        budgetId: BudgetId.fromString('budget-123'),
         categoryId: CategoryId.fromString('category-123'),
       );
 
@@ -195,7 +177,6 @@ void main() {
       final split = TransactionSplit(
         transactionAmount: transactionAmount,
         valuationAmount: valuationAmount,
-        budgetId: budgetId,
         categoryId: categoryId,
         jarId: jarId,
       );
@@ -214,11 +195,11 @@ void main() {
                 TransactionSplit(
                   transactionAmount: transactionAmount,
                   valuationAmount: valuationAmount,
-                  budgetId: budgetId,
+                  categoryId: categoryId,
                 ).toJson(),
               )
               as Map<String, dynamic>;
-      encoded.remove('budgetId');
+      encoded.remove('categoryId');
 
       // When / Then
       expect(

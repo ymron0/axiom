@@ -2,7 +2,6 @@ import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.da
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
-import 'package:axiom/src/core/identity/ids/budget_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
@@ -95,7 +94,6 @@ void main() {
     return TransactionSplit(
       transactionAmount: amount,
       valuationAmount: amount,
-      budgetId: budgetId == null ? null : BudgetId.fromString(budgetId),
       categoryId: categoryId == null ? null : CategoryId.fromString(categoryId),
       jarId: jarId == null ? null : JarId.fromString(jarId),
     );
@@ -545,29 +543,6 @@ void main() {
         expect(result.valueOrNull, [same(matching)]);
       });
 
-      test('returns transactions allocated to a budget', () async {
-        // Given
-        final repository = createRepository();
-        final matching = transactionFixture(
-          id: 'budget-lookup-match',
-          splits: [splitFixture(budgetId: 'budget-household')],
-        );
-        final unrelated = transactionFixture(
-          id: 'budget-lookup-unrelated',
-          splits: [splitFixture(budgetId: 'budget-travel')],
-        );
-        await repository.createAll([matching, unrelated]);
-
-        // When
-        final result = await repository.getTransactionsByBudgetId(
-          BudgetId.fromString('budget-household'),
-        );
-
-        // Then
-        expect(result.isSuccess, isTrue);
-        expect(result.valueOrNull, [same(matching)]);
-      });
-
       test('returns transactions allocated to a jar', () async {
         // Given
         final repository = createRepository();
@@ -637,9 +612,6 @@ void main() {
         final categoryExists = await repository.existsByCategoryId(
           CategoryId.fromString('category-groceries'),
         );
-        final budgetExists = await repository.existsByBudgetId(
-          BudgetId.fromString('budget-household'),
-        );
         final jarExists = await repository.existsByJarId(
           JarId.fromString('jar-emergency'),
         );
@@ -648,7 +620,6 @@ void main() {
         expect(accountExists.valueOrNull, isTrue);
         expect(merchantExists.valueOrNull, isTrue);
         expect(categoryExists.valueOrNull, isTrue);
-        expect(budgetExists.valueOrNull, isTrue);
         expect(jarExists.valueOrNull, isTrue);
       });
 
@@ -668,9 +639,6 @@ void main() {
           final categoryExists = await repository.existsByCategoryId(
             CategoryId.fromString('category-missing'),
           );
-          final budgetExists = await repository.existsByBudgetId(
-            BudgetId.fromString('budget-missing'),
-          );
           final jarExists = await repository.existsByJarId(
             JarId.fromString('jar-missing'),
           );
@@ -679,7 +647,6 @@ void main() {
           expect(accountExists.valueOrNull, isFalse);
           expect(merchantExists.valueOrNull, isFalse);
           expect(categoryExists.valueOrNull, isFalse);
-          expect(budgetExists.valueOrNull, isFalse);
           expect(jarExists.valueOrNull, isFalse);
         },
       );

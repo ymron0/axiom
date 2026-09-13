@@ -1,5 +1,4 @@
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/core/identity/ids/budget_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
@@ -11,9 +10,6 @@ part 'transaction_split.mapper.dart';
 /// A split describes how transaction value is classified or allocated. It does
 /// not describe movement into or out of an account; account balance impact is
 /// represented separately by `LedgerEntry`.
-///
-/// A single split may reference multiple allocation dimensions. For example,
-/// an expense may simultaneously belong to a budget and a category.
 ///
 /// ## Invariants
 ///
@@ -27,7 +23,7 @@ part 'transaction_split.mapper.dart';
 ///
 /// ## Semantics
 ///
-/// [budgetId], [categoryId], and [jarId] identify independent allocation
+/// [categoryId], and [jarId] identify independent allocation
 /// dimensions. Their presence does not multiply the monetary value represented
 /// by [transactionAmount] or [valuationAmount].
 ///
@@ -51,9 +47,6 @@ final class TransactionSplit with TransactionSplitMappable {
   /// in another currency, not an additional allocation.
   final AssetAmount valuationAmount;
 
-  /// The budget receiving this allocation, when applicable.
-  final BudgetId? budgetId;
-
   /// The category receiving this allocation, when applicable.
   final CategoryId? categoryId;
 
@@ -70,11 +63,10 @@ final class TransactionSplit with TransactionSplitMappable {
   TransactionSplit({
     required this.transactionAmount,
     required this.valuationAmount,
-    this.budgetId,
     this.categoryId,
     this.jarId,
   }) {
-    if (budgetId == null && categoryId == null && jarId == null) {
+    if (categoryId == null && jarId == null) {
       throw ArgumentError(
         'A transaction split must specify at least one allocation target.',
       );

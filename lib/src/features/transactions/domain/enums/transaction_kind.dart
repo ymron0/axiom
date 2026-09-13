@@ -27,7 +27,7 @@ extension TransactionKindDomain on TransactionKind {
   /// Whether transactions of this kind support allocation splits.
   ///
   /// Expense and income transactions may allocate their economic amount across
-  /// budgets, categories, or jars.
+  /// categories, or jars.
   ///
   /// Transfers and balance corrections do not represent allocatable spending or
   /// income and therefore do not support splits.

@@ -1,7 +1,6 @@
 // coverage:ignore-file
 
 import 'package:axiom/src/core/identity/ids/account_id.dart';
-import 'package:axiom/src/core/identity/ids/budget_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
@@ -79,13 +78,6 @@ abstract interface class TransactionRepository {
   Future<Result<List<Transaction>, TransactionFailure>>
   getTransactionsByCategoryId(CategoryId categoryId);
 
-  /// Returns transactions allocated to [budgetId] in persistence insertion
-  /// order.
-  ///
-  /// Returns an empty list when none are allocated to the budget.
-  Future<Result<List<Transaction>, TransactionFailure>>
-  getTransactionsByBudgetId(BudgetId budgetId);
-
   /// Returns transactions allocated to [jarId] in persistence insertion order.
   ///
   /// Returns an empty list when none are allocated to the jar.
@@ -107,9 +99,6 @@ abstract interface class TransactionRepository {
   Future<Result<bool, TransactionFailure>> existsByCategoryId(
     CategoryId categoryId,
   );
-
-  /// Whether at least one persisted transaction is allocated to [budgetId].
-  Future<Result<bool, TransactionFailure>> existsByBudgetId(BudgetId budgetId);
 
   /// Whether at least one persisted transaction is allocated to [jarId].
   Future<Result<bool, TransactionFailure>> existsByJarId(JarId jarId);
