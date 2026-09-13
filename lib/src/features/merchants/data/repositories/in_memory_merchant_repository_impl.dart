@@ -21,7 +21,11 @@ final class InMemoryMerchantRepositoryImpl implements MerchantRepository {
     : _merchants = _validatedSeed(
         initialMerchants ??
             merchantsFixtures
-                .where((fixture) => fixture.deletedAt == null)
+          .where(
+            (fixture) =>
+              fixture.deletedAt == null &&
+              fixture.id != MerchantId.self.value,
+          )
                 .map<Merchant>(
                   (fixture) => Merchant(
                     id: MerchantId.fromString(fixture.id),

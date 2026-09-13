@@ -20,8 +20,7 @@ part 'merchant_id.mapper.dart';
 /// ## Semantics
 ///
 /// The Dart type represents merchant identity; [self] is the reserved current
-/// merchant identity. Use [isSelf] to determine whether an ID represents
-/// [self]. Neither may be substituted for an unrelated typed ID.
+/// merchant identity. Neither may be substituted for an unrelated typed ID.
 ///
 /// ## Contract
 ///
