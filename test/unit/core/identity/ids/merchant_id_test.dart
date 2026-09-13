@@ -13,6 +13,11 @@ void main() {
       expect(MerchantId.self.value, 'self');
     });
 
+    test('isSelf identifies only the reserved self identifier', () {
+      expect(MerchantId.self.isSelf, isTrue);
+      expect(MerchantId.fromString('merchant-123').isSelf, isFalse);
+    });
+
     test('generate uses only characters from the Nano ID URL alphabet', () {
       final id = MerchantId.generate();
       expect(id.value, isNotEmpty);

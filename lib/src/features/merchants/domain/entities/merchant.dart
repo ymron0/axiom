@@ -24,6 +24,8 @@ part 'merchant.mapper.dart';
 /// ## Invariants
 ///
 /// - [name] is trimmed and cannot be blank.
+/// - [id] cannot be [MerchantId.self], which is reserved for the absence of
+///   a merchant.
 /// - [deletedAt], when present, cannot precede [createdAt].
 /// - [modifiedAt] cannot precede [createdAt], as enforced by [AuditedEntity].
 /// - [entityVersion] is greater than zero, as enforced by [AuditedEntity].
@@ -50,6 +52,14 @@ final class Merchant extends AuditedEntity<MerchantId>
         deletedAt,
         'deletedAt',
         'Deletion time cannot precede creation time.',
+      );
+    }
+
+    if (id.isSelf) {
+      throw ArgumentError.value(
+        id,
+        'id',
+        'MerchantId.self is reserved and cannot represent a persisted merchant.',
       );
     }
   }
