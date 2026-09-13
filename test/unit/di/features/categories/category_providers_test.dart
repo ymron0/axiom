@@ -12,7 +12,7 @@ import 'package:axiom/src/features/categories/data/repositories/in_memory_catego
 import 'package:axiom/src/features/categories/domain/entities/category.dart';
 import 'package:axiom/src/features/categories/di/category_repository_provider.dart';
 import 'package:axiom/src/features/categories/di/create_category_use_case_provider.dart';
-import 'package:axiom/src/features/categories/di/delete_category_service_provider.dart';
+import 'package:axiom/src/application/di/services/delete_category_service_provider.dart';
 import 'package:axiom/src/features/categories/di/delete_category_use_case_provider.dart';
 import 'package:axiom/src/features/categories/di/get_categories_use_case_provider.dart';
 import 'package:axiom/src/features/categories/di/get_category_by_id_use_case_provider.dart';
