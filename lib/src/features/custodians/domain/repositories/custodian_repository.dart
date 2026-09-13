@@ -3,20 +3,20 @@
 import 'package:axiom/src/core/identity/ids/custodian_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/custodians/domain/entities/custodian.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_already_active_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_already_deleted_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_already_exists_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_not_found_failure.dart';
 
 /// Domain-facing contract for storing and retrieving [Custodian] entities.
 ///
 /// ## Semantics
 ///
-/// Custodians are soft-deleted. A deleted custodian remains in persistence
-/// with a non-null [Custodian.deletedAt] and can later be restored.
-///
-/// Retrieval operations return active custodians only unless otherwise
-/// specified.
-///
-/// A custodian cannot be deleted while one or more accounts reference it.
-/// Those accounts must first be deleted explicitly by the caller.
+/// Custodians with a non-null [Custodian.deletedAt] are absent from
+/// persistence. Deletion is physical: this interface returns, but does not
+/// retain, the deleted snapshot. A caller that needs restoration must retain
+/// that snapshot and pass it to [restore].
 abstract interface class CustodianRepository {
   /// Stores a new active [custodian].
   ///
@@ -26,17 +26,17 @@ abstract interface class CustodianRepository {
   /// Fails when [Custodian.deletedAt] is not `null`.
   Future<Result<void, CustodianFailure>> create(Custodian custodian);
 
-  /// Returns all active custodians.
+  /// Returns all persisted custodians.
   ///
-  /// Returns an empty list when no active custodians exist.
+  /// Returns an empty list when no custodians exist.
   Future<Result<List<Custodian>, CustodianFailure>> getAll();
 
-  /// Returns the active custodian identified by [id].
+  /// Returns the persisted custodian identified by [id].
   ///
-  /// Returns `null` when no active custodian with [id] exists.
+  /// Returns `null` when no custodian with [id] exists.
   Future<Result<Custodian?, CustodianFailure>> getById(CustodianId id);
 
-  /// Returns active custodians whose name contains [query].
+  /// Returns persisted custodians whose name contains [query].
   ///
   /// Matching is case-insensitive and based on a substring of the custodian
   /// name.
@@ -54,23 +54,19 @@ abstract interface class CustodianRepository {
   /// currently deleted.
   Future<Result<void, CustodianFailure>> update(Custodian custodian);
 
-  /// Soft-deletes the custodian identified by [id].
+  /// Physically removes the custodian identified by [id].
   ///
   /// Fails with [CustodianNotFoundFailure] when the custodian does not exist.
   ///
-  /// Fails with [CustodianAlreadyDeletedFailure] when the custodian is already
-  /// deleted.
-  ///
-  /// Fails with [CustodianInUseFailure] while one or more accounts reference
-  /// the custodian. Those accounts must be deleted before the custodian can be
-  /// deleted.
-  Future<Result<void, CustodianFailure>> delete(CustodianId id);
+  /// Returns the removed snapshot with [Custodian.deletedAt] set to the
+  /// deletion time. The repository does not retain that snapshot.
+  Future<Result<Custodian, CustodianFailure>> delete(CustodianId id);
 
-  /// Restores the deleted custodian identified by [id].
+  /// Restores the caller-retained deleted [custodian].
   ///
-  /// Fails with [CustodianNotFoundFailure] when the custodian does not exist.
-  ///
-  /// Fails with [CustodianAlreadyActiveFailure] when the custodian is already
-  /// active.
-  Future<Result<void, CustodianFailure>> restore(CustodianId id);
+  /// On success, stores an active copy with [Custodian.deletedAt] set to
+  /// `null`. Fails with [CustodianAlreadyActiveFailure] when [custodian] is
+  /// active or [CustodianAlreadyExistsFailure] when its identity already
+  /// exists in persistence.
+  Future<Result<void, CustodianFailure>> restore(Custodian custodian);
 }

@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
+import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:axiom/src/core/identity/ids/custodian_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/custodians/domain/entities/custodian.dart';
@@ -10,10 +11,12 @@ void main() {
   group('Custodian', () {
     test('creates a custodian with generated identity and audit metadata', () {
       final timestamp = DateTime.parse('2026-09-12T10:30:00+02:00');
+      final logo = EntityLogo.asset('assets/logos/main-bank.svg');
 
       final custodian = Custodian.create(
         name: '  Main Bank  ',
         kind: CustodianKind.bank,
+        logo: logo,
         icon: EntityIcon.accountBalance,
         color: EntityColor.blue,
         sortOrder: 0,
@@ -22,9 +25,16 @@ void main() {
 
       expect(custodian.id.value, isNotEmpty);
       expect(custodian.name, 'Main Bank');
+      expect(custodian.kind, CustodianKind.bank);
+      expect(custodian.logo, same(logo));
+      expect(custodian.icon, EntityIcon.accountBalance);
+      expect(custodian.color, EntityColor.blue);
+      expect(custodian.sortOrder, 0);
       expect(custodian.entityVersion, 1);
       expect(custodian.createdAt, timestamp.toUtc());
       expect(custodian.modifiedAt, same(custodian.createdAt));
+      expect(custodian.deletedAt, isNull);
+      expect(custodian.isDeleted, isFalse);
     });
 
     test('creates a custodian with the default clock when none is provided', () {
@@ -53,6 +63,28 @@ void main() {
         () => _createCustodian(sortOrder: -1),
         throwsA(
           isA<ArgumentError>().having((e) => e.name, 'name', 'sortOrder'),
+        ),
+      );
+    });
+
+    test('preserves a deletion timestamp and reports the custodian deleted', () {
+      final deletedAt = DateTime.utc(2026, 9, 13);
+
+      final custodian = _createCustodian(deletedAt: deletedAt);
+
+      expect(custodian.deletedAt, same(deletedAt));
+      expect(custodian.isDeleted, isTrue);
+    });
+
+    test('rejects deletion before creation', () {
+      final deletedAt = DateTime.utc(2026, 9, 11);
+
+      expect(
+        () => _createCustodian(deletedAt: deletedAt),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'deletedAt')
+              .having((e) => e.invalidValue, 'invalidValue', deletedAt),
         ),
       );
     });
@@ -94,6 +126,7 @@ Custodian _createCustodian({
   CustodianId? id,
   String name = 'Main Bank',
   int sortOrder = 0,
+  DateTime? deletedAt,
   int entityVersion = 1,
   DateTime? createdAt,
   DateTime? modifiedAt,
@@ -106,6 +139,7 @@ Custodian _createCustodian({
     icon: EntityIcon.accountBalance,
     color: EntityColor.blue,
     sortOrder: sortOrder,
+    deletedAt: deletedAt,
     createdAt: created,
     modifiedAt: modifiedAt ?? created,
     entityVersion: entityVersion,

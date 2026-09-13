@@ -254,7 +254,7 @@ packages:
     description:
       path: "."
       ref: HEAD
-      resolved-ref: e116e355f475e563947dd5e45016e03f3dce1bb9
+      resolved-ref: "2cf60e279f0cbb06c2b71538bad245a9f03ab6f5"
       url: "git@github.com:ymron0/fixtures.git"
     source: git
     version: "1.0.0"

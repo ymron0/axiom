@@ -8,21 +8,16 @@ import 'package:axiom/src/features/accounts/domain/failures/account_already_acti
 import 'package:axiom/src/features/accounts/domain/failures/account_already_deleted_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_already_exists_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart';
-import 'package:axiom/src/features/accounts/domain/failures/account_in_use_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
 
 /// Domain-facing contract for storing and retrieving [Account] entities.
 ///
 /// ## Semantics
 ///
-/// Accounts are soft-deleted. A deleted account remains in persistence with a
-/// non-null [Account.deletedAt] and can later be restored.
-///
-/// Retrieval operations return active accounts only unless otherwise
-/// specified.
-///
-/// An account cannot be deleted while one or more transactions reference it.
-/// Those transactions must first be deleted explicitly by the caller.
+/// Accounts with a non-null [Account.deletedAt] are absent from persistence.
+/// Deletion is physical: this interface returns, but does not retain, the
+/// deleted snapshot. A caller that needs restoration must retain that snapshot
+/// and pass it to [restore].
 abstract interface class AccountRepository {
   /// Stores a new active [account].
   ///
@@ -32,25 +27,25 @@ abstract interface class AccountRepository {
   /// Fails when [Account.deletedAt] is not `null`.
   Future<Result<void, AccountFailure>> create(Account account);
 
-  /// Returns all active accounts.
+  /// Returns all persisted accounts.
   ///
-  /// Returns an empty list when no active accounts exist.
+  /// Returns an empty list when no accounts exist.
   Future<Result<List<Account>, AccountFailure>> getAll();
 
-  /// Returns the active account identified by [id].
+  /// Returns the persisted account identified by [id].
   ///
-  /// Returns `null` when no active account with [id] exists.
+  /// Returns `null` when no account with [id] exists.
   Future<Result<Account?, AccountFailure>> getById(AccountId id);
 
-  /// Returns all active accounts belonging to the custodian identified by
+  /// Returns all persisted accounts belonging to the custodian identified by
   /// [custodianId].
   ///
-  /// Returns an empty list when the custodian has no active accounts.
+  /// Returns an empty list when the custodian has no accounts.
   Future<Result<List<Account>, AccountFailure>> getByCustodianId(
     CustodianId custodianId,
   );
 
-  /// Returns active accounts whose name contains [query].
+  /// Returns persisted accounts whose name contains [query].
   ///
   /// Matching is case-insensitive and based on a substring of the account
   /// name.
@@ -68,23 +63,19 @@ abstract interface class AccountRepository {
   /// deleted.
   Future<Result<void, AccountFailure>> update(Account account);
 
-  /// Soft-deletes the account identified by [id].
+  /// Physically removes the account identified by [id].
   ///
   /// Fails with [AccountNotFoundFailure] when the account does not exist.
   ///
-  /// Fails with [AccountAlreadyDeletedFailure] when the account is already
-  /// deleted.
-  ///
-  /// Fails with [AccountInUseFailure] while one or more transactions reference
-  /// the account. Those transactions must be deleted before the account can be
-  /// deleted.
-  Future<Result<void, AccountFailure>> delete(AccountId id);
+  /// Returns the removed snapshot with [Account.deletedAt] set to the deletion
+  /// time. The repository does not retain that snapshot.
+  Future<Result<Account, AccountFailure>> delete(AccountId id);
 
-  /// Restores the deleted account identified by [id].
+  /// Restores the caller-retained deleted [account].
   ///
-  /// Fails with [AccountNotFoundFailure] when the account does not exist.
-  ///
-  /// Fails with [AccountAlreadyActiveFailure] when the account is already
-  /// active.
-  Future<Result<void, AccountFailure>> restore(AccountId id);
+  /// On success, stores an active copy with [Account.deletedAt] set to `null`.
+  /// Fails with [AccountAlreadyActiveFailure] when [account] is active or
+  /// [AccountAlreadyExistsFailure] when its identity already exists in
+  /// persistence.
+  Future<Result<void, AccountFailure>> restore(Account account);
 }

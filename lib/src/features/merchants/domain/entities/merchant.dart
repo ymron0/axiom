@@ -8,16 +8,25 @@ import 'package:dart_mappable/dart_mappable.dart';
 
 part 'merchant.mapper.dart';
 
-/// Represents a canonical merchant associated with transactions.
+/// A canonical merchant associated with transactions.
 ///
-/// Categories associated with a merchant are derived from the transaction
-/// splits of transactions referencing the merchant rather than stored here.
+/// A merchant identifies the counterparty associated with one or more
+/// transactions.
 ///
-/// Transaction statistics such as total spending, transaction count, and
-/// last-used date are also derived from transactions.
+/// ## Derived data
 ///
-/// The [name] is trimmed and cannot be blank.
-/// When present, [deletedAt] cannot precede [createdAt].
+/// Categories associated with a merchant are derived from the splits of its
+/// transactions rather than stored on the merchant.
+///
+/// Statistics such as total spending, transaction count, and last-used date
+/// are also derived from transactions.
+///
+/// ## Invariants
+///
+/// - [name] is trimmed and cannot be blank.
+/// - [deletedAt], when present, cannot precede [createdAt].
+/// - [modifiedAt] cannot precede [createdAt], as enforced by [AuditedEntity].
+/// - [entityVersion] is greater than zero, as enforced by [AuditedEntity].
 @MappableClass()
 final class Merchant extends AuditedEntity<MerchantId>
     with Deletable, MerchantMappable {
