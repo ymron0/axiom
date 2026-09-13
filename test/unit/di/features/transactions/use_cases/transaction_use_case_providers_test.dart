@@ -9,6 +9,7 @@ import 'package:axiom/src/features/transactions/application/use_cases/get_all_tr
 import 'package:axiom/src/features/transactions/application/use_cases/get_transaction_by_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/query_transactions_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/restore_transaction_use_case.dart';
+import 'package:axiom/src/features/transactions/application/use_cases/transactions_exist_by_account_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/data/repositories/in_memory_transaction_repository_impl.dart';
 import 'package:axiom/src/features/transactions/di/create_all_transactions_use_case_provider.dart';
@@ -19,6 +20,7 @@ import 'package:axiom/src/features/transactions/di/get_transaction_by_id_use_cas
 import 'package:axiom/src/features/transactions/di/query_transactions_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/restore_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/transaction_repository_provider.dart';
+import 'package:axiom/src/features/transactions/di/transactions_exist_by_account_id_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/update_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
@@ -50,6 +52,7 @@ void main() {
         container.read(getAllTransactionsUseCaseProvider),
         container.read(getTransactionByIdUseCaseProvider),
         container.read(queryTransactionsUseCaseProvider),
+        container.read(transactionsExistByAccountIdUseCaseProvider),
         container.read(updateTransactionUseCaseProvider),
         container.read(deleteTransactionUseCaseProvider),
         container.read(restoreTransactionUseCaseProvider),
@@ -57,15 +60,16 @@ void main() {
 
       // Then
       expect(repository, isA<InMemoryTransactionRepositoryImpl>());
-      expect(useCases, hasLength(8));
+      expect(useCases, hasLength(9));
       expect(useCases[0], isA<CreateTransactionUseCase>());
       expect(useCases[1], isA<CreateAllTransactionsUseCase>());
       expect(useCases[2], isA<GetAllTransactionsUseCase>());
       expect(useCases[3], isA<GetTransactionByIdUseCase>());
       expect(useCases[4], isA<QueryTransactionsUseCase>());
-      expect(useCases[5], isA<UpdateTransactionUseCase>());
-      expect(useCases[6], isA<DeleteTransactionUseCase>());
-      expect(useCases[7], isA<RestoreTransactionUseCase>());
+      expect(useCases[5], isA<TransactionsExistByAccountIdUseCase>());
+      expect(useCases[6], isA<UpdateTransactionUseCase>());
+      expect(useCases[7], isA<DeleteTransactionUseCase>());
+      expect(useCases[8], isA<RestoreTransactionUseCase>());
     });
 
     test('injects an overridden repository into every use case', () async {
@@ -97,6 +101,11 @@ void main() {
       when(() => repository.query(query)).thenAnswer(
         (_) async => Success<List<Transaction>>(transactions),
       );
+      when(
+        () => repository.existsByAccountId(
+          transaction.ledgerEntries.first.accountId,
+        ),
+      ).thenAnswer((_) async => const Success(true));
       when(() => repository.update(transaction)).thenAnswer(
         (_) async => const Success(null),
       );
@@ -125,6 +134,9 @@ void main() {
       await container.read(getAllTransactionsUseCaseProvider)();
       await container.read(getTransactionByIdUseCaseProvider)(transaction.id);
       await container.read(queryTransactionsUseCaseProvider)(query);
+      await container.read(transactionsExistByAccountIdUseCaseProvider)(
+        transaction.ledgerEntries.first.accountId,
+      );
       await container.read(updateTransactionUseCaseProvider)(transaction);
       await container.read(deleteTransactionUseCaseProvider)(
         transaction.id,
@@ -138,6 +150,11 @@ void main() {
       verify(() => repository.getAll()).called(1);
       verify(() => repository.getById(transaction.id)).called(2);
       verify(() => repository.query(query)).called(1);
+      verify(
+        () => repository.existsByAccountId(
+          transaction.ledgerEntries.first.accountId,
+        ),
+      ).called(1);
       verify(() => repository.update(transaction)).called(1);
       verify(() => repository.delete(transaction.id)).called(1);
       verify(() => repository.restore(deleted)).called(1);

@@ -5,7 +5,7 @@ import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart
 import 'package:axiom/src/features/accounts/domain/repositories/account_repository.dart';
 
 /// Physically deletes an account and returns its deleted snapshot.
-final class DeleteAccountUseCase {
+class DeleteAccountUseCase {
   /// Creates a use case backed by [repository].
   DeleteAccountUseCase(this._repository);
 
