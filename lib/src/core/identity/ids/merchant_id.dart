@@ -20,7 +20,8 @@ part 'merchant_id.mapper.dart';
 /// ## Semantics
 ///
 /// The Dart type represents merchant identity; [self] is the reserved current
-/// merchant identity. Neither may be substituted for an unrelated typed ID.
+/// merchant identity. Use [isSelf] to determine whether an ID represents
+/// [self]. Neither may be substituted for an unrelated typed ID.
 ///
 /// ## Contract
 ///
@@ -38,4 +39,10 @@ final class MerchantId extends UniqueId with MerchantIdMappable {
 
   /// Creates a merchant identifier with a newly generated Nano ID value.
   MerchantId.generate() : super.generate();
+
+  /// Whether this ID represents the application's synthetic "self" merchant.
+  ///
+  /// Returns `true` when this ID equals [self], and `false` for all other
+  /// merchant IDs.
+  bool get isSelf => this == self;
 }
