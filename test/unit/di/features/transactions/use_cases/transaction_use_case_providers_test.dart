@@ -1,5 +1,3 @@
-import 'package:axiom/src/core/di/clock_provider.dart';
-import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_all_transactions_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_all_transactions_use_case.dart';
@@ -90,20 +88,20 @@ void main() {
         deletedAt: DateTime.utc(2026, 1, 2),
       );
       final transactions = [transaction];
-      final createCommand = createTransactionCommandFixture();
+      final createdTransaction = newTransactionFixture();
       final createAllCommand = CreateAllTransactionsCommand(
         commands: [createTransactionCommandFixture()],
       );
       final query = TransactionQuery();
-      when(() => repository.create(any())).thenAnswer(
-        (_) async => const Success(null),
-      );
-      when(() => repository.createAll(any())).thenAnswer(
-        (_) async => const Success(null),
-      );
-      when(() => repository.getAll()).thenAnswer(
-        (_) async => Success<List<Transaction>>(transactions),
-      );
+      when(
+        () => repository.create(any()),
+      ).thenAnswer((_) async => const Success(null));
+      when(
+        () => repository.createAll(any()),
+      ).thenAnswer((_) async => const Success(null));
+      when(
+        () => repository.getAll(),
+      ).thenAnswer((_) async => Success<List<Transaction>>(transactions));
       when(
         () => repository.getLedgerEntriesByAccountId(
           transaction.ledgerEntries.first.accountId,
@@ -111,12 +109,12 @@ void main() {
       ).thenAnswer(
         (_) async => Success<List<LedgerEntry>>(transaction.ledgerEntries),
       );
-      when(() => repository.getById(transaction.id)).thenAnswer(
-        (_) async => Success<Transaction?>(transaction),
-      );
-      when(() => repository.query(query)).thenAnswer(
-        (_) async => Success<List<Transaction>>(transactions),
-      );
+      when(
+        () => repository.getById(transaction.id),
+      ).thenAnswer((_) async => Success<Transaction?>(transaction));
+      when(
+        () => repository.query(query),
+      ).thenAnswer((_) async => Success<List<Transaction>>(transactions));
       when(
         () => repository.existsByAccountId(
           transaction.ledgerEntries.first.accountId,
@@ -125,31 +123,29 @@ void main() {
       when(
         () => repository.existsByMerchantId(transaction.merchantId),
       ).thenAnswer((_) async => const Success(true));
-      when(() => repository.update(transaction)).thenAnswer(
-        (_) async => const Success(null),
-      );
-      when(() => repository.delete(transaction.id)).thenAnswer(
-        (_) async => const Success(null),
-      );
-      when(() => repository.restore(deleted)).thenAnswer(
-        (_) async => const Success(null),
-      );
+      when(
+        () => repository.update(transaction),
+      ).thenAnswer((_) async => const Success(null));
+      when(
+        () => repository.delete(transaction.id),
+      ).thenAnswer((_) async => const Success(null));
+      when(
+        () => repository.restore(deleted),
+      ).thenAnswer((_) async => const Success(null));
       final container = ProviderContainer(
         overrides: [
           transactionRepositoryProvider.overrideWithValue(repository),
-          clockProvider.overrideWithValue(
-            FixedClock(DateTime.utc(2026, 1, 1)),
-          ),
         ],
       );
       addTearDown(container.dispose);
 
       // When
       final created = await container.read(createTransactionUseCaseProvider)(
-        createCommand,
+        createdTransaction,
       );
-      final createdAll = await container
-          .read(createAllTransactionsUseCaseProvider)(createAllCommand);
+      final createdAll = await container.read(
+        createAllTransactionsUseCaseProvider,
+      )(createAllCommand);
       await container.read(getAllTransactionsUseCaseProvider)();
       await container.read(getLedgerEntriesByAccountIdUseCaseProvider)(
         transaction.ledgerEntries.first.accountId,
@@ -170,7 +166,8 @@ void main() {
       await container.read(restoreTransactionUseCaseProvider)(deleted);
 
       // Then
-      verify(() => repository.create(created.valueOrNull!)).called(1);
+      expect(created.isSuccess, isTrue);
+      verify(() => repository.create(createdTransaction)).called(1);
       verify(() => repository.createAll(createdAll.valueOrNull!)).called(1);
       verify(() => repository.getAll()).called(1);
       verify(

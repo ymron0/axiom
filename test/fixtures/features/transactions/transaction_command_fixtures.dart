@@ -1,3 +1,4 @@
+import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_transaction_command.dart';
 
 import 'transaction_fixtures.dart';
@@ -9,6 +10,26 @@ CreateTransactionCommand createTransactionCommandFixture({
   final transaction = transactionFixture(
     id: 'transaction-command-source',
     effectiveAt: effectiveAt,
+  );
+
+  return CreateTransactionCommand(
+    kind: transaction.kind,
+    merchantId: transaction.merchantId,
+    effectiveAt: transaction.effectiveAt,
+    description: transaction.description,
+    note: transaction.note,
+    state: transaction.state,
+    splits: transaction.splits,
+    ledgerEntries: transaction.ledgerEntries,
+  );
+}
+
+/// Creates a transaction creation command containing one category allocation.
+CreateTransactionCommand createTransactionCommandWithCategoryAllocationFixture(
+  CategoryId categoryId,
+) {
+  final transaction = transactionWithCategoryAllocationFixture(
+    categoryId: categoryId,
   );
 
   return CreateTransactionCommand(
