@@ -42,6 +42,7 @@ void main() {
     int entityVersion = 1,
     DateTime? modifiedAt,
     List<TransactionSplit> splits = const [],
+    List<LedgerEntry>? ledgerEntries,
   }) {
     final amount = AssetAmount(
       assetId: AssetId.fromString('asset-eur'),
@@ -63,15 +64,17 @@ void main() {
       state: state,
       deletedAt: deletedAt,
       splits: splits,
-      ledgerEntries: [
-        LedgerEntry(
-          accountId: AccountId.fromString(accountId),
-          transactionAmount: amount,
-          accountAmount: amount,
-          valuationAmount: amount,
-          role: LedgerEntryRole.primary,
-        ),
-      ],
+      ledgerEntries:
+          ledgerEntries ??
+          [
+            LedgerEntry(
+              accountId: AccountId.fromString(accountId),
+              transactionAmount: amount,
+              accountAmount: amount,
+              valuationAmount: amount,
+              role: LedgerEntryRole.primary,
+            ),
+          ],
       createdAt: createdAt,
       modifiedAt: modifiedAt ?? createdAt,
       entityVersion: entityVersion,
@@ -95,6 +98,24 @@ void main() {
       budgetId: budgetId == null ? null : BudgetId.fromString(budgetId),
       categoryId: categoryId == null ? null : CategoryId.fromString(categoryId),
       jarId: jarId == null ? null : JarId.fromString(jarId),
+    );
+  }
+
+  LedgerEntry ledgerEntryFixture(
+    String accountId, {
+    LedgerEntryRole role = LedgerEntryRole.primary,
+  }) {
+    final amount = AssetAmount.outgoing(
+      assetId: AssetId.fromString('asset-eur'),
+      amount: Decimal.zero,
+    );
+
+    return LedgerEntry(
+      accountId: AccountId.fromString(accountId),
+      transactionAmount: amount,
+      accountAmount: amount,
+      valuationAmount: amount,
+      role: role,
     );
   }
 
@@ -402,6 +423,55 @@ void main() {
     });
 
     group('relationship lookups', () {
+      test(
+        'returns matching ledger entries in transaction and entry order',
+        () async {
+          // Given
+          final repository = createRepository();
+          final firstEntry = ledgerEntryFixture('account-chf-checking');
+          final unrelatedEntry = ledgerEntryFixture(
+            'account-eur-checking',
+            role: LedgerEntryRole.fee,
+          );
+          final secondEntry = ledgerEntryFixture('account-chf-checking');
+          final firstTransaction = transactionFixture(
+            id: 'entry-lookup-first',
+            ledgerEntries: [firstEntry, unrelatedEntry],
+          );
+          final secondTransaction = transactionFixture(
+            id: 'entry-lookup-second',
+            ledgerEntries: [secondEntry],
+          );
+          await repository.createAll([firstTransaction, secondTransaction]);
+
+          // When
+          final result = await repository.getLedgerEntriesByAccountId(
+            AccountId.fromString('account-chf-checking'),
+          );
+
+          // Then
+          expect(result.isSuccess, isTrue);
+          expect(result.valueOrNull, [same(firstEntry), same(secondEntry)]);
+        },
+      );
+
+      test('returns no ledger entries for an unrelated account', () async {
+        // Given
+        final repository = createRepository();
+        await repository.create(
+          transactionFixture(id: 'entry-lookup-unrelated'),
+        );
+
+        // When
+        final result = await repository.getLedgerEntriesByAccountId(
+          AccountId.fromString('account-missing'),
+        );
+
+        // Then
+        expect(result.isSuccess, isTrue);
+        expect(result.valueOrNull, isEmpty);
+      });
+
       test(
         'returns transactions affecting an account in insertion order',
         () async {

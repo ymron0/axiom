@@ -5,7 +5,7 @@ import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart
 import 'package:axiom/src/features/accounts/domain/repositories/account_repository.dart';
 
 /// Retrieves an active persisted account by identifier.
-final class GetAccountByIdUseCase {
+class GetAccountByIdUseCase {
   /// Creates a use case backed by [repository].
   GetAccountByIdUseCase(this._repository);
 

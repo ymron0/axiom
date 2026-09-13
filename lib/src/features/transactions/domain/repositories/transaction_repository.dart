@@ -10,6 +10,7 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_failure.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 
 /// Domain-facing contract for storing and retrieving [Transaction] aggregates.
 ///
@@ -49,6 +50,14 @@ abstract interface class TransactionRepository {
   ///
   /// Returns `null` when no matching transaction exists.
   Future<Result<Transaction?, TransactionFailure>> getById(TransactionId id);
+
+  /// Returns ledger entries affecting [accountId].
+  ///
+  /// Entries retain persistence insertion order between transactions and their
+  /// original order within each transaction. Returns an empty list when no
+  /// entries affect the account.
+  Future<Result<List<LedgerEntry>, TransactionFailure>>
+  getLedgerEntriesByAccountId(AccountId accountId);
 
   /// Returns transactions affecting [accountId] in persistence insertion order.
   ///
