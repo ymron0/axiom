@@ -30,8 +30,7 @@ import 'package:fixtures/types/transactions.dart';
 ///
 /// When no seed is supplied, the repository loads the external transaction
 /// fixtures. Iteration order is persistence insertion order.
-final class InMemoryTransactionRepositoryImpl
-    implements TransactionRepository {
+final class InMemoryTransactionRepositoryImpl implements TransactionRepository {
   /// Creates a repository seeded with [initialTransactions].
   ///
   /// Throws [ArgumentError] when the seed contains duplicate transaction IDs.
@@ -71,7 +70,8 @@ final class InMemoryTransactionRepositoryImpl
   ) async {
     if (transaction.isDeleted) {
       return TransactionAlreadyDeletedFailure(
-        message: 'Deleted transaction cannot be created: '
+        message:
+            'Deleted transaction cannot be created: '
             '${transaction.id.value}',
       );
     }
@@ -92,7 +92,8 @@ final class InMemoryTransactionRepositoryImpl
     for (final transaction in transactions) {
       if (transaction.isDeleted) {
         return TransactionAlreadyDeletedFailure(
-          message: 'Deleted transaction cannot be created: '
+          message:
+              'Deleted transaction cannot be created: '
               '${transaction.id.value}',
         );
       }
@@ -131,24 +132,141 @@ final class InMemoryTransactionRepositoryImpl
   }
 
   @override
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getTransactionsByAccountId(AccountId accountId) async {
+    return Success(
+      _matchingTransactions(
+        (transaction) => transaction.ledgerEntries.any(
+          (entry) => entry.accountId == accountId,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getTransactionsByMerchantId(MerchantId merchantId) async {
+    return Success(
+      _matchingTransactions(
+        (transaction) => transaction.merchantId == merchantId,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getTransactionsByCategoryId(CategoryId categoryId) async {
+    return Success(
+      _matchingTransactions(
+        (transaction) =>
+            transaction.splits.any((split) => split.categoryId == categoryId),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getTransactionsByBudgetId(BudgetId budgetId) async {
+    return Success(
+      _matchingTransactions(
+        (transaction) =>
+            transaction.splits.any((split) => split.budgetId == budgetId),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<List<Transaction>, TransactionFailure>> getTransactionsByJarId(
+    JarId jarId,
+  ) async {
+    return Success(
+      _matchingTransactions(
+        (transaction) =>
+            transaction.splits.any((split) => split.jarId == jarId),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<bool, TransactionFailure>> existsByAccountId(
+    AccountId accountId,
+  ) async {
+    return Success(
+      _transactions.values.any(
+        (transaction) => transaction.ledgerEntries.any(
+          (entry) => entry.accountId == accountId,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<bool, TransactionFailure>> existsByMerchantId(
+    MerchantId merchantId,
+  ) async {
+    return Success(
+      _transactions.values.any(
+        (transaction) => transaction.merchantId == merchantId,
+      ),
+    );
+  }
+
+  @override
+  Future<Result<bool, TransactionFailure>> existsByCategoryId(
+    CategoryId categoryId,
+  ) async {
+    return Success(
+      _transactions.values.any(
+        (transaction) =>
+            transaction.splits.any((split) => split.categoryId == categoryId),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<bool, TransactionFailure>> existsByBudgetId(
+    BudgetId budgetId,
+  ) async {
+    return Success(
+      _transactions.values.any(
+        (transaction) =>
+            transaction.splits.any((split) => split.budgetId == budgetId),
+      ),
+    );
+  }
+
+  @override
+  Future<Result<bool, TransactionFailure>> existsByJarId(JarId jarId) async {
+    return Success(
+      _transactions.values.any(
+        (transaction) =>
+            transaction.splits.any((split) => split.jarId == jarId),
+      ),
+    );
+  }
+
+  @override
   Future<Result<List<Transaction>, TransactionFailure>> query(
     TransactionQuery query,
   ) async {
-    final matches = _transactions.values.where((transaction) {
-      return (query.kinds.isEmpty || query.kinds.contains(transaction.kind)) &&
-          (query.states.isEmpty ||
-              query.states.contains(transaction.state)) &&
-          (query.merchantIds.isEmpty ||
-              query.merchantIds.contains(transaction.merchantId)) &&
-          (query.accountIds.isEmpty ||
-              transaction.ledgerEntries.any(
-                (entry) => query.accountIds.contains(entry.accountId),
-              )) &&
-            (query.effectiveFrom == null ||
-              !transaction.effectiveAt.isBefore(query.effectiveFrom!)) &&
-            (query.effectiveUntil == null ||
-              transaction.effectiveAt.isBefore(query.effectiveUntil!));
-    }).toList(growable: false);
+    final matches = _transactions.values
+        .where((transaction) {
+          return (query.kinds.isEmpty ||
+                  query.kinds.contains(transaction.kind)) &&
+              (query.states.isEmpty ||
+                  query.states.contains(transaction.state)) &&
+              (query.merchantIds.isEmpty ||
+                  query.merchantIds.contains(transaction.merchantId)) &&
+              (query.accountIds.isEmpty ||
+                  transaction.ledgerEntries.any(
+                    (entry) => query.accountIds.contains(entry.accountId),
+                  )) &&
+              (query.effectiveFrom == null ||
+                  !transaction.effectiveAt.isBefore(query.effectiveFrom!)) &&
+              (query.effectiveUntil == null ||
+                  transaction.effectiveAt.isBefore(query.effectiveUntil!));
+        })
+        .toList(growable: false);
 
     return Success(List.unmodifiable(matches));
   }
@@ -159,7 +277,8 @@ final class InMemoryTransactionRepositoryImpl
   ) async {
     if (transaction.isDeleted) {
       return TransactionAlreadyDeletedFailure(
-        message: 'Deleted transaction cannot be updated: '
+        message:
+            'Deleted transaction cannot be updated: '
             '${transaction.id.value}',
       );
     }
@@ -169,7 +288,8 @@ final class InMemoryTransactionRepositoryImpl
     }
     if (transaction.entityVersion != stored.entityVersion) {
       return TransactionVersionConflictFailure(
-        message: 'Transaction version conflicts with the stored version: '
+        message:
+            'Transaction version conflicts with the stored version: '
             '${transaction.id.value}',
       );
     }
@@ -211,6 +331,12 @@ final class InMemoryTransactionRepositoryImpl
     return TransactionNotFoundFailure(
       message: 'Transaction ID was not found: ${id.value}',
     );
+  }
+
+  List<Transaction> _matchingTransactions(
+    bool Function(Transaction transaction) matches,
+  ) {
+    return List.unmodifiable(_transactions.values.where(matches));
   }
 
   static Transaction _fromFixture(TransactionFixture fixture) {

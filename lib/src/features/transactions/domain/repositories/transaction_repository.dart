@@ -1,5 +1,10 @@
 // coverage:ignore-file
 
+import 'package:axiom/src/core/identity/ids/account_id.dart';
+import 'package:axiom/src/core/identity/ids/budget_id.dart';
+import 'package:axiom/src/core/identity/ids/category_id.dart';
+import 'package:axiom/src/core/identity/ids/jar_id.dart';
+import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
@@ -44,6 +49,61 @@ abstract interface class TransactionRepository {
   ///
   /// Returns `null` when no matching transaction exists.
   Future<Result<Transaction?, TransactionFailure>> getById(TransactionId id);
+
+  /// Returns transactions affecting [accountId] in persistence insertion order.
+  ///
+  /// Returns an empty list when none affect the account.
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getTransactionsByAccountId(AccountId accountId);
+
+  /// Returns transactions associated with [merchantId] in persistence insertion
+  /// order.
+  ///
+  /// Returns an empty list when none are associated with the merchant.
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getTransactionsByMerchantId(MerchantId merchantId);
+
+  /// Returns transactions allocated to [categoryId] in persistence insertion
+  /// order.
+  ///
+  /// Returns an empty list when none are allocated to the category.
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getTransactionsByCategoryId(CategoryId categoryId);
+
+  /// Returns transactions allocated to [budgetId] in persistence insertion
+  /// order.
+  ///
+  /// Returns an empty list when none are allocated to the budget.
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getTransactionsByBudgetId(BudgetId budgetId);
+
+  /// Returns transactions allocated to [jarId] in persistence insertion order.
+  ///
+  /// Returns an empty list when none are allocated to the jar.
+  Future<Result<List<Transaction>, TransactionFailure>> getTransactionsByJarId(
+    JarId jarId,
+  );
+
+  /// Whether at least one persisted transaction affects [accountId].
+  Future<Result<bool, TransactionFailure>> existsByAccountId(
+    AccountId accountId,
+  );
+
+  /// Whether at least one persisted transaction is associated with [merchantId].
+  Future<Result<bool, TransactionFailure>> existsByMerchantId(
+    MerchantId merchantId,
+  );
+
+  /// Whether at least one persisted transaction is allocated to [categoryId].
+  Future<Result<bool, TransactionFailure>> existsByCategoryId(
+    CategoryId categoryId,
+  );
+
+  /// Whether at least one persisted transaction is allocated to [budgetId].
+  Future<Result<bool, TransactionFailure>> existsByBudgetId(BudgetId budgetId);
+
+  /// Whether at least one persisted transaction is allocated to [jarId].
+  Future<Result<bool, TransactionFailure>> existsByJarId(JarId jarId);
 
   /// Returns persisted transactions matching [query].
   ///

@@ -2,6 +2,9 @@ import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.da
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/core/identity/ids/budget_id.dart';
+import 'package:axiom/src/core/identity/ids/category_id.dart';
+import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/features/transactions/data/repositories/in_memory_transaction_repository_impl.dart';
@@ -16,6 +19,7 @@ import 'package:axiom/src/features/transactions/domain/failures/transaction_not_
 import 'package:axiom/src/features/transactions/domain/failures/transaction_version_conflict_failure.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
@@ -37,6 +41,7 @@ void main() {
     DateTime? deletedAt,
     int entityVersion = 1,
     DateTime? modifiedAt,
+    List<TransactionSplit> splits = const [],
   }) {
     final amount = AssetAmount(
       assetId: AssetId.fromString('asset-eur'),
@@ -57,7 +62,7 @@ void main() {
       note: note,
       state: state,
       deletedAt: deletedAt,
-      splits: const [],
+      splits: splits,
       ledgerEntries: [
         LedgerEntry(
           accountId: AccountId.fromString(accountId),
@@ -70,6 +75,26 @@ void main() {
       createdAt: createdAt,
       modifiedAt: modifiedAt ?? createdAt,
       entityVersion: entityVersion,
+    );
+  }
+
+  TransactionSplit splitFixture({
+    String? budgetId,
+    String? categoryId,
+    String? jarId,
+  }) {
+    final amount = AssetAmount(
+      assetId: AssetId.fromString('asset-eur'),
+      amount: Decimal.zero,
+      direction: AssetAmountDirection.outgoing,
+    );
+
+    return TransactionSplit(
+      transactionAmount: amount,
+      valuationAmount: amount,
+      budgetId: budgetId == null ? null : BudgetId.fromString(budgetId),
+      categoryId: categoryId == null ? null : CategoryId.fromString(categoryId),
+      jarId: jarId == null ? null : JarId.fromString(jarId),
     );
   }
 
@@ -374,6 +399,220 @@ void main() {
         // Then
         expect(result.valueOrNull, [same(second), same(first)]);
       });
+    });
+
+    group('relationship lookups', () {
+      test(
+        'returns transactions affecting an account in insertion order',
+        () async {
+          // Given
+          final repository = createRepository();
+          final first = transactionFixture(
+            id: 'account-lookup-first',
+            accountId: 'account-chf-checking',
+          );
+          final unrelated = transactionFixture(id: 'account-lookup-unrelated');
+          final second = transactionFixture(
+            id: 'account-lookup-second',
+            accountId: 'account-chf-checking',
+          );
+          await repository.createAll([first, unrelated, second]);
+
+          // When
+          final result = await repository.getTransactionsByAccountId(
+            AccountId.fromString('account-chf-checking'),
+          );
+
+          // Then
+          expect(result.isSuccess, isTrue);
+          expect(result.valueOrNull, [same(first), same(second)]);
+        },
+      );
+
+      test('returns transactions associated with a merchant', () async {
+        // Given
+        final repository = createRepository();
+        final matching = transactionFixture(
+          id: 'merchant-lookup-match',
+          merchantId: 'merchant-grocery',
+        );
+        final unrelated = transactionFixture(
+          id: 'merchant-lookup-unrelated',
+          merchantId: 'merchant-other',
+        );
+        await repository.createAll([matching, unrelated]);
+
+        // When
+        final result = await repository.getTransactionsByMerchantId(
+          MerchantId.fromString('merchant-grocery'),
+        );
+
+        // Then
+        expect(result.isSuccess, isTrue);
+        expect(result.valueOrNull, [same(matching)]);
+      });
+
+      test('returns transactions allocated to a category', () async {
+        // Given
+        final repository = createRepository();
+        final matching = transactionFixture(
+          id: 'category-lookup-match',
+          splits: [splitFixture(categoryId: 'category-groceries')],
+        );
+        final unrelated = transactionFixture(
+          id: 'category-lookup-unrelated',
+          splits: [splitFixture(categoryId: 'category-utilities')],
+        );
+        await repository.createAll([matching, unrelated]);
+
+        // When
+        final result = await repository.getTransactionsByCategoryId(
+          CategoryId.fromString('category-groceries'),
+        );
+
+        // Then
+        expect(result.isSuccess, isTrue);
+        expect(result.valueOrNull, [same(matching)]);
+      });
+
+      test('returns transactions allocated to a budget', () async {
+        // Given
+        final repository = createRepository();
+        final matching = transactionFixture(
+          id: 'budget-lookup-match',
+          splits: [splitFixture(budgetId: 'budget-household')],
+        );
+        final unrelated = transactionFixture(
+          id: 'budget-lookup-unrelated',
+          splits: [splitFixture(budgetId: 'budget-travel')],
+        );
+        await repository.createAll([matching, unrelated]);
+
+        // When
+        final result = await repository.getTransactionsByBudgetId(
+          BudgetId.fromString('budget-household'),
+        );
+
+        // Then
+        expect(result.isSuccess, isTrue);
+        expect(result.valueOrNull, [same(matching)]);
+      });
+
+      test('returns transactions allocated to a jar', () async {
+        // Given
+        final repository = createRepository();
+        final matching = transactionFixture(
+          id: 'jar-lookup-match',
+          splits: [splitFixture(jarId: 'jar-emergency')],
+        );
+        final unrelated = transactionFixture(
+          id: 'jar-lookup-unrelated',
+          splits: [splitFixture(jarId: 'jar-holidays')],
+        );
+        await repository.createAll([matching, unrelated]);
+
+        // When
+        final result = await repository.getTransactionsByJarId(
+          JarId.fromString('jar-emergency'),
+        );
+
+        // Then
+        expect(result.isSuccess, isTrue);
+        expect(result.valueOrNull, [same(matching)]);
+      });
+
+      test(
+        'returns an empty list when an ID has no matching transaction',
+        () async {
+          // Given
+          final repository = createRepository();
+
+          // When
+          final result = await repository.getTransactionsByCategoryId(
+            CategoryId.fromString('category-missing'),
+          );
+
+          // Then
+          expect(result.isSuccess, isTrue);
+          expect(result.valueOrNull, isEmpty);
+        },
+      );
+    });
+
+    group('relationship existence checks', () {
+      test('returns true for each ID referenced by a transaction', () async {
+        // Given
+        final repository = createRepository();
+        final transaction = transactionFixture(
+          id: 'existence-match',
+          merchantId: 'merchant-grocery',
+          accountId: 'account-chf-checking',
+          splits: [
+            splitFixture(
+              budgetId: 'budget-household',
+              categoryId: 'category-groceries',
+              jarId: 'jar-emergency',
+            ),
+          ],
+        );
+        await repository.create(transaction);
+
+        // When
+        final accountExists = await repository.existsByAccountId(
+          AccountId.fromString('account-chf-checking'),
+        );
+        final merchantExists = await repository.existsByMerchantId(
+          MerchantId.fromString('merchant-grocery'),
+        );
+        final categoryExists = await repository.existsByCategoryId(
+          CategoryId.fromString('category-groceries'),
+        );
+        final budgetExists = await repository.existsByBudgetId(
+          BudgetId.fromString('budget-household'),
+        );
+        final jarExists = await repository.existsByJarId(
+          JarId.fromString('jar-emergency'),
+        );
+
+        // Then
+        expect(accountExists.valueOrNull, isTrue);
+        expect(merchantExists.valueOrNull, isTrue);
+        expect(categoryExists.valueOrNull, isTrue);
+        expect(budgetExists.valueOrNull, isTrue);
+        expect(jarExists.valueOrNull, isTrue);
+      });
+
+      test(
+        'returns false for each ID not referenced by a transaction',
+        () async {
+          // Given
+          final repository = createRepository();
+
+          // When
+          final accountExists = await repository.existsByAccountId(
+            AccountId.fromString('account-missing'),
+          );
+          final merchantExists = await repository.existsByMerchantId(
+            MerchantId.fromString('merchant-missing'),
+          );
+          final categoryExists = await repository.existsByCategoryId(
+            CategoryId.fromString('category-missing'),
+          );
+          final budgetExists = await repository.existsByBudgetId(
+            BudgetId.fromString('budget-missing'),
+          );
+          final jarExists = await repository.existsByJarId(
+            JarId.fromString('jar-missing'),
+          );
+
+          // Then
+          expect(accountExists.valueOrNull, isFalse);
+          expect(merchantExists.valueOrNull, isFalse);
+          expect(categoryExists.valueOrNull, isFalse);
+          expect(budgetExists.valueOrNull, isFalse);
+          expect(jarExists.valueOrNull, isFalse);
+        },
+      );
     });
 
     group('query', () {
