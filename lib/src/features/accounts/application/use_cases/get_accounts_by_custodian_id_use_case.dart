@@ -5,7 +5,7 @@ import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart
 import 'package:axiom/src/features/accounts/domain/repositories/account_repository.dart';
 
 /// Retrieves active persisted accounts belonging to one custodian.
-final class GetAccountsByCustodianIdUseCase {
+class GetAccountsByCustodianIdUseCase {
   /// Creates a use case backed by [repository].
   GetAccountsByCustodianIdUseCase(this._repository);
 

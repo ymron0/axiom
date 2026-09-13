@@ -5,7 +5,7 @@ import 'package:axiom/src/features/custodians/domain/failures/custodian_failure.
 import 'package:axiom/src/features/custodians/domain/repositories/custodian_repository.dart';
 
 /// Physically deletes a custodian and returns its deleted snapshot.
-final class DeleteCustodianUseCase {
+class DeleteCustodianUseCase {
   /// Creates a use case backed by [repository].
   DeleteCustodianUseCase(this._repository);
 
