@@ -132,6 +132,16 @@ final class InMemoryTransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<Result<List<LedgerEntry>, TransactionFailure>>
+  getLedgerEntriesByAccountId(AccountId accountId) async {
+    final entries = _transactions.values
+        .expand((transaction) => transaction.ledgerEntries)
+        .where((entry) => entry.accountId == accountId);
+
+    return Success(List.unmodifiable(entries));
+  }
+
+  @override
   Future<Result<List<Transaction>, TransactionFailure>>
   getTransactionsByAccountId(AccountId accountId) async {
     return Success(

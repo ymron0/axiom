@@ -6,6 +6,7 @@ import 'package:axiom/src/features/transactions/application/use_cases/create_all
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/delete_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_all_transactions_use_case.dart';
+import 'package:axiom/src/features/transactions/application/use_cases/get_ledger_entries_by_account_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_transaction_by_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/query_transactions_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/restore_transaction_use_case.dart';
@@ -17,6 +18,7 @@ import 'package:axiom/src/features/transactions/di/create_all_transactions_use_c
 import 'package:axiom/src/features/transactions/di/create_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/delete_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/get_all_transactions_use_case_provider.dart';
+import 'package:axiom/src/features/transactions/di/get_ledger_entries_by_account_id_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/get_transaction_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/query_transactions_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/restore_transaction_use_case_provider.dart';
@@ -26,6 +28,7 @@ import 'package:axiom/src/features/transactions/di/transactions_exist_by_merchan
 import 'package:axiom/src/features/transactions/di/update_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
@@ -52,6 +55,7 @@ void main() {
         container.read(createTransactionUseCaseProvider),
         container.read(createAllTransactionsUseCaseProvider),
         container.read(getAllTransactionsUseCaseProvider),
+        container.read(getLedgerEntriesByAccountIdUseCaseProvider),
         container.read(getTransactionByIdUseCaseProvider),
         container.read(queryTransactionsUseCaseProvider),
         container.read(transactionsExistByAccountIdUseCaseProvider),
@@ -63,17 +67,18 @@ void main() {
 
       // Then
       expect(repository, isA<InMemoryTransactionRepositoryImpl>());
-      expect(useCases, hasLength(10));
+      expect(useCases, hasLength(11));
       expect(useCases[0], isA<CreateTransactionUseCase>());
       expect(useCases[1], isA<CreateAllTransactionsUseCase>());
       expect(useCases[2], isA<GetAllTransactionsUseCase>());
-      expect(useCases[3], isA<GetTransactionByIdUseCase>());
-      expect(useCases[4], isA<QueryTransactionsUseCase>());
-      expect(useCases[5], isA<TransactionsExistByAccountIdUseCase>());
-      expect(useCases[6], isA<TransactionsExistByMerchantIdUseCase>());
-      expect(useCases[7], isA<UpdateTransactionUseCase>());
-      expect(useCases[8], isA<DeleteTransactionUseCase>());
-      expect(useCases[9], isA<RestoreTransactionUseCase>());
+      expect(useCases[3], isA<GetLedgerEntriesByAccountIdUseCase>());
+      expect(useCases[4], isA<GetTransactionByIdUseCase>());
+      expect(useCases[5], isA<QueryTransactionsUseCase>());
+      expect(useCases[6], isA<TransactionsExistByAccountIdUseCase>());
+      expect(useCases[7], isA<TransactionsExistByMerchantIdUseCase>());
+      expect(useCases[8], isA<UpdateTransactionUseCase>());
+      expect(useCases[9], isA<DeleteTransactionUseCase>());
+      expect(useCases[10], isA<RestoreTransactionUseCase>());
     });
 
     test('injects an overridden repository into every use case', () async {
@@ -98,6 +103,13 @@ void main() {
       );
       when(() => repository.getAll()).thenAnswer(
         (_) async => Success<List<Transaction>>(transactions),
+      );
+      when(
+        () => repository.getLedgerEntriesByAccountId(
+          transaction.ledgerEntries.first.accountId,
+        ),
+      ).thenAnswer(
+        (_) async => Success<List<LedgerEntry>>(transaction.ledgerEntries),
       );
       when(() => repository.getById(transaction.id)).thenAnswer(
         (_) async => Success<Transaction?>(transaction),
@@ -139,6 +151,9 @@ void main() {
       final createdAll = await container
           .read(createAllTransactionsUseCaseProvider)(createAllCommand);
       await container.read(getAllTransactionsUseCaseProvider)();
+      await container.read(getLedgerEntriesByAccountIdUseCaseProvider)(
+        transaction.ledgerEntries.first.accountId,
+      );
       await container.read(getTransactionByIdUseCaseProvider)(transaction.id);
       await container.read(queryTransactionsUseCaseProvider)(query);
       await container.read(transactionsExistByAccountIdUseCaseProvider)(
@@ -158,6 +173,11 @@ void main() {
       verify(() => repository.create(created.valueOrNull!)).called(1);
       verify(() => repository.createAll(createdAll.valueOrNull!)).called(1);
       verify(() => repository.getAll()).called(1);
+      verify(
+        () => repository.getLedgerEntriesByAccountId(
+          transaction.ledgerEntries.first.accountId,
+        ),
+      ).called(1);
       verify(() => repository.getById(transaction.id)).called(2);
       verify(() => repository.query(query)).called(1);
       verify(
