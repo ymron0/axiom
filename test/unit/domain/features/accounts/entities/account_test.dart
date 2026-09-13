@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
+import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/custodian_id.dart';
@@ -12,13 +13,17 @@ void main() {
   group('Account', () {
     test('creates an account with generated identity and audit metadata', () {
       final timestamp = DateTime.parse('2026-09-12T10:30:00+02:00');
+      final custodianId = CustodianId.fromString('custodian-1');
+      final denominationAssetId = AssetId.fromString('asset-eur');
+      final logo = EntityLogo.remote('https://example.com/checking.svg');
 
       final account = Account.create(
         name: '  Checking  ',
-        custodianId: CustodianId.fromString('custodian-1'),
-        denominationAssetId: AssetId.fromString('asset-eur'),
+        custodianId: custodianId,
+        denominationAssetId: denominationAssetId,
         kind: AccountKind.checking,
         reference: '  1234  ',
+        logo: logo,
         icon: EntityIcon.accountBalance,
         color: EntityColor.blue,
         sortOrder: 0,
@@ -27,10 +32,19 @@ void main() {
 
       expect(account.id.value, isNotEmpty);
       expect(account.name, 'Checking');
+      expect(account.custodianId, same(custodianId));
+      expect(account.denominationAssetId, same(denominationAssetId));
+      expect(account.kind, AccountKind.checking);
       expect(account.reference, '1234');
+      expect(account.logo, same(logo));
+      expect(account.icon, EntityIcon.accountBalance);
+      expect(account.color, EntityColor.blue);
+      expect(account.sortOrder, 0);
       expect(account.entityVersion, 1);
       expect(account.createdAt, timestamp.toUtc());
       expect(account.modifiedAt, same(account.createdAt));
+      expect(account.deletedAt, isNull);
+      expect(account.isDeleted, isFalse);
     });
 
     test('creates an account with the default clock when none is provided', () {
@@ -79,6 +93,28 @@ void main() {
       );
     });
 
+    test('preserves a deletion timestamp and reports the account deleted', () {
+      final deletedAt = DateTime.utc(2026, 9, 13);
+
+      final account = _createAccount(deletedAt: deletedAt);
+
+      expect(account.deletedAt, same(deletedAt));
+      expect(account.isDeleted, isTrue);
+    });
+
+    test('rejects deletion before creation', () {
+      final deletedAt = DateTime.utc(2026, 9, 11);
+
+      expect(
+        () => _createAccount(deletedAt: deletedAt),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'deletedAt')
+              .having((e) => e.invalidValue, 'invalidValue', deletedAt),
+        ),
+      );
+    });
+
     test('rejects invalid audit metadata', () {
       final createdAt = DateTime.utc(2026, 9, 12);
       expect(
@@ -115,6 +151,7 @@ Account _createAccount({
   String name = 'Checking',
   String? reference,
   int sortOrder = 0,
+  DateTime? deletedAt,
   int entityVersion = 1,
   DateTime? createdAt,
   DateTime? modifiedAt,
@@ -130,6 +167,7 @@ Account _createAccount({
     icon: EntityIcon.accountBalance,
     color: EntityColor.blue,
     sortOrder: sortOrder,
+    deletedAt: deletedAt,
     createdAt: created,
     modifiedAt: modifiedAt ?? created,
     entityVersion: entityVersion,

@@ -1,6 +1,7 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
+import 'package:axiom/src/core/domain/mixins/deletable.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
@@ -54,10 +55,12 @@ part 'account.mapper.dart';
 /// - [name] is trimmed and cannot be blank.
 /// - [reference], when present, is trimmed and cannot be blank.
 /// - [sortOrder] cannot be negative.
+/// - [deletedAt], when present, cannot precede [createdAt].
 /// - [modifiedAt] cannot precede [createdAt], as enforced by [AuditedEntity].
 /// - [entityVersion] is greater than zero, as enforced by [AuditedEntity].
 @MappableClass()
-final class Account extends AuditedEntity<AccountId> with AccountMappable {
+final class Account extends AuditedEntity<AccountId>
+    with Deletable, AccountMappable {
   /// The human-readable account name.
   final String name;
 
@@ -87,6 +90,10 @@ final class Account extends AuditedEntity<AccountId> with AccountMappable {
   /// The user-defined ordering position of this account.
   final int sortOrder;
 
+  /// {@macro deletable.deleted_at}
+  @override
+  final DateTime? deletedAt;
+
   /// Creates an account.
   ///
   /// Throws an [ArgumentError] when [name] is blank, [reference] is supplied as
@@ -103,6 +110,7 @@ final class Account extends AuditedEntity<AccountId> with AccountMappable {
     required this.icon,
     required this.color,
     required this.sortOrder,
+    this.deletedAt,
     required super.createdAt,
     required super.modifiedAt,
     required super.entityVersion,
@@ -113,6 +121,13 @@ final class Account extends AuditedEntity<AccountId> with AccountMappable {
         sortOrder,
         'sortOrder',
         'Account sort order cannot be negative.',
+      );
+    }
+    if (deletedAt?.isBefore(createdAt) ?? false) {
+      throw ArgumentError.value(
+        deletedAt,
+        'deletedAt',
+        'Deletion time cannot precede creation time.',
       );
     }
   }

@@ -29,6 +29,13 @@ void main() {
       expect(merchant.modifiedAt, merchant.createdAt);
     });
 
+    test('rejects a blank name', () {
+      expect(
+        () => _createMerchant(name: '  '),
+        throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'name')),
+      );
+    });
+
     test('preserves a deletion timestamp and reports the merchant deleted', () {
       final deletedAt = DateTime.utc(2026, 9, 13);
       final merchant = _createMerchant(deletedAt: deletedAt);

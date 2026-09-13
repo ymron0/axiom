@@ -1,6 +1,7 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
+import 'package:axiom/src/core/domain/mixins/deletable.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:axiom/src/core/identity/ids/custodian_id.dart';
@@ -37,11 +38,12 @@ part 'custodian.mapper.dart';
 ///
 /// - [name] is trimmed and cannot be blank.
 /// - [sortOrder] cannot be negative.
+/// - [deletedAt], when present, cannot precede [createdAt].
 /// - [modifiedAt] cannot precede [createdAt], as enforced by [AuditedEntity].
 /// - [entityVersion] is greater than zero, as enforced by [AuditedEntity].
 @MappableClass()
 final class Custodian extends AuditedEntity<CustodianId>
-    with CustodianMappable {
+    with Deletable, CustodianMappable {
   /// The human-readable custodian name.
   final String name;
 
@@ -60,6 +62,10 @@ final class Custodian extends AuditedEntity<CustodianId>
   /// The user-defined ordering position of this custodian.
   final int sortOrder;
 
+  /// {@macro deletable.deleted_at}
+  @override
+  final DateTime? deletedAt;
+
   /// Creates a custodian.
   ///
   /// Throws an [ArgumentError] when [name] is blank or [sortOrder] is negative.
@@ -72,6 +78,7 @@ final class Custodian extends AuditedEntity<CustodianId>
     required this.icon,
     required this.color,
     required this.sortOrder,
+    this.deletedAt,
     required super.createdAt,
     required super.modifiedAt,
     required super.entityVersion,
@@ -81,6 +88,13 @@ final class Custodian extends AuditedEntity<CustodianId>
         sortOrder,
         'sortOrder',
         'Custodian sort order cannot be negative.',
+      );
+    }
+    if (deletedAt?.isBefore(createdAt) ?? false) {
+      throw ArgumentError.value(
+        deletedAt,
+        'deletedAt',
+        'Deletion time cannot precede creation time.',
       );
     }
   }
