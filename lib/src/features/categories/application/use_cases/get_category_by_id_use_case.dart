@@ -5,7 +5,7 @@ import 'package:axiom/src/features/categories/domain/failures/category_failure.d
 import 'package:axiom/src/features/categories/domain/repositories/category_repository.dart';
 
 /// Retrieves an active persisted category by identifier.
-final class GetCategoryByIdUseCase {
+class GetCategoryByIdUseCase {
   /// Creates a use case backed by [repository].
   GetCategoryByIdUseCase(this._repository);
 
