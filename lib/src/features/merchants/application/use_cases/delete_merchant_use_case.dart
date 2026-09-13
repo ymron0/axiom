@@ -5,7 +5,7 @@ import 'package:axiom/src/features/merchants/domain/failures/merchant_failure.da
 import 'package:axiom/src/features/merchants/domain/repositories/merchant_repository.dart';
 
 /// Physically deletes a merchant and returns its deleted snapshot.
-final class DeleteMerchantUseCase {
+class DeleteMerchantUseCase {
   /// Creates a use case backed by [repository].
   DeleteMerchantUseCase(this._repository);
 
