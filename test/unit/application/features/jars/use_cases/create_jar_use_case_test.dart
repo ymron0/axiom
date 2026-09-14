@@ -4,8 +4,15 @@ library;
 import 'package:axiom/src/application/services/validate_jar_target_currencies_service.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/jars/application/use_cases/create_jar_use_case.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_already_exists_failure.dart';
+import 'package:axiom/src/features/jars/domain/value_objects/jar_target.dart';
+import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:decimal/decimal.dart';
+import 'package:axiom/src/application/failures/invalid_valuation_currency_failure.dart';
 import 'package:axiom/src/features/settings/application/use_cases/get_settings_use_case.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -72,5 +79,50 @@ void main() {
       // Then
       expect(result.failureOrNull, same(failure));
     });
+
+    test('creates targets using the configured valuation asset', () async {
+      // Given
+      final valuationAssetId = AssetId.fromString('asset-chf');
+      final command = createJarCommandFixture(
+        targets: [_target(valuationAssetId)],
+      );
+      when(() => settingsRepository.get()).thenAnswer(
+        (_) async => Success(Settings(valuationCurrencyId: valuationAssetId)),
+      );
+      when(() => repository.create(any())).thenAnswer((_) async => const Success(null));
+
+      // When
+      final result = await useCase(command);
+
+      // Then
+      expect(result.isSuccess, isTrue);
+      verify(() => repository.create(any())).called(1);
+    });
+
+    test('rejects targets using another valuation asset before creation', () async {
+      // Given
+      final command = createJarCommandFixture(
+        targets: [_target(AssetId.fromString('asset-eur'))],
+      );
+      when(() => settingsRepository.get()).thenAnswer(
+        (_) async => Success(
+          Settings(valuationCurrencyId: AssetId.fromString('asset-chf')),
+        ),
+      );
+
+      // When
+      final result = await useCase(command);
+
+      // Then
+      expect(result.failureOrNull, isA<InvalidValuationCurrencyFailure>());
+      verifyNever(() => repository.create(any()));
+    });
   });
+}
+
+JarTarget _target(AssetId assetId) {
+  return JarTarget(
+    amount: AssetAmount.incoming(assetId: assetId, amount: Decimal.one),
+    effectiveFrom: CalendarDate(2026, 1, 1),
+  );
 }

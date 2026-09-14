@@ -129,6 +129,17 @@ void main() {
       );
     });
 
+    test('rejects an unknown remaining amount', () {
+      expect(
+        () => create(
+          target: target(),
+          remainingAmount: amount(value: Decimal.fromInt(-1)),
+          progressRatio: Decimal.zero,
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('rejects an outgoing remaining amount', () {
       expect(
         () => create(

@@ -129,6 +129,14 @@ final class JarProgress {
       );
     }
 
+    if (remainingAmount!.isUnknownAmount) {
+      throw ArgumentError.value(
+        remainingAmount,
+        'remainingAmount',
+        'Remaining amount cannot be unknown.',
+      );
+    }
+
     if (remainingAmount!.assetId != balance.assetId) {
       throw ArgumentError.value(
         remainingAmount,

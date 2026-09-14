@@ -123,7 +123,7 @@ final class Jar extends AuditedEntity<JarId>
     required String name,
     String? description,
     required this.kind,
-    this.targets = const [],
+    List<JarTarget> targets = const [],
     required this.icon,
     required this.color,
     required this.sortOrder,
@@ -132,7 +132,8 @@ final class Jar extends AuditedEntity<JarId>
     required super.createdAt,
     required super.modifiedAt,
     required super.entityVersion,
-  }) : name = normalizeRequiredText(name, 'name'),
+  }) : targets = List.unmodifiable(targets),
+       name = normalizeRequiredText(name, 'name'),
        description = normalizeOptionalText(description, 'description') {
     _validateTargets();
 
