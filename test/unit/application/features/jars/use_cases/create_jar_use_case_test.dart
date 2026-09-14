@@ -1,19 +1,23 @@
 @Tags(['application'])
 library;
 
+import 'package:axiom/src/application/services/validate_jar_target_currencies_service.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/jars/application/use_cases/create_jar_use_case.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_already_exists_failure.dart';
+import 'package:axiom/src/features/settings/application/use_cases/get_settings_use_case.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../../../../fixtures/features/jars/jar_fixtures.dart';
 import '../../../../../mocks/jar_repository_mock.dart';
+import '../../../../../mocks/settings_repository_mock.dart';
 
 void main() {
   group('CreateJarUseCase', () {
     late MockJarRepository repository;
+    late MockSettingsRepository settingsRepository;
     late CreateJarUseCase useCase;
     final timestamp = DateTime.utc(2026, 1, 2);
 
@@ -23,9 +27,13 @@ void main() {
 
     setUp(() {
       repository = MockJarRepository();
+      settingsRepository = MockSettingsRepository();
       useCase = CreateJarUseCase(
         repository: repository,
         clock: FixedClock(timestamp),
+        validateTargetCurrencies: ValidateJarTargetCurrenciesService(
+          getSettings: GetSettingsUseCase(settingsRepository),
+        ),
       );
     });
 

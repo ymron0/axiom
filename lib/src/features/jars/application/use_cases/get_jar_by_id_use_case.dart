@@ -5,7 +5,7 @@ import 'package:axiom/src/features/jars/domain/failures/jar_failure.dart';
 import 'package:axiom/src/features/jars/domain/repositories/jar_repository.dart';
 
 /// Returns a jar by identity.
-final class GetJarByIdUseCase {
+class GetJarByIdUseCase {
   final JarRepository _repository;
 
   /// Creates a use case backed by [repository].

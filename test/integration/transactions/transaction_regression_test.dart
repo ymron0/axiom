@@ -11,6 +11,8 @@ import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/application/use_cases/get_category_by_id_use_case.dart';
 import 'package:axiom/src/features/categories/data/repositories/in_memory_category_repository_impl.dart';
+import 'package:axiom/src/features/jars/application/use_cases/get_jar_by_id_use_case.dart';
+import 'package:axiom/src/features/jars/data/repositories/in_memory_jar_repository_impl.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_transaction_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
@@ -37,6 +39,7 @@ void main() {
         getCategoryById: GetCategoryByIdUseCase(
           InMemoryCategoryRepositoryImpl(initialCategories: const []),
         ),
+        getJarById: GetJarByIdUseCase(InMemoryJarRepositoryImpl()),
       );
       createService = CreateTransactionService(
         clock: FixedClock(timestamp),

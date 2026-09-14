@@ -13,7 +13,7 @@ final class AllocationJarNotFoundFailure
     : super(message);
 
   /// Stable identifier for this failure kind.
-  static const typeId = 'settings.allocationJarNotFound';
+  static const typeId = 'application.allocationJarNotFound';
 
   @override
   AllocationJarNotFoundFailure get failureOrNull => this;

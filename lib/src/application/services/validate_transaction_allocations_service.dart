@@ -1,11 +1,15 @@
 import 'package:axiom/src/application/failures/allocation_category_kind_mismatch_failure.dart';
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
+import 'package:axiom/src/application/failures/allocation_jar_not_found_failure.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
+import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/categories/application/use_cases/get_category_by_id_use_case.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_failure.dart';
+import 'package:axiom/src/features/jars/application/use_cases/get_jar_by_id_use_case.dart';
+import 'package:axiom/src/features/jars/domain/failures/jar_failure.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 
@@ -24,6 +28,9 @@ import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.da
 /// - the category kind is compatible with the transaction kind.
 ///
 /// Repeated references to the same category are resolved only once.
+///
+/// Every referenced jar must exist. Archived jars are valid historical
+/// references. Repeated references to the same jar are resolved only once.
 ///
 /// ## Category compatibility
 ///
@@ -45,21 +52,27 @@ import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.da
 ///
 /// A category whose [CategoryKind] does not match the transaction kind produces
 /// [AllocationCategoryKindMismatchFailure].
+///
+/// A jar identifier that resolves successfully to `null` produces
+/// [AllocationJarNotFoundFailure].
 final class ValidateTransactionAllocationsService {
   final GetCategoryByIdUseCase _getCategoryById;
+  final GetJarByIdUseCase _getJarById;
 
   /// Creates an allocation validator.
   const ValidateTransactionAllocationsService({
     required GetCategoryByIdUseCase getCategoryById,
-  }) : _getCategoryById = // ignore: prefer_initializing_formals
-           getCategoryById;
+    required GetJarByIdUseCase getJarById,
+  }) : _getCategoryById = getCategoryById, // ignore: prefer_initializing_formals
+       _getJarById = getJarById; // ignore: prefer_initializing_formals
 
   /// Validates all external allocation references in [transaction].
   ///
   /// Returns success when:
   ///
-  /// - the transaction contains no category allocations; or
-  /// - every referenced category exists and has the expected kind.
+  /// - the transaction contains no allocations; or
+  /// - every referenced category exists and has the expected kind; and
+  /// - every referenced jar exists, including archived jars.
   ///
   /// Returns [AllocationCategoryNotFoundFailure] when a referenced category
   /// cannot be resolved.
@@ -75,35 +88,58 @@ final class ValidateTransactionAllocationsService {
         if (split.categoryId != null) split.categoryId!,
     };
 
-    if (categoryIds.isEmpty) {
+    final jarIds = <JarId>{
+      for (final split in transaction.splits)
+        if (split.jarId != null) split.jarId!,
+    };
+
+    if (categoryIds.isEmpty && jarIds.isEmpty) {
       return const Success(null);
     }
 
-    final expectedKind = _expectedCategoryKind(transaction.kind);
+    if (categoryIds.isNotEmpty) {
+      final expectedKind = _expectedCategoryKind(transaction.kind);
 
-    for (final categoryId in categoryIds) {
-      final categoryResult = await _getCategoryById(categoryId);
+      for (final categoryId in categoryIds) {
+        final categoryResult = await _getCategoryById(categoryId);
 
-      if (categoryResult case final Failure<CategoryFailure> failure) {
+        if (categoryResult case final Failure<CategoryFailure> failure) {
+          return failure;
+        }
+
+        final category = categoryResult.valueOrNull;
+
+        if (category == null) {
+          return AllocationCategoryNotFoundFailure(
+            message:
+                'Transaction allocation references a category that does not '
+                'exist: ${categoryId.value}',
+          );
+        }
+
+        if (category.kind != expectedKind) {
+          return AllocationCategoryKindMismatchFailure(
+            message:
+                'Transaction allocation category ${categoryId.value} has kind '
+                '${category.kind.name}, but ${transaction.kind.name} '
+                'transactions require ${expectedKind.name} categories.',
+          );
+        }
+      }
+    }
+
+    for (final jarId in jarIds) {
+      final jarResult = await _getJarById(jarId);
+
+      if (jarResult case final Failure<JarFailure> failure) {
         return failure;
       }
 
-      final category = categoryResult.valueOrNull;
-
-      if (category == null) {
-        return AllocationCategoryNotFoundFailure(
+      if (jarResult.valueOrNull == null) {
+        return AllocationJarNotFoundFailure(
           message:
-              'Transaction allocation references a category that does not '
-              'exist: ${categoryId.value}',
-        );
-      }
-
-      if (category.kind != expectedKind) {
-        return AllocationCategoryKindMismatchFailure(
-          message:
-              'Transaction allocation category ${categoryId.value} has kind '
-              '${category.kind.name}, but ${transaction.kind.name} '
-              'transactions require ${expectedKind.name} categories.',
+              'Transaction allocation references a jar that does not exist: '
+              '${jarId.value}',
         );
       }
     }
