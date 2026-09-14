@@ -1,3 +1,6 @@
+@Tags(['core'])
+library;
+
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:test/test.dart';
 

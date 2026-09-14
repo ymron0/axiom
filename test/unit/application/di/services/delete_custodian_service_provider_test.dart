@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/di/services/delete_custodian_service_provider.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/accounts/di/get_accounts_by_custodian_id_use_case_provider.dart';

@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/failures/allocation_category_kind_mismatch_failure.dart';
 import 'package:test/test.dart';
 

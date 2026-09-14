@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/merchants/application/use_cases/get_merchants_use_case.dart';
 import 'package:axiom/src/features/merchants/domain/entities/merchant.dart';

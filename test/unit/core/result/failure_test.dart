@@ -1,3 +1,6 @@
+@Tags(['core'])
+library;
+
 import 'package:test/test.dart' hide TestFailure;
 
 import '../../../fixtures/core/result/test_failure.dart';

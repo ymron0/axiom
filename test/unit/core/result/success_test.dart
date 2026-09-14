@@ -1,3 +1,6 @@
+@Tags(['core'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:test/test.dart';
 

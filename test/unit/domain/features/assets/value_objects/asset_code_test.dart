@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:test/test.dart';
 

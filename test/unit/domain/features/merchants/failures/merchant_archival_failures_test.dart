@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/merchants/domain/failures/merchant_already_archived_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_not_archived_failure.dart';
 import 'package:test/test.dart';

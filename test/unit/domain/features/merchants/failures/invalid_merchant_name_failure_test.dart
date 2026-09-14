@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/merchants/domain/failures/invalid_merchant_name_failure.dart';
 import 'package:test/test.dart';
 

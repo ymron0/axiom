@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/custodian_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
@@ -94,14 +97,11 @@ void main() {
             isNot(settings.valuationCurrencyId),
           );
           expect(entry.valuationAmount.assetId, settings.valuationCurrencyId);
-          expect(
-            [
-              entry.transactionAmount.direction,
-              entry.accountAmount.direction,
-              entry.valuationAmount.direction,
-            ],
-            everyElement(direction),
-          );
+          expect([
+            entry.transactionAmount.direction,
+            entry.accountAmount.direction,
+            entry.valuationAmount.direction,
+          ], everyElement(direction));
         },
       );
     });
@@ -140,10 +140,9 @@ void main() {
             id: 'transaction-normal-merchant',
             merchantId: merchant.id,
           );
-          final MerchantRepository repository =
-              InMemoryMerchantRepositoryImpl(
-                initialMerchants: [merchant],
-              );
+          final MerchantRepository repository = InMemoryMerchantRepositoryImpl(
+            initialMerchants: [merchant],
+          );
 
           // When
           final result = await repository.getById(transaction.merchantId);
@@ -184,10 +183,10 @@ void main() {
           final CustodianId secondReference = accounts.last.custodianId;
           expect(firstReference, custodian.id);
           expect(secondReference, custodian.id);
-          expect(
-            resolved.valueOrNull,
-            [same(accounts.first), same(accounts.last)],
-          );
+          expect(resolved.valueOrNull, [
+            same(accounts.first),
+            same(accounts.last),
+          ]);
         },
       );
 
@@ -218,8 +217,9 @@ void main() {
           const calculator = CustodianAggregationCalculator();
 
           // When
-          final resolvedAccounts =
-              (await repository.getByCustodianId(custodian.id)).valueOrNull!;
+          final resolvedAccounts = (await repository.getByCustodianId(
+            custodian.id,
+          )).valueOrNull!;
           final valuesByAccountId = {
             accounts.first.id: Decimal.parse('95'),
             accounts.last.id: Decimal.parse('80'),

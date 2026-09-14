@@ -1,4 +1,7 @@
-import 'package:axiom/src/core/failures/referenced_asset_not_found_failure.dart';
+@Tags(['application'])
+library;
+
+import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';

@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:test/test.dart';
 

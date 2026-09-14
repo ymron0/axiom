@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/application/services/delete_jar_service.dart';

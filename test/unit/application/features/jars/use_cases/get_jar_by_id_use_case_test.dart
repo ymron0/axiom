@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/jars/application/use_cases/get_jar_by_id_use_case.dart';
 import 'package:axiom/src/features/jars/domain/entities/jar.dart';

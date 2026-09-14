@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/categories/application/use_cases/update_category_use_case.dart';
 import 'package:axiom/src/features/categories/domain/entities/category.dart';

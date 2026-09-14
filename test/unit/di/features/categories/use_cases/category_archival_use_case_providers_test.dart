@@ -1,3 +1,6 @@
+@Tags(['application', 'di'])
+library;
+
 import 'package:axiom/src/core/di/clock_provider.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
@@ -14,8 +17,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
-import '../../../../fixtures/features/categories/category_fixtures.dart';
-import '../../../../mocks/category_repository_mock.dart';
+import '../../../../../fixtures/features/categories/category_fixtures.dart';
+import '../../../../../mocks/category_repository_mock.dart';
 
 void main() {
   final timestamp = DateTime.utc(2026, 1, 2);

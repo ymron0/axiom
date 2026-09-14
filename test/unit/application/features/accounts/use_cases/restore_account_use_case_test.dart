@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/accounts/application/use_cases/restore_account_use_case.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_already_exists_failure.dart';

@@ -1,10 +1,13 @@
-import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
+@Tags(['core'])
+library;
+
+import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('RateNotFoundFailure', () {
+  group('ReferencedAssetNotFoundFailure', () {
     // Invoke constructors at runtime so coverage records their execution.
-    final createFailure = RateNotFoundFailure.new;
+    final createFailure = ReferencedAssetNotFoundFailure.new;
 
     test('can be instantiated without a diagnostic message', () {
       // Given
@@ -16,7 +19,7 @@ void main() {
 
     test('preserves the provided diagnostic message', () {
       // Given
-      const message = 'The requested rate was not found.';
+      const message = 'The referenced asset was not found.';
 
       // When
       final failure = createFailure(message: message);
@@ -27,15 +30,15 @@ void main() {
 
     test('returns its static type identifier from type', () {
       // Given
-      const failure = RateNotFoundFailure();
+      const failure = ReferencedAssetNotFoundFailure();
 
       // Then
-      expect(failure.type, RateNotFoundFailure.typeId);
+      expect(failure.type, ReferencedAssetNotFoundFailure.typeId);
     });
 
     test('returns itself from failureOrNull', () {
       // Given
-      const failure = RateNotFoundFailure();
+      const failure = ReferencedAssetNotFoundFailure();
 
       // Then
       expect(failure.failureOrNull, same(failure));

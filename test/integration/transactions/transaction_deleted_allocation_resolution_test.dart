@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';

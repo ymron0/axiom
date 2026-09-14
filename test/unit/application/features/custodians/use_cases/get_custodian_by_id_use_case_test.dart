@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/identity/ids/custodian_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/custodians/application/use_cases/get_custodian_by_id_use_case.dart';

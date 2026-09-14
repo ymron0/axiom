@@ -1,3 +1,6 @@
+@Tags(['data'])
+library;
+
 import 'package:axiom/src/features/assets/data/repositories/in_memory_asset_repository_impl.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';

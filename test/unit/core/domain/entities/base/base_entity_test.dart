@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/domain/entities/base/base_entity.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:test/test.dart';

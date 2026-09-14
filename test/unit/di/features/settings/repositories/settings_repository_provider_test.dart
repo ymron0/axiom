@@ -1,3 +1,6 @@
+@Tags(['application', 'di'])
+library;
+
 import 'package:axiom/src/features/settings/data/repositories/in_memory_settings_repository_impl.dart';
 import 'package:axiom/src/features/settings/di/settings_repository_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';

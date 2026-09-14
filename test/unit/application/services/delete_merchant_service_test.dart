@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/services/delete_merchant_service.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/merchants/domain/entities/merchant.dart';

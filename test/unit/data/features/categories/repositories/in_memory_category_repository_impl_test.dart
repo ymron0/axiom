@@ -1,3 +1,6 @@
+@Tags(['data'])
+library;
+
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';

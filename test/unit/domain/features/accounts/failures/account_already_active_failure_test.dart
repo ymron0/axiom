@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/accounts/domain/failures/account_already_active_failure.dart';
 import 'package:test/test.dart';
 

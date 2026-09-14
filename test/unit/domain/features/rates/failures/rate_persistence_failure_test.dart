@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
 import 'package:test/test.dart';
 

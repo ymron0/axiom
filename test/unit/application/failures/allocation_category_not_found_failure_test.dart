@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
 import 'package:test/test.dart';
 
