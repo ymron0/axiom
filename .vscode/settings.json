@@ -1,6 +1,7 @@
 {
   "dart.flutterTestAdditionalArgs": [
-    "--coverage"
+    "--tags",
+    "presentation"
   ],
   "dart.coverageExcludePatterns": [
     "**/*.g.dart",

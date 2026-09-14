@@ -1,6 +1,7 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
+import 'package:axiom/src/core/domain/mixins/archivable.dart';
 import 'package:axiom/src/core/domain/mixins/deletable.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
@@ -55,12 +56,15 @@ part 'account.mapper.dart';
 /// - [name] is trimmed and cannot be blank.
 /// - [reference], when present, is trimmed and cannot be blank.
 /// - [sortOrder] cannot be negative.
+/// - [archivedAt], when present, cannot precede [createdAt] or follow
+///   [modifiedAt].
 /// - [deletedAt], when present, cannot precede [createdAt].
+/// - [deletedAt] cannot precede [archivedAt] when both are present.
 /// - [modifiedAt] cannot precede [createdAt], as enforced by [AuditedEntity].
 /// - [entityVersion] is greater than zero, as enforced by [AuditedEntity].
 @MappableClass()
 final class Account extends AuditedEntity<AccountId>
-    with Deletable, AccountMappable {
+    with Archivable, Deletable, AccountMappable {
   /// The human-readable account name.
   final String name;
 
@@ -90,6 +94,10 @@ final class Account extends AuditedEntity<AccountId>
   /// The user-defined ordering position of this account.
   final int sortOrder;
 
+  /// {@macro archivable.archived_at}
+  @override
+  final DateTime? archivedAt;
+
   /// {@macro deletable.deleted_at}
   @override
   final DateTime? deletedAt;
@@ -110,6 +118,7 @@ final class Account extends AuditedEntity<AccountId>
     required this.icon,
     required this.color,
     required this.sortOrder,
+    this.archivedAt,
     this.deletedAt,
     required super.createdAt,
     required super.modifiedAt,
@@ -128,6 +137,32 @@ final class Account extends AuditedEntity<AccountId>
         deletedAt,
         'deletedAt',
         'Deletion time cannot precede creation time.',
+      );
+    }
+
+    if (archivedAt?.isBefore(createdAt) ?? false) {
+      throw ArgumentError.value(
+        archivedAt,
+        'archivedAt',
+        'Archive time cannot precede creation time.',
+      );
+    }
+
+    if (archivedAt?.isAfter(modifiedAt) ?? false) {
+      throw ArgumentError.value(
+        archivedAt,
+        'archivedAt',
+        'Archive time cannot follow modification time.',
+      );
+    }
+
+    if (archivedAt != null &&
+        deletedAt != null &&
+        deletedAt!.isBefore(archivedAt!)) {
+      throw ArgumentError.value(
+        deletedAt,
+        'deletedAt',
+        'Deletion time cannot precede archive time.',
       );
     }
   }

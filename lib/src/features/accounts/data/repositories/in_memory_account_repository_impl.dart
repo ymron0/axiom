@@ -10,9 +10,11 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/accounts/domain/entities/account.dart';
 import 'package:axiom/src/features/accounts/domain/enums/account_kind.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_already_active_failure.dart';
+import 'package:axiom/src/features/accounts/domain/failures/account_already_archived_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_already_deleted_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_already_exists_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart';
+import 'package:axiom/src/features/accounts/domain/failures/account_not_archived_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
 import 'package:axiom/src/features/accounts/domain/repositories/account_repository.dart';
 import 'package:fixtures/fixtures.dart';
@@ -80,6 +82,11 @@ final class InMemoryAccountRepositoryImpl implements AccountRepository {
     if (account.isDeleted) {
       return AccountAlreadyDeletedFailure(
         message: 'Deleted account cannot be created: ${account.id.value}',
+      );
+    }
+    if (account.isArchived) {
+      return AccountAlreadyArchivedFailure(
+        message: 'Archived account cannot be created: ${account.id.value}',
       );
     }
     if (_accounts.any((storedAccount) => storedAccount.id == account.id)) {
@@ -195,9 +202,110 @@ final class InMemoryAccountRepositoryImpl implements AccountRepository {
       icon: account.icon,
       color: account.color,
       sortOrder: account.sortOrder,
+      archivedAt: account.archivedAt,
       deletedAt: deletedAt,
       createdAt: account.createdAt,
       modifiedAt: account.modifiedAt,
+      entityVersion: account.entityVersion,
+    );
+  }
+
+  @override
+  Future<Result<Account, AccountFailure>> archive(
+    AccountId id,
+    DateTime archivedAt,
+  ) async {
+    final index = _accounts.indexWhere((account) => account.id == id);
+    if (index == -1) {
+      return AccountNotFoundFailure(
+        message: 'Account ID was not found: ${id.value}',
+      );
+    }
+
+    final account = _accounts[index];
+    if (account.isArchived) {
+      return AccountAlreadyArchivedFailure(
+        message: 'Account is already archived: ${id.value}',
+      );
+    }
+
+    final archivedAccount = _withArchivedAt(
+      account,
+      archivedAt: archivedAt,
+      modifiedAt: archivedAt,
+    );
+    _accounts[index] = archivedAccount;
+
+    return Success(archivedAccount);
+  }
+
+  @override
+  Future<Result<List<Account>, AccountFailure>> getActive() async {
+    final matches = _accounts
+        .where((account) => !account.isArchived)
+        .toList(growable: false);
+
+    return Success(List.unmodifiable(matches));
+  }
+
+  @override
+  Future<Result<List<Account>, AccountFailure>> getArchived() async {
+    final matches = _accounts
+        .where((account) => account.isArchived)
+        .toList(growable: false);
+
+    return Success(List.unmodifiable(matches));
+  }
+
+  @override
+  Future<Result<Account, AccountFailure>> unarchive(
+    AccountId id,
+    DateTime modifiedAt,
+  ) async {
+    final index = _accounts.indexWhere((account) => account.id == id);
+    if (index == -1) {
+      return AccountNotFoundFailure(
+        message: 'Account ID was not found: ${id.value}',
+      );
+    }
+
+    final account = _accounts[index];
+    if (!account.isArchived) {
+      return AccountNotArchivedFailure(
+        message: 'Account is not archived: ${id.value}',
+      );
+    }
+
+    final unarchivedAccount = _withArchivedAt(
+      account,
+      archivedAt: null,
+      modifiedAt: modifiedAt,
+    );
+    _accounts[index] = unarchivedAccount;
+
+    return Success(unarchivedAccount);
+  }
+
+  static Account _withArchivedAt(
+    Account account, {
+    required DateTime? archivedAt,
+    required DateTime modifiedAt,
+  }) {
+    return Account(
+      id: account.id,
+      name: account.name,
+      custodianId: account.custodianId,
+      denominationAssetId: account.denominationAssetId,
+      kind: account.kind,
+      reference: account.reference,
+      logo: account.logo,
+      icon: account.icon,
+      color: account.color,
+      sortOrder: account.sortOrder,
+      archivedAt: archivedAt,
+      deletedAt: account.deletedAt,
+      createdAt: account.createdAt,
+      modifiedAt: modifiedAt,
       entityVersion: account.entityVersion,
     );
   }
