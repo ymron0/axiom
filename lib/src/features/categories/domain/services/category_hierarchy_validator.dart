@@ -13,7 +13,7 @@ abstract final class CategoryHierarchyValidator {
   /// Throws an [ArgumentError] when:
   ///
   /// - [parent] is itself a child category;
-  /// - [parent] is deleted; or
+  /// - [parent] is deleted or archived; or
   /// - the parent and child have different category kinds.
   static void validateParentChildRelationship({
     required Category parent,
@@ -27,11 +27,19 @@ abstract final class CategoryHierarchyValidator {
       );
     }
 
-    if (parent.deletedAt != null) {
+    if (parent.isDeleted) {
       throw ArgumentError.value(
         parent.id,
         'parent',
         'A deleted category cannot be used as a parent.',
+      );
+    }
+
+    if (parent.isArchived) {
+      throw ArgumentError.value(
+        parent.id,
+        'parent',
+        'An archived category cannot be used as a parent.',
       );
     }
 

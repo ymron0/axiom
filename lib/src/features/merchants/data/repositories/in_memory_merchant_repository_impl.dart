@@ -3,10 +3,12 @@ import 'package:axiom/src/core/ports/clock/clock_factory.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/merchants/domain/entities/merchant.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_already_active_failure.dart';
+import 'package:axiom/src/features/merchants/domain/failures/merchant_already_archived_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_already_deleted_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_already_exists_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_not_found_failure.dart';
+import 'package:axiom/src/features/merchants/domain/failures/merchant_not_archived_failure.dart';
 import 'package:axiom/src/features/merchants/domain/repositories/merchant_repository.dart';
 import 'package:fixtures/fixtures.dart';
 
@@ -14,7 +16,8 @@ import 'package:fixtures/fixtures.dart';
 final class InMemoryMerchantRepositoryImpl implements MerchantRepository {
   /// Creates a repository seeded with [initialMerchants].
   ///
-  /// When omitted, the repository loads the active external merchant fixtures.
+  /// When omitted, the repository loads the non-deleted external merchant
+  /// fixtures, including archived merchants.
   /// Throws [ArgumentError] when the seed contains deleted merchants or
   /// duplicate IDs.
   InMemoryMerchantRepositoryImpl({Iterable<Merchant>? initialMerchants})
@@ -32,6 +35,7 @@ final class InMemoryMerchantRepositoryImpl implements MerchantRepository {
                     name: fixture.name,
                     createdAt: fixture.createdAt,
                     modifiedAt: fixture.modifiedAt,
+                    archivedAt: fixture.archivedAt,
                     deletedAt: fixture.deletedAt,
                     entityVersion: fixture.entityVersion,
                   ),
@@ -66,6 +70,11 @@ final class InMemoryMerchantRepositoryImpl implements MerchantRepository {
         message: 'Deleted merchant cannot be created: ${merchant.id.value}',
       );
     }
+    if (merchant.isArchived) {
+      return MerchantAlreadyArchivedFailure(
+        message: 'Archived merchant cannot be created: ${merchant.id.value}',
+      );
+    }
     if (_merchants.any((storedMerchant) => storedMerchant.id == merchant.id)) {
       return MerchantAlreadyExistsFailure(
         message: 'Merchant ID already exists: ${merchant.id.value}',
@@ -94,6 +103,16 @@ final class InMemoryMerchantRepositoryImpl implements MerchantRepository {
   @override
   Future<Result<List<Merchant>, MerchantFailure>> getAll() async {
     return Success(List.unmodifiable(_merchants));
+  }
+
+  @override
+  Future<Result<List<Merchant>, MerchantFailure>> getActive() async {
+    return Success(_matchingMerchants((merchant) => !merchant.isArchived));
+  }
+
+  @override
+  Future<Result<List<Merchant>, MerchantFailure>> getArchived() async {
+    return Success(_matchingMerchants((merchant) => merchant.isArchived));
   }
 
   @override
@@ -156,12 +175,93 @@ final class InMemoryMerchantRepositoryImpl implements MerchantRepository {
     return const Success(null);
   }
 
+  @override
+  Future<Result<Merchant, MerchantFailure>> archive(
+    MerchantId id,
+    DateTime archivedAt,
+  ) async {
+    final index = _merchants.indexWhere((merchant) => merchant.id == id);
+    if (index == -1) {
+      return _notFound(id);
+    }
+
+    final merchant = _merchants[index];
+    if (merchant.isArchived) {
+      return MerchantAlreadyArchivedFailure(
+        message: 'Merchant is already archived: ${id.value}',
+      );
+    }
+
+    final archivedMerchant = _withArchivedAt(
+      merchant,
+      archivedAt: archivedAt,
+      modifiedAt: archivedAt,
+    );
+    _merchants[index] = archivedMerchant;
+    return Success(archivedMerchant);
+  }
+
+  @override
+  Future<Result<Merchant, MerchantFailure>> unarchive(
+    MerchantId id,
+    DateTime modifiedAt,
+  ) async {
+    final index = _merchants.indexWhere((merchant) => merchant.id == id);
+    if (index == -1) {
+      return _notFound(id);
+    }
+
+    final merchant = _merchants[index];
+    if (!merchant.isArchived) {
+      return MerchantNotArchivedFailure(
+        message: 'Merchant is not archived: ${id.value}',
+      );
+    }
+
+    final unarchivedMerchant = _withArchivedAt(
+      merchant,
+      archivedAt: null,
+      modifiedAt: modifiedAt,
+    );
+    _merchants[index] = unarchivedMerchant;
+    return Success(unarchivedMerchant);
+  }
+
+  static MerchantNotFoundFailure _notFound(MerchantId id) {
+    return MerchantNotFoundFailure(
+      message: 'Merchant ID was not found: ${id.value}',
+    );
+  }
+
+  List<Merchant> _matchingMerchants(
+    bool Function(Merchant merchant) matches,
+  ) {
+    return List.unmodifiable(_merchants.where(matches));
+  }
+
+  static Merchant _withArchivedAt(
+    Merchant merchant, {
+    required DateTime? archivedAt,
+    required DateTime modifiedAt,
+  }) {
+    return Merchant(
+      id: merchant.id,
+      name: merchant.name,
+      createdAt: merchant.createdAt,
+      modifiedAt: modifiedAt,
+      archivedAt: archivedAt,
+      deletedAt: merchant.deletedAt,
+      entityVersion: merchant.entityVersion,
+    );
+  }
+
   static Merchant _withDeletedAt(Merchant merchant, DateTime? deletedAt) {
     return Merchant(
       id: merchant.id,
       name: merchant.name,
       createdAt: merchant.createdAt,
       modifiedAt: merchant.modifiedAt,
+      archivedAt: merchant.archivedAt,
       deletedAt: deletedAt,
       entityVersion: merchant.entityVersion,
     );

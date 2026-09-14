@@ -52,7 +52,7 @@ void main() {
         );
       });
 
-      test('loads active category fixtures by default', () async {
+      test('loads non-deleted category fixtures by default, including archived', () async {
         // Given
         final repository = InMemoryCategoryRepositoryImpl();
 
@@ -61,8 +61,13 @@ void main() {
 
         // Then
         expect(
-          result.valueOrNull?.map((category) => category.id.value),
-          ['category-household', 'category-groceries', 'category-salary'],
+          result.valueOrNull?.map((category) => category.id.value).toList(),
+          [
+            'category-household',
+            'category-groceries',
+            'category-salary',
+            'category-archived',
+          ],
         );
       });
 
@@ -335,6 +340,60 @@ void main() {
       });
     });
 
+    group('archival', () {
+      test('archives a parent and every direct child', () async {
+        // Given
+        final repository = InMemoryCategoryRepositoryImpl(
+          initialCategories: <Category>[],
+        );
+        final parent = _category(id: 'parent');
+        final child = _category(id: 'child', parentId: parent.id);
+        final other = _category(id: 'other');
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        await repository.create(parent);
+        await repository.create(child);
+        await repository.create(other);
+
+        // When
+        final result = await repository.archive(parent.id, archivedAt);
+
+        // Then
+        expect(result.valueOrNull?.id, parent.id);
+        expect((await repository.getById(parent.id)).valueOrNull?.archivedAt, archivedAt);
+        expect((await repository.getById(child.id)).valueOrNull?.archivedAt, archivedAt);
+        expect((await repository.getById(other.id)).valueOrNull?.isArchived, isFalse);
+      });
+
+      test('unarchives a parent and every direct child', () async {
+        // Given
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final parent = _category(
+          id: 'parent',
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+        final child = _category(
+          id: 'child',
+          parentId: parent.id,
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+        final repository = InMemoryCategoryRepositoryImpl(
+          initialCategories: [parent, child],
+        );
+        final unarchivedAt = DateTime.utc(2026, 1, 3);
+
+        // When
+        final result = await repository.unarchive(parent.id, unarchivedAt);
+
+        // Then
+        expect(result.valueOrNull?.archivedAt, isNull);
+        expect((await repository.getById(child.id)).valueOrNull?.archivedAt, isNull);
+        expect((await repository.getById(parent.id)).valueOrNull?.modifiedAt, unarchivedAt);
+        expect((await repository.getById(child.id)).valueOrNull?.modifiedAt, unarchivedAt);
+      });
+    });
+
     group('delete and restore', () {
       test('removes a category and returns its deleted snapshot', () async {
         // Given
@@ -421,7 +480,9 @@ Category _category({
   CategoryId? parentId,
   CategoryKind kind = CategoryKind.expense,
   List<CategoryBudget> budgets = const [],
+  DateTime? archivedAt,
   DateTime? deletedAt,
+  DateTime? modifiedAt,
   int entityVersion = 1,
 }) {
   final createdAt = DateTime.utc(2026, 1, 1);
@@ -434,9 +495,10 @@ Category _category({
     icon: EntityIcon.other,
     color: EntityColor.blue,
     sortOrder: 0,
+    archivedAt: archivedAt,
     deletedAt: deletedAt,
     createdAt: createdAt,
-    modifiedAt: createdAt,
+    modifiedAt: modifiedAt ?? createdAt,
     entityVersion: entityVersion,
   );
 }

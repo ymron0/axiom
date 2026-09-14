@@ -1,4 +1,5 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
+import 'package:axiom/src/core/domain/mixins/archivable.dart';
 import 'package:axiom/src/core/domain/mixins/deletable.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
@@ -26,14 +27,21 @@ part 'merchant.mapper.dart';
 /// - [name] is trimmed and cannot be blank.
 /// - [id] cannot be [MerchantId.self], which is reserved for the absence of
 ///   a merchant.
+/// - [archivedAt], when present, cannot precede [createdAt] or follow
+///   [modifiedAt].
 /// - [deletedAt], when present, cannot precede [createdAt].
+/// - [deletedAt] cannot precede [archivedAt] when both are present.
 /// - [modifiedAt] cannot precede [createdAt], as enforced by [AuditedEntity].
 /// - [entityVersion] is greater than zero, as enforced by [AuditedEntity].
 @MappableClass()
 final class Merchant extends AuditedEntity<MerchantId>
-    with Deletable, MerchantMappable {
+    with Archivable, Deletable, MerchantMappable {
   /// The canonical display name of the merchant.
   final String name;
+
+  /// {@macro archivable.archived_at}
+  @override
+  final DateTime? archivedAt;
 
   @override
   final DateTime? deletedAt;
@@ -44,6 +52,7 @@ final class Merchant extends AuditedEntity<MerchantId>
     required String name,
     required super.createdAt,
     required super.modifiedAt,
+    this.archivedAt,
     this.deletedAt,
     required super.entityVersion,
   }) : name = normalizeRequiredText(name, 'name') {
@@ -52,6 +61,32 @@ final class Merchant extends AuditedEntity<MerchantId>
         deletedAt,
         'deletedAt',
         'Deletion time cannot precede creation time.',
+      );
+    }
+
+    if (archivedAt != null &&
+        deletedAt != null &&
+        deletedAt!.isBefore(archivedAt!)) {
+      throw ArgumentError.value(
+        deletedAt,
+        'deletedAt',
+        'Deletion time cannot precede archive time.',
+      );
+    }
+
+    if (archivedAt?.isBefore(createdAt) ?? false) {
+      throw ArgumentError.value(
+        archivedAt,
+        'archivedAt',
+        'Archive time cannot precede creation time.',
+      );
+    }
+
+    if (archivedAt?.isAfter(modifiedAt) ?? false) {
+      throw ArgumentError.value(
+        archivedAt,
+        'archivedAt',
+        'Archive time cannot follow modification time.',
       );
     }
 

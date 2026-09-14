@@ -38,6 +38,16 @@ void main() {
       );
     });
 
+    test('rejects an archived parent', () {
+      expect(
+        () => CategoryHierarchyValidator.validateParentChildRelationship(
+          parent: _category(archivedAt: DateTime.utc(2026, 9, 12)),
+          childKind: CategoryKind.expense,
+        ),
+        throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'parent')),
+      );
+    });
+
     test('rejects a parent with a different kind', () {
       expect(
         () => CategoryHierarchyValidator.validateParentChildRelationship(
@@ -56,6 +66,7 @@ Category _category({
   CategoryId? parentCategoryId,
   CategoryKind kind = CategoryKind.expense,
   DateTime? deletedAt,
+  DateTime? archivedAt,
 }) {
   final createdAt = DateTime.utc(2026, 9, 12);
   return Category(
@@ -66,6 +77,7 @@ Category _category({
     icon: EntityIcon.accountBalance,
     color: EntityColor.blue,
     sortOrder: 0,
+    archivedAt: archivedAt,
     deletedAt: deletedAt,
     createdAt: createdAt,
     modifiedAt: createdAt,
