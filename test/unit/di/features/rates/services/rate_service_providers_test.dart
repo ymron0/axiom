@@ -20,6 +20,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
 import '../../../../../fixtures/features/assets/asset_fixtures.dart';
+import '../../../../../fixtures/features/rates/rate_fixtures.dart';
 import '../../../../../mocks/asset_repository_mock.dart';
 import '../../../../../mocks/rate_repository_mock.dart';
 
@@ -29,6 +30,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(AssetId.fromString('fallback'));
     registerFallbackValue(<AssetId>[]);
+    registerFallbackValue(exchangeRateFixture());
   });
 
   group('rate service providers', () {

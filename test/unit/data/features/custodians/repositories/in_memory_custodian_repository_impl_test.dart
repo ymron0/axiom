@@ -8,8 +8,10 @@ import 'package:axiom/src/features/custodians/data/repositories/in_memory_custod
 import 'package:axiom/src/features/custodians/domain/entities/custodian.dart';
 import 'package:axiom/src/features/custodians/domain/enums/custodian_kind.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_already_active_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_already_archived_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_already_deleted_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_already_exists_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_not_archived_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_found_failure.dart';
 import 'package:test/test.dart';
 
@@ -24,6 +26,7 @@ void main() {
     EntityIcon icon = EntityIcon.accountBalance,
     EntityColor color = EntityColor.blue,
     int sortOrder = 0,
+    DateTime? archivedAt,
     DateTime? deletedAt,
     DateTime? modifiedAt,
     int entityVersion = 1,
@@ -35,6 +38,7 @@ void main() {
       icon: icon,
       color: color,
       sortOrder: sortOrder,
+      archivedAt: archivedAt,
       deletedAt: deletedAt,
       createdAt: createdAt,
       modifiedAt: modifiedAt ?? createdAt,
@@ -180,6 +184,27 @@ void main() {
 
         // Then
         expect(result.failureOrNull, isA<CustodianAlreadyDeletedFailure>());
+        expect((await repository.getById(custodian.id)).valueOrNull, isNull);
+      });
+
+      test('rejects an archived custodian without storing it', () async {
+        // Given
+        final repository = createRepository();
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final custodian = custodianFixture(
+          id: 'create-archived',
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+
+        // When
+        final result = await repository.create(custodian);
+
+        // Then
+        expect(
+          result.failureOrNull,
+          isA<CustodianAlreadyArchivedFailure>(),
+        );
         expect((await repository.getById(custodian.id)).valueOrNull, isNull);
       });
     });
@@ -363,6 +388,125 @@ void main() {
       });
     });
 
+    group('archival', () {
+      test(
+        'archives a custodian and separates active and archived results',
+        () async {
+          // Given
+          final repository = createRepository();
+          final custodian = custodianFixture(id: 'archive-custodian');
+          final other = custodianFixture(id: 'archive-other');
+          final archivedAt = DateTime.utc(2026, 1, 2);
+          await repository.create(custodian);
+          await repository.create(other);
+
+          // When
+          final result = await repository.archive(custodian.id, archivedAt);
+
+          // Then
+          final archived = result.valueOrNull!;
+          expect(archived.archivedAt, archivedAt);
+          expect(archived.modifiedAt, archivedAt);
+          expect(
+            (await repository.getAll()).valueOrNull,
+            [same(archived), same(other)],
+          );
+          final active = (await repository.getActive()).valueOrNull!;
+          final archivedCustodians =
+              (await repository.getArchived()).valueOrNull!;
+          expect(active, [same(other)]);
+          expect(archivedCustodians, [same(archived)]);
+          expect(() => active.add(other), throwsUnsupportedError);
+          expect(
+            () => archivedCustodians.add(archived),
+            throwsUnsupportedError,
+          );
+        },
+      );
+
+      test('rejects missing and already archived custodians', () async {
+        // Given
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final archived = custodianFixture(
+          id: 'archive-existing',
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+        final repository = InMemoryCustodianRepositoryImpl(
+          initialCustodians: [archived],
+        );
+
+        // When
+        final missingResult = await repository.archive(
+          CustodianId.fromString('archive-missing'),
+          archivedAt,
+        );
+        final existingResult = await repository.archive(
+          archived.id,
+          archivedAt,
+        );
+
+        // Then
+        expect(missingResult.failureOrNull, isA<CustodianNotFoundFailure>());
+        expect(
+          existingResult.failureOrNull,
+          isA<CustodianAlreadyArchivedFailure>(),
+        );
+      });
+
+      test(
+        'unarchives a custodian and updates its modification timestamp',
+        () async {
+          // Given
+          final archivedAt = DateTime.utc(2026, 1, 2);
+          final unarchivedAt = DateTime.utc(2026, 1, 3);
+          final archived = custodianFixture(
+            id: 'unarchive-custodian',
+            archivedAt: archivedAt,
+            modifiedAt: archivedAt,
+          );
+          final repository = InMemoryCustodianRepositoryImpl(
+            initialCustodians: [archived],
+          );
+
+          // When
+          final result = await repository.unarchive(
+            archived.id,
+            unarchivedAt,
+          );
+
+          // Then
+          final unarchived = result.valueOrNull!;
+          expect(unarchived.archivedAt, isNull);
+          expect(unarchived.modifiedAt, unarchivedAt);
+          expect((await repository.getActive()).valueOrNull, [same(unarchived)]);
+          expect((await repository.getArchived()).valueOrNull, isEmpty);
+        },
+      );
+
+      test('rejects missing and active custodians when unarchiving', () async {
+        // Given
+        final repository = createRepository();
+        final modifiedAt = DateTime.utc(2026, 1, 2);
+        final active = custodianFixture(id: 'unarchive-active');
+        await repository.create(active);
+
+        // When
+        final missingResult = await repository.unarchive(
+          CustodianId.fromString('unarchive-missing'),
+          modifiedAt,
+        );
+        final activeResult = await repository.unarchive(active.id, modifiedAt);
+
+        // Then
+        expect(missingResult.failureOrNull, isA<CustodianNotFoundFailure>());
+        expect(
+          activeResult.failureOrNull,
+          isA<CustodianNotArchivedFailure>(),
+        );
+      });
+    });
+
     group('delete', () {
       test('removes the custodian and returns a deleted snapshot', () async {
         // Given
@@ -378,6 +522,7 @@ void main() {
           entityVersion: 9,
         );
         await repository.create(custodian);
+        await repository.archive(custodian.id, DateTime.utc(2026, 1, 2));
 
         // When
         final result = await repository.delete(custodian.id);
@@ -393,6 +538,7 @@ void main() {
         expect(deleted.createdAt, custodian.createdAt);
         expect(deleted.modifiedAt, custodian.modifiedAt);
         expect(deleted.entityVersion, 9);
+        expect(deleted.archivedAt, DateTime.utc(2026, 1, 2));
         expect(deleted.deletedAt, isNotNull);
         expect(deleted.deletedAt!.isBefore(custodian.createdAt), isFalse);
         expect((await repository.getById(custodian.id)).valueOrNull, isNull);
@@ -423,6 +569,7 @@ void main() {
           icon: EntityIcon.wallet,
           color: EntityColor.purple,
           sortOrder: 4,
+          archivedAt: deletedAt,
           deletedAt: deletedAt,
           modifiedAt: DateTime.utc(2026, 1, 2),
           entityVersion: 6,
@@ -444,6 +591,7 @@ void main() {
         expect(restored.modifiedAt, deleted.modifiedAt);
         expect(restored.entityVersion, 6);
         expect(restored.deletedAt, isNull);
+        expect(restored.archivedAt, deletedAt);
       });
 
       test('rejects an active custodian without storing it', () async {

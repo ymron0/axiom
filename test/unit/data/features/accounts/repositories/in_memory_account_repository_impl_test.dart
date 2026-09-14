@@ -11,8 +11,10 @@ import 'package:axiom/src/features/accounts/data/repositories/in_memory_account_
 import 'package:axiom/src/features/accounts/domain/entities/account.dart';
 import 'package:axiom/src/features/accounts/domain/enums/account_kind.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_already_active_failure.dart';
+import 'package:axiom/src/features/accounts/domain/failures/account_already_archived_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_already_deleted_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_already_exists_failure.dart';
+import 'package:axiom/src/features/accounts/domain/failures/account_not_archived_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
 import 'package:test/test.dart';
 
@@ -31,6 +33,7 @@ void main() {
     EntityIcon icon = EntityIcon.accountBalance,
     EntityColor color = EntityColor.blue,
     int sortOrder = 0,
+    DateTime? archivedAt,
     DateTime? deletedAt,
     DateTime? modifiedAt,
     int entityVersion = 1,
@@ -46,6 +49,7 @@ void main() {
       icon: icon,
       color: color,
       sortOrder: sortOrder,
+      archivedAt: archivedAt,
       deletedAt: deletedAt,
       createdAt: createdAt,
       modifiedAt: modifiedAt ?? createdAt,
@@ -189,6 +193,24 @@ void main() {
 
         // Then
         expect(result.failureOrNull, isA<AccountAlreadyDeletedFailure>());
+        expect((await repository.getById(account.id)).valueOrNull, isNull);
+      });
+
+      test('rejects an archived account without storing it', () async {
+        // Given
+        final repository = createRepository();
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final account = accountFixture(
+          id: 'create-archived',
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+
+        // When
+        final result = await repository.create(account);
+
+        // Then
+        expect(result.failureOrNull, isA<AccountAlreadyArchivedFailure>());
         expect((await repository.getById(account.id)).valueOrNull, isNull);
       });
     });
@@ -422,6 +444,119 @@ void main() {
       });
     });
 
+    group('archival', () {
+      test(
+        'archives an account and separates active and archived results',
+        () async {
+          // Given
+          final repository = createRepository();
+          final account = accountFixture(id: 'archive-account');
+          final other = accountFixture(id: 'archive-other');
+          final archivedAt = DateTime.utc(2026, 1, 2);
+          await repository.create(account);
+          await repository.create(other);
+
+          // When
+          final result = await repository.archive(account.id, archivedAt);
+
+          // Then
+          final archived = result.valueOrNull!;
+          expect(archived.archivedAt, archivedAt);
+          expect(archived.modifiedAt, archivedAt);
+          expect(
+            (await repository.getAll()).valueOrNull,
+            [same(archived), same(other)],
+          );
+          final active = (await repository.getActive()).valueOrNull!;
+          final archivedAccounts =
+              (await repository.getArchived()).valueOrNull!;
+          expect(active, [same(other)]);
+          expect(archivedAccounts, [same(archived)]);
+          expect(() => active.add(other), throwsUnsupportedError);
+          expect(() => archivedAccounts.add(archived), throwsUnsupportedError);
+        },
+      );
+
+      test('rejects missing and already archived accounts', () async {
+        // Given
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final archived = accountFixture(
+          id: 'archive-existing',
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+        final repository = InMemoryAccountRepositoryImpl(
+          initialAccounts: [archived],
+        );
+
+        // When
+        final missingResult = await repository.archive(
+          AccountId.fromString('archive-missing'),
+          archivedAt,
+        );
+        final existingResult = await repository.archive(
+          archived.id,
+          archivedAt,
+        );
+
+        // Then
+        expect(missingResult.failureOrNull, isA<AccountNotFoundFailure>());
+        expect(
+          existingResult.failureOrNull,
+          isA<AccountAlreadyArchivedFailure>(),
+        );
+      });
+
+      test(
+        'unarchives an account and updates its modification timestamp',
+        () async {
+          // Given
+          final archivedAt = DateTime.utc(2026, 1, 2);
+          final unarchivedAt = DateTime.utc(2026, 1, 3);
+          final archived = accountFixture(
+            id: 'unarchive-account',
+            archivedAt: archivedAt,
+            modifiedAt: archivedAt,
+          );
+          final repository = InMemoryAccountRepositoryImpl(
+            initialAccounts: [archived],
+          );
+
+          // When
+          final result = await repository.unarchive(
+            archived.id,
+            unarchivedAt,
+          );
+
+          // Then
+          final unarchived = result.valueOrNull!;
+          expect(unarchived.archivedAt, isNull);
+          expect(unarchived.modifiedAt, unarchivedAt);
+          expect((await repository.getActive()).valueOrNull, [same(unarchived)]);
+          expect((await repository.getArchived()).valueOrNull, isEmpty);
+        },
+      );
+
+      test('rejects missing and active accounts when unarchiving', () async {
+        // Given
+        final repository = createRepository();
+        final modifiedAt = DateTime.utc(2026, 1, 2);
+        final active = accountFixture(id: 'unarchive-active');
+        await repository.create(active);
+
+        // When
+        final missingResult = await repository.unarchive(
+          AccountId.fromString('unarchive-missing'),
+          modifiedAt,
+        );
+        final activeResult = await repository.unarchive(active.id, modifiedAt);
+
+        // Then
+        expect(missingResult.failureOrNull, isA<AccountNotFoundFailure>());
+        expect(activeResult.failureOrNull, isA<AccountNotArchivedFailure>());
+      });
+    });
+
     group('delete', () {
       test('removes the account and returns a deleted snapshot', () async {
         // Given
@@ -442,6 +577,7 @@ void main() {
           entityVersion: 9,
         );
         await repository.create(account);
+        await repository.archive(account.id, DateTime.utc(2026, 1, 2));
 
         // When
         final result = await repository.delete(account.id);
@@ -461,6 +597,7 @@ void main() {
         expect(deleted.createdAt, account.createdAt);
         expect(deleted.modifiedAt, account.modifiedAt);
         expect(deleted.entityVersion, 9);
+        expect(deleted.archivedAt, DateTime.utc(2026, 1, 2));
         expect(deleted.deletedAt, isNotNull);
         expect(deleted.deletedAt!.isBefore(account.createdAt), isFalse);
         expect((await repository.getById(account.id)).valueOrNull, isNull);
@@ -496,6 +633,7 @@ void main() {
           icon: EntityIcon.wallet,
           color: EntityColor.purple,
           sortOrder: 4,
+          archivedAt: deletedAt,
           deletedAt: deletedAt,
           modifiedAt: DateTime.utc(2026, 1, 2),
           entityVersion: 6,
@@ -521,6 +659,7 @@ void main() {
         expect(restored.modifiedAt, deleted.modifiedAt);
         expect(restored.entityVersion, 6);
         expect(restored.deletedAt, isNull);
+        expect(restored.archivedAt, deletedAt);
       });
 
       test('rejects an active account without storing it', () async {

@@ -1,0 +1,21 @@
+tags:
+  core:
+    description: Tests for shared core primitives and infrastructure.
+
+  domain:
+    description: Tests for domain entities, value objects, failures, and domain services.
+
+  application:
+    description: Tests for use cases, application services, and orchestrators.
+
+  data:
+    description: Tests for repository implementations, persistence, and data mapping.
+
+  presentation:
+    description: Tests for notifiers, controllers, widgets, and screens.
+
+  di:
+    description: Tests for dependency-injection and composition-root wiring.
+
+  integration:
+    description: Tests spanning multiple components or architectural layers.

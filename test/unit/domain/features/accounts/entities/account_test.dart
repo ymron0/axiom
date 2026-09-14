@@ -105,6 +105,18 @@ void main() {
       expect(account.isDeleted, isTrue);
     });
 
+    test('preserves an archive timestamp and reports the account archived', () {
+      final archivedAt = DateTime.utc(2026, 9, 13);
+
+      final account = _createAccount(
+        archivedAt: archivedAt,
+        modifiedAt: archivedAt,
+      );
+
+      expect(account.archivedAt, same(archivedAt));
+      expect(account.isArchived, isTrue);
+    });
+
     test('rejects deletion before creation', () {
       final deletedAt = DateTime.utc(2026, 9, 11);
 
@@ -115,6 +127,45 @@ void main() {
               .having((e) => e.name, 'name', 'deletedAt')
               .having((e) => e.invalidValue, 'invalidValue', deletedAt),
         ),
+      );
+    });
+
+    test('rejects archive timestamps outside the audit lifecycle', () {
+      final createdAt = DateTime.utc(2026, 9, 12);
+      final modifiedAt = DateTime.utc(2026, 9, 13);
+
+      expect(
+        () => _createAccount(
+          createdAt: createdAt,
+          modifiedAt: modifiedAt,
+          archivedAt: DateTime.utc(2026, 9, 11),
+        ),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'archivedAt')
+              .having(
+                (e) => e.invalidValue,
+                'invalidValue',
+                DateTime.utc(2026, 9, 11),
+              ),
+        ),
+      );
+      expect(
+        () => _createAccount(
+          createdAt: createdAt,
+          modifiedAt: modifiedAt,
+          archivedAt: DateTime.utc(2026, 9, 14),
+        ),
+        throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'archivedAt')),
+      );
+      expect(
+        () => _createAccount(
+          createdAt: createdAt,
+          modifiedAt: modifiedAt,
+          archivedAt: DateTime.utc(2026, 9, 13),
+          deletedAt: DateTime.utc(2026, 9, 12, 12),
+        ),
+        throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'deletedAt')),
       );
     });
 
@@ -154,6 +205,7 @@ Account _createAccount({
   String name = 'Checking',
   String? reference,
   int sortOrder = 0,
+  DateTime? archivedAt,
   DateTime? deletedAt,
   int entityVersion = 1,
   DateTime? createdAt,
@@ -170,6 +222,7 @@ Account _createAccount({
     icon: EntityIcon.accountBalance,
     color: EntityColor.blue,
     sortOrder: sortOrder,
+    archivedAt: archivedAt,
     deletedAt: deletedAt,
     createdAt: created,
     modifiedAt: modifiedAt ?? created,

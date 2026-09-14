@@ -8,9 +8,11 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/custodians/domain/entities/custodian.dart';
 import 'package:axiom/src/features/custodians/domain/enums/custodian_kind.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_already_active_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_already_archived_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_already_deleted_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_already_exists_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_not_archived_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_found_failure.dart';
 import 'package:axiom/src/features/custodians/domain/repositories/custodian_repository.dart';
 import 'package:fixtures/fixtures.dart';
@@ -75,6 +77,11 @@ final class InMemoryCustodianRepositoryImpl implements CustodianRepository {
     if (custodian.isDeleted) {
       return CustodianAlreadyDeletedFailure(
         message: 'Deleted custodian cannot be created: ${custodian.id.value}',
+      );
+    }
+    if (custodian.isArchived) {
+      return CustodianAlreadyArchivedFailure(
+        message: 'Archived custodian cannot be created: ${custodian.id.value}',
       );
     }
     if (_custodians.any(
@@ -184,9 +191,107 @@ final class InMemoryCustodianRepositoryImpl implements CustodianRepository {
       icon: custodian.icon,
       color: custodian.color,
       sortOrder: custodian.sortOrder,
+      archivedAt: custodian.archivedAt,
       deletedAt: deletedAt,
       createdAt: custodian.createdAt,
       modifiedAt: custodian.modifiedAt,
+      entityVersion: custodian.entityVersion,
+    );
+  }
+
+  @override
+  Future<Result<Custodian, CustodianFailure>> archive(
+    CustodianId id,
+    DateTime archivedAt,
+  ) async {
+    final index = _custodians.indexWhere((custodian) => custodian.id == id);
+    if (index == -1) {
+      return CustodianNotFoundFailure(
+        message: 'Custodian ID was not found: ${id.value}',
+      );
+    }
+
+    final custodian = _custodians[index];
+    if (custodian.isArchived) {
+      return CustodianAlreadyArchivedFailure(
+        message: 'Custodian is already archived: ${id.value}',
+      );
+    }
+
+    final archivedCustodian = _withArchivedAt(
+      custodian,
+      archivedAt: archivedAt,
+      modifiedAt: archivedAt,
+    );
+    _custodians[index] = archivedCustodian;
+
+    return Success(archivedCustodian);
+  }
+
+  @override
+  Future<Result<List<Custodian>, CustodianFailure>> getActive() async {
+    final matches = _custodians
+        .where((custodian) => !custodian.isArchived)
+        .toList(growable: false);
+
+    return Success(List.unmodifiable(matches));
+  }
+
+  @override
+  Future<Result<List<Custodian>, CustodianFailure>> getArchived() async {
+    final matches = _custodians
+        .where((custodian) => custodian.isArchived)
+        .toList(growable: false);
+
+    return Success(List.unmodifiable(matches));
+  }
+
+  @override
+  Future<Result<Custodian, CustodianFailure>> unarchive(
+    CustodianId id,
+    DateTime modifiedAt,
+  ) async {
+    final index = _custodians.indexWhere((custodian) => custodian.id == id);
+    if (index == -1) {
+      return CustodianNotFoundFailure(
+        message: 'Custodian ID was not found: ${id.value}',
+      );
+    }
+
+    final custodian = _custodians[index];
+    if (!custodian.isArchived) {
+      return CustodianNotArchivedFailure(
+        message: 'Custodian is not archived: ${id.value}',
+      );
+    }
+
+    final unarchivedCustodian = _withArchivedAt(
+      custodian,
+      archivedAt: null,
+      modifiedAt: modifiedAt,
+    );
+    _custodians[index] = unarchivedCustodian;
+
+    return Success(unarchivedCustodian);
+  }
+
+  static Custodian _withArchivedAt(
+    Custodian custodian, {
+    required DateTime? archivedAt,
+    required DateTime modifiedAt,
+  }) {
+    return Custodian(
+      id: custodian.id,
+      name: custodian.name,
+      kind: custodian.kind,
+      logo: custodian.logo,
+      icon: custodian.icon,
+      color: custodian.color,
+      sortOrder: custodian.sortOrder,
+      archivedAt: archivedAt,
+      deletedAt: custodian.deletedAt,
+      createdAt: custodian.createdAt,
+      modifiedAt: modifiedAt,
       entityVersion: custodian.entityVersion,
     );
   }
