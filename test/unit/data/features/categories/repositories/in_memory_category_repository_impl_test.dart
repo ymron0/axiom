@@ -1,7 +1,10 @@
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
+import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/data/repositories/in_memory_category_repository_impl.dart';
 import 'package:axiom/src/features/categories/domain/entities/category.dart';
 import 'package:axiom/src/features/categories/domain/enums/budget_period.dart';
@@ -73,7 +76,9 @@ void main() {
             kind: 'expense',
             budgets: [
               CategoryBudgetFixture(
+                assetId: 'asset-chf',
                 limit: '100',
+                direction: 'outgoing',
                 period: 'monthly',
                 effectiveFrom: DateTime.utc(2026, 1, 1),
                 effectiveUntil: DateTime.utc(2026, 2, 1),
@@ -96,10 +101,13 @@ void main() {
           );
 
           // Then
-          expect(
-            result.valueOrNull?.budgetAt(CalendarDate(2026, 1, 31)),
-            isNotNull,
+          final budget = result.valueOrNull?.budgetAt(
+            CalendarDate(2026, 1, 31),
           );
+          expect(budget, isNotNull);
+          expect(budget?.limit.assetId, AssetId.fromString('asset-chf'));
+          expect(budget?.limit.amount, Decimal.parse('100'));
+          expect(budget?.limit.isOutgoing, isTrue);
           expect(
             result.valueOrNull?.budgetAt(CalendarDate(2026, 2, 1)),
             isNull,
@@ -435,7 +443,11 @@ Category _category({
 
 CategoryBudget _budget(BudgetPeriod period) {
   return CategoryBudget(
-    limit: Decimal.parse('100'),
+    limit: AssetAmount(
+      assetId: AssetId.fromString('asset-chf'),
+      amount: Decimal.parse('100'),
+      direction: AssetAmountDirection.outgoing,
+    ),
     period: period,
     effectiveFrom: CalendarDate(2026, 1, 1),
   );
