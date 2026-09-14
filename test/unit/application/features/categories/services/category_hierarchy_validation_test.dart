@@ -116,6 +116,31 @@ void main() {
       expect(result.failureOrNull, isA<CategoryInvalidParentFailure>());
     });
 
+    test('rejects an archived parent', () async {
+      // Given
+      final child = categoryFixture(id: 'child', parentCategoryId: 'parent');
+      final archivedAt = DateTime.utc(2026, 1, 2);
+      final parent = categoryFixture(
+        id: 'parent',
+        archivedAt: archivedAt,
+        modifiedAt: archivedAt,
+      );
+      when(
+        () => repository.getById(parent.id),
+      ).thenAnswer((_) async => Success(parent));
+
+      // When
+      final result = await CategoryHierarchyValidation.validateParent(
+        repository: repository,
+        categoryId: child.id,
+        parentCategoryId: child.parentCategoryId,
+        kind: child.kind,
+      );
+
+      // Then
+      expect(result.failureOrNull, isA<CategoryInvalidParentFailure>());
+    });
+
     test('preserves parent lookup failures', () async {
       // Given
       final child = categoryFixture(id: 'child', parentCategoryId: 'parent');

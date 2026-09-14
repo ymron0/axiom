@@ -6,10 +6,12 @@ import 'package:axiom/src/features/categories/domain/entities/category.dart';
 import 'package:axiom/src/features/categories/domain/enums/budget_period.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_already_active_failure.dart';
+import 'package:axiom/src/features/categories/domain/failures/category_already_archived_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_already_deleted_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_already_exists_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_found_failure.dart';
+import 'package:axiom/src/features/categories/domain/failures/category_not_archived_failure.dart';
 
 /// Domain-facing contract for storing and retrieving [Category] entities.
 ///
@@ -20,6 +22,7 @@ import 'package:axiom/src/features/categories/domain/failures/category_not_found
 /// ## Persistence semantics
 ///
 /// Categories with a non-null [Category.deletedAt] are absent from persistence.
+/// Archived categories remain persisted and are returned by general queries.
 ///
 /// Deletion is physical: this repository returns the deleted snapshot but does
 /// not retain it. A caller that needs to support restoration must retain that
@@ -86,6 +89,12 @@ abstract interface class CategoryRepository {
   ///
   /// Returns an empty list when no categories exist.
   Future<Result<List<Category>, CategoryFailure>> getAll();
+
+  /// Returns persisted categories that are not archived.
+  Future<Result<List<Category>, CategoryFailure>> getActive();
+
+  /// Returns persisted categories that are archived.
+  Future<Result<List<Category>, CategoryFailure>> getArchived();
 
   /// Returns the persisted category identified by [id].
   ///
@@ -208,6 +217,31 @@ abstract interface class CategoryRepository {
   /// method when [Category.parentCategoryId] or [Category.kind] changes.
   Future<Result<void, CategoryFailure>> update(Category category);
 
+  /// Archives [id] and every direct child category in one operation.
+  ///
+  /// The Categories hierarchy supports only one child level, so this archives
+  /// every sub-category. [archivedAt] becomes the modification timestamp of
+  /// categories transitioned to archived.
+  ///
+  /// Fails with [CategoryAlreadyArchivedFailure] when the requested category is
+  /// already archived. Children that are already archived are preserved.
+  Future<Result<Category, CategoryFailure>> archive(
+    CategoryId id,
+    DateTime archivedAt,
+  );
+
+  /// Unarchives [id] and every direct child category in one operation.
+  ///
+  /// [modifiedAt] becomes the modification timestamp of categories transitioned
+  /// to active. Children that are already active are preserved.
+  ///
+  /// Fails with [CategoryNotArchivedFailure] when the requested category is not
+  /// archived.
+  Future<Result<Category, CategoryFailure>> unarchive(
+    CategoryId id,
+    DateTime modifiedAt,
+  );
+
   /// Physically removes the category identified by [id].
   ///
   /// Fails with [CategoryNotFoundFailure] when the category does not exist.
@@ -230,8 +264,8 @@ abstract interface class CategoryRepository {
 
   /// Restores the caller-retained deleted [category].
   ///
-  /// On success, an active copy of [category] is stored with
-  /// [Category.deletedAt] set to `null`.
+  /// On success, a non-deleted copy of [category] is stored with
+  /// [Category.deletedAt] set to `null`, preserving [Category.archivedAt].
   ///
   /// Fails with [CategoryAlreadyActiveFailure] when [category] is already
   /// active.

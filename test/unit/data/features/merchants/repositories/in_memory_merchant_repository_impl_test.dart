@@ -1,10 +1,12 @@
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/features/merchants/data/repositories/in_memory_merchant_repository_impl.dart';
 import 'package:axiom/src/features/merchants/domain/entities/merchant.dart';
+import 'package:axiom/src/features/merchants/domain/failures/merchant_already_archived_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_already_active_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_already_deleted_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_already_exists_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_not_found_failure.dart';
+import 'package:axiom/src/features/merchants/domain/failures/merchant_not_archived_failure.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -14,6 +16,7 @@ void main() {
   Merchant merchantFixture({
     required String id,
     String name = 'Merchant',
+    DateTime? archivedAt,
     DateTime? deletedAt,
     DateTime? modifiedAt,
     int entityVersion = 1,
@@ -23,6 +26,7 @@ void main() {
       name: name,
       createdAt: createdAt,
       modifiedAt: modifiedAt ?? createdAt,
+      archivedAt: archivedAt,
       deletedAt: deletedAt,
       entityVersion: entityVersion,
     );
@@ -46,7 +50,7 @@ void main() {
         expect(result.valueOrNull, isEmpty);
       });
 
-      test('loads active external fixtures when no seed is supplied', () async {
+      test('loads non-deleted external fixtures when no seed is supplied', () async {
         // Given
         final repository = InMemoryMerchantRepositoryImpl();
 
@@ -170,6 +174,24 @@ void main() {
         expect(result.failureOrNull, isA<MerchantAlreadyDeletedFailure>());
         expect((await repository.getById(merchant.id)).valueOrNull, isNull);
       });
+
+      test('rejects an archived merchant without storing it', () async {
+        // Given
+        final repository = createRepository();
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final merchant = merchantFixture(
+          id: 'create-archived',
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+
+        // When
+        final result = await repository.create(merchant);
+
+        // Then
+        expect(result.failureOrNull, isA<MerchantAlreadyArchivedFailure>());
+        expect((await repository.getById(merchant.id)).valueOrNull, isNull);
+      });
     });
 
     group('getAll', () {
@@ -199,6 +221,112 @@ void main() {
 
         // Then
         expect(() => merchants.add(merchant), throwsUnsupportedError);
+      });
+    });
+
+    group('archival', () {
+      test('separates active and archived merchants without removing either', () async {
+        // Given
+        final active = merchantFixture(id: 'active');
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final archived = merchantFixture(
+          id: 'archived',
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+        final repository = InMemoryMerchantRepositoryImpl(
+          initialMerchants: [active, archived],
+        );
+
+        // When
+        final activeMerchants = await repository.getActive();
+        final archivedMerchants = await repository.getArchived();
+
+        // Then
+        expect(activeMerchants.valueOrNull, [same(active)]);
+        expect(archivedMerchants.valueOrNull, [same(archived)]);
+      });
+
+      test('archives and unarchives a merchant with the supplied timestamps', () async {
+        // Given
+        final repository = createRepository();
+        final merchant = merchantFixture(id: 'archive-transition');
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final unarchivedAt = DateTime.utc(2026, 1, 3);
+        await repository.create(merchant);
+
+        // When
+        final archived = await repository.archive(merchant.id, archivedAt);
+        final unarchived = await repository.unarchive(merchant.id, unarchivedAt);
+
+        // Then
+        expect(archived.valueOrNull?.archivedAt, archivedAt);
+        expect(archived.valueOrNull?.modifiedAt, archivedAt);
+        expect(unarchived.valueOrNull?.archivedAt, isNull);
+        expect(unarchived.valueOrNull?.modifiedAt, unarchivedAt);
+      });
+
+      test('rejects archiving a missing merchant', () async {
+        // Given
+        final repository = createRepository();
+
+        // When
+        final result = await repository.archive(
+          MerchantId.fromString('archive-missing'),
+          DateTime.utc(2026, 1, 2),
+        );
+
+        // Then
+        expect(result.failureOrNull, isA<MerchantNotFoundFailure>());
+      });
+
+      test('rejects archiving an already archived merchant', () async {
+        // Given
+        final archivedAt = DateTime.utc(2026, 1, 2);
+        final merchant = merchantFixture(
+          id: 'archive-already-archived',
+          archivedAt: archivedAt,
+          modifiedAt: archivedAt,
+        );
+        final repository = InMemoryMerchantRepositoryImpl(
+          initialMerchants: [merchant],
+        );
+
+        // When
+        final result = await repository.archive(merchant.id, archivedAt);
+
+        // Then
+        expect(result.failureOrNull, isA<MerchantAlreadyArchivedFailure>());
+      });
+
+      test('rejects unarchiving a missing merchant', () async {
+        // Given
+        final repository = createRepository();
+
+        // When
+        final result = await repository.unarchive(
+          MerchantId.fromString('unarchive-missing'),
+          DateTime.utc(2026, 1, 2),
+        );
+
+        // Then
+        expect(result.failureOrNull, isA<MerchantNotFoundFailure>());
+      });
+
+      test('rejects unarchiving an active merchant', () async {
+        // Given
+        final repository = createRepository();
+        final merchant = merchantFixture(id: 'unarchive-active');
+        await repository.create(merchant);
+
+        // When
+        final result = await repository.unarchive(
+          merchant.id,
+          DateTime.utc(2026, 1, 2),
+        );
+
+        // Then
+        expect(result.failureOrNull, isA<MerchantNotArchivedFailure>());
       });
     });
 

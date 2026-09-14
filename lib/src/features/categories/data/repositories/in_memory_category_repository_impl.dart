@@ -11,10 +11,12 @@ import 'package:axiom/src/features/categories/domain/entities/category.dart';
 import 'package:axiom/src/features/categories/domain/enums/budget_period.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_already_active_failure.dart';
+import 'package:axiom/src/features/categories/domain/failures/category_already_archived_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_already_deleted_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_already_exists_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_found_failure.dart';
+import 'package:axiom/src/features/categories/domain/failures/category_not_archived_failure.dart';
 import 'package:axiom/src/features/categories/domain/repositories/category_repository.dart';
 import 'package:axiom/src/features/categories/domain/value_objects/category_budget.dart';
 import 'package:decimal/decimal.dart';
@@ -25,8 +27,8 @@ import 'package:fixtures/types/categories.dart';
 final class InMemoryCategoryRepositoryImpl implements CategoryRepository {
   /// Creates a repository seeded with [initialCategories].
   ///
-  /// When omitted, the repository loads the active external category
-  /// fixtures. Throws [ArgumentError] when the seed contains deleted
+  /// When omitted, the repository loads the non-deleted external category
+  /// fixtures, including archived categories. Throws [ArgumentError] when the seed contains deleted
   /// categories or duplicate IDs.
   InMemoryCategoryRepositoryImpl({Iterable<Category>? initialCategories})
     : _categories = _validatedSeed(
@@ -68,6 +70,11 @@ final class InMemoryCategoryRepositoryImpl implements CategoryRepository {
         message: 'Deleted category cannot be created: ${category.id.value}',
       );
     }
+    if (category.isArchived) {
+      return CategoryAlreadyArchivedFailure(
+        message: 'Archived category cannot be created: ${category.id.value}',
+      );
+    }
     if (_categories.containsKey(category.id)) {
       return CategoryAlreadyExistsFailure(
         message: 'Category ID already exists: ${category.id.value}',
@@ -91,6 +98,16 @@ final class InMemoryCategoryRepositoryImpl implements CategoryRepository {
   @override
   Future<Result<List<Category>, CategoryFailure>> getAll() async {
     return Success(List.unmodifiable(_categories.values));
+  }
+
+  @override
+  Future<Result<List<Category>, CategoryFailure>> getActive() async {
+    return Success(_matchingCategories((category) => !category.isArchived));
+  }
+
+  @override
+  Future<Result<List<Category>, CategoryFailure>> getArchived() async {
+    return Success(_matchingCategories((category) => category.isArchived));
   }
 
   @override
@@ -174,6 +191,82 @@ final class InMemoryCategoryRepositoryImpl implements CategoryRepository {
     return const Success(null);
   }
 
+  @override
+  Future<Result<Category, CategoryFailure>> archive(
+    CategoryId id,
+    DateTime archivedAt,
+  ) async {
+    final category = _categories[id];
+    if (category == null) {
+      return _notFound(id);
+    }
+    if (category.isArchived) {
+      return CategoryAlreadyArchivedFailure(
+        message: 'Category is already archived: ${id.value}',
+      );
+    }
+
+    final affected = <Category>[
+      category,
+      ..._categories.values.where((item) => item.parentCategoryId == id),
+    ];
+    final archived = <Category>[
+      for (final item in affected)
+        if (item.isArchived)
+          item
+        else
+          _withArchivedAt(
+            item,
+            archivedAt: archivedAt,
+            modifiedAt: archivedAt,
+          ),
+    ];
+
+    for (final item in archived) {
+      _categories[item.id] = item;
+    }
+
+    return Success(archived.first);
+  }
+
+  @override
+  Future<Result<Category, CategoryFailure>> unarchive(
+    CategoryId id,
+    DateTime modifiedAt,
+  ) async {
+    final category = _categories[id];
+    if (category == null) {
+      return _notFound(id);
+    }
+    if (!category.isArchived) {
+      return CategoryNotArchivedFailure(
+        message: 'Category is not archived: ${id.value}',
+      );
+    }
+
+    final affected = <Category>[
+      category,
+      ..._categories.values.where((item) => item.parentCategoryId == id),
+    ];
+    final unarchived = <Category>[
+      for (final item in affected)
+        if (!item.isArchived)
+          item
+        else
+          _withArchivedAt(
+            item,
+            archivedAt: null,
+            modifiedAt: modifiedAt,
+          ),
+    ];
+
+    for (final item in unarchived) {
+      _categories[item.id] = item;
+    }
+
+    return Success(unarchived.first);
+  }
+
   static CategoryNotFoundFailure _notFound(CategoryId id) {
     return CategoryNotFoundFailure(
       message: 'Category ID was not found: ${id.value}',
@@ -198,6 +291,7 @@ final class InMemoryCategoryRepositoryImpl implements CategoryRepository {
       icon: EntityIcon.values.byName(fixture.icon),
       color: EntityColor.values.byName(fixture.color),
       sortOrder: fixture.sortOrder,
+      archivedAt: fixture.archivedAt,
       deletedAt: fixture.deletedAt,
       createdAt: fixture.createdAt,
       modifiedAt: fixture.modifiedAt,
@@ -230,9 +324,32 @@ final class InMemoryCategoryRepositoryImpl implements CategoryRepository {
       icon: category.icon,
       color: category.color,
       sortOrder: category.sortOrder,
+      archivedAt: category.archivedAt,
       deletedAt: deletedAt,
       createdAt: category.createdAt,
       modifiedAt: category.modifiedAt,
+      entityVersion: category.entityVersion,
+    );
+  }
+
+  static Category _withArchivedAt(
+    Category category, {
+    required DateTime? archivedAt,
+    required DateTime modifiedAt,
+  }) {
+    return Category(
+      id: category.id,
+      name: category.name,
+      parentCategoryId: category.parentCategoryId,
+      kind: category.kind,
+      budgets: category.budgets,
+      icon: category.icon,
+      color: category.color,
+      sortOrder: category.sortOrder,
+      archivedAt: archivedAt,
+      deletedAt: category.deletedAt,
+      createdAt: category.createdAt,
+      modifiedAt: modifiedAt,
       entityVersion: category.entityVersion,
     );
   }

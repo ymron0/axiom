@@ -37,6 +37,11 @@ abstract final class CategoryHierarchyValidation {
         message: 'Parent category was not found: ${parentCategoryId.value}',
       );
     }
+    if (parent.isArchived) {
+      return CategoryInvalidParentFailure(
+        message: 'Archived category cannot be a parent: ${parent.id.value}',
+      );
+    }
     if (parent.kind != kind) {
       return const CategoryKindMismatchFailure(
         message: 'A child category must have the same kind as its parent.',

@@ -72,6 +72,49 @@ void main() {
       );
     });
 
+    test('rejects deletion before archive', () {
+      final archivedAt = DateTime.utc(2026, 9, 13);
+      final deletedAt = DateTime.utc(2026, 9, 12, 12);
+
+      expect(
+        () => _createMerchant(
+          archivedAt: archivedAt,
+          deletedAt: deletedAt,
+        ),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'deletedAt')
+              .having((e) => e.invalidValue, 'invalidValue', deletedAt),
+        ),
+      );
+    });
+
+    test('rejects archive before creation', () {
+      final archivedAt = DateTime.utc(2026, 9, 11);
+
+      expect(
+        () => _createMerchant(archivedAt: archivedAt),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'archivedAt')
+              .having((e) => e.invalidValue, 'invalidValue', archivedAt),
+        ),
+      );
+    });
+
+    test('rejects archive after modification', () {
+      final archivedAt = DateTime.utc(2026, 9, 13);
+
+      expect(
+        () => _createMerchant(archivedAt: archivedAt),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'archivedAt')
+              .having((e) => e.invalidValue, 'invalidValue', archivedAt),
+        ),
+      );
+    });
+
     test('rejects invalid audit metadata', () {
       final createdAt = DateTime.utc(2026, 9, 12);
       expect(
@@ -108,6 +151,7 @@ void main() {
 Merchant _createMerchant({
   MerchantId? id,
   String name = 'Grocery Store',
+  DateTime? archivedAt,
   DateTime? deletedAt,
   int entityVersion = 1,
   DateTime? createdAt,
@@ -119,6 +163,7 @@ Merchant _createMerchant({
     name: name,
     createdAt: created,
     modifiedAt: modifiedAt ?? created,
+    archivedAt: archivedAt,
     deletedAt: deletedAt,
     entityVersion: entityVersion,
   );

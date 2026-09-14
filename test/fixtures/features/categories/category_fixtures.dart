@@ -13,7 +13,9 @@ Category categoryFixture({
   EntityIcon icon = EntityIcon.other,
   EntityColor color = EntityColor.blue,
   int sortOrder = 0,
+  DateTime? archivedAt,
   DateTime? deletedAt,
+  DateTime? modifiedAt,
 }) {
   final createdAt = DateTime.utc(2026, 1, 1);
   return Category(
@@ -26,9 +28,10 @@ Category categoryFixture({
     icon: icon,
     color: color,
     sortOrder: sortOrder,
+    archivedAt: archivedAt,
     deletedAt: deletedAt,
     createdAt: createdAt,
-    modifiedAt: createdAt,
+    modifiedAt: modifiedAt ?? createdAt,
     entityVersion: 1,
   );
 }

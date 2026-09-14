@@ -5,7 +5,9 @@ import 'package:axiom/src/features/merchants/domain/entities/merchant.dart';
 Merchant merchantFixture({
   required String id,
   String name = 'Test Merchant',
+  DateTime? archivedAt,
   DateTime? deletedAt,
+  DateTime? modifiedAt,
 }) {
   final createdAt = DateTime.utc(2026, 1, 1);
 
@@ -13,7 +15,8 @@ Merchant merchantFixture({
     id: MerchantId.fromString(id),
     name: name,
     createdAt: createdAt,
-    modifiedAt: createdAt,
+    modifiedAt: modifiedAt ?? createdAt,
+    archivedAt: archivedAt,
     deletedAt: deletedAt,
     entityVersion: 1,
   );

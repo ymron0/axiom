@@ -97,6 +97,45 @@ void main() {
       );
     });
 
+    test('rejects an archive before creation', () {
+      final createdAt = DateTime.utc(2026, 9, 12);
+
+      expect(
+        () => _category(
+          createdAt: createdAt,
+          archivedAt: createdAt.subtract(const Duration(seconds: 1)),
+        ),
+        throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'archivedAt')),
+      );
+    });
+
+    test('rejects an archive after modification', () {
+      final createdAt = DateTime.utc(2026, 9, 12);
+
+      expect(
+        () => _category(
+          createdAt: createdAt,
+          modifiedAt: createdAt,
+          archivedAt: createdAt.add(const Duration(seconds: 1)),
+        ),
+        throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'archivedAt')),
+      );
+    });
+
+    test('rejects deletion before archiving', () {
+      final createdAt = DateTime.utc(2026, 9, 12);
+
+      expect(
+        () => _category(
+          createdAt: createdAt,
+          modifiedAt: createdAt.add(const Duration(days: 2)),
+          archivedAt: createdAt.add(const Duration(days: 1)),
+          deletedAt: createdAt.add(const Duration(hours: 1)),
+        ),
+        throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'deletedAt')),
+      );
+    });
+
     test('validates budget ordering and overlap', () {
       final first = _budget(
         from: CalendarDate(2026, 1, 1),
@@ -179,6 +218,7 @@ Category _category({
   int sortOrder = 0,
   DateTime? createdAt,
   DateTime? modifiedAt,
+  DateTime? archivedAt,
   DateTime? deletedAt,
   int entityVersion = 1,
 }) {
@@ -192,6 +232,7 @@ Category _category({
     icon: EntityIcon.storefront,
     color: EntityColor.green,
     sortOrder: sortOrder,
+    archivedAt: archivedAt,
     deletedAt: deletedAt,
     createdAt: created,
     modifiedAt: modifiedAt ?? created,
