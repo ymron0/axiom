@@ -3,12 +3,12 @@ library;
 
 import 'package:axiom/src/application/services/get_valuation_asset_service.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
-import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -87,7 +87,7 @@ void main() {
 
     test('propagates settings retrieval failures', () async {
       // Given
-      const failure = UnexpectedPersistenceFailure(message: 'read failed');
+      const failure = SettingsNotInitializedFailure(message: 'read failed');
       when(() => getSettings()).thenAnswer((_) async => failure);
 
       // When

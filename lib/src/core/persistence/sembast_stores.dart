@@ -5,8 +5,11 @@ import 'package:sembast/sembast.dart';
 /// Domain identifiers are represented as strings in persistence, so
 /// string-keyed map stores are used for persisted domain entities.
 ///
-/// Feature repositories should use these store references rather than
-/// declaring their own store names.
+/// Feature repositories must use these store references rather than declaring
+/// their own store names.
+///
+/// Store names are part of the persistent database schema. Once a store name
+/// has been released, it must not be renamed without a database migration.
 abstract final class SembastStores {
   static const String assetsName = 'assets';
   static const String settingsName = 'settings';
@@ -17,6 +20,21 @@ abstract final class SembastStores {
   static const String custodiansName = 'custodians';
   static const String categoriesName = 'categories';
   static const String jarsName = 'jars';
+
+  /// Names of every application-owned Sembast store.
+  ///
+  /// Keep this list synchronized with the store references declared below.
+  static const List<String> allNames = <String>[
+    assetsName,
+    settingsName,
+    ratesName,
+    merchantsName,
+    transactionsName,
+    accountsName,
+    custodiansName,
+    categoriesName,
+    jarsName,
+  ];
 
   static final StoreRef<String, Map<String, Object?>> assets =
       stringMapStoreFactory.store(assetsName);
@@ -44,4 +62,24 @@ abstract final class SembastStores {
 
   static final StoreRef<String, Map<String, Object?>> jars =
       stringMapStoreFactory.store(jarsName);
+
+  /// References to every application-owned Sembast store.
+  ///
+  /// This is primarily intended for database-level infrastructure such as
+  /// schema validation, diagnostics, and migrations. Feature repositories
+  /// should depend on their specific store reference instead.
+  static final List<StoreRef<String, Map<String, Object?>>> all =
+      List<StoreRef<String, Map<String, Object?>>>.unmodifiable(
+        <StoreRef<String, Map<String, Object?>>>[
+          assets,
+          settings,
+          rates,
+          merchants,
+          transactions,
+          accounts,
+          custodians,
+          categories,
+          jars,
+        ],
+      );
 }
