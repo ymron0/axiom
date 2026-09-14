@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/features/rates/application/failures/unsupported_persisted_rate_quote_failure.dart';
 import 'package:test/test.dart';
 

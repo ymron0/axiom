@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
 import 'package:axiom/src/features/jars/application/commands/create_jar_command.dart';

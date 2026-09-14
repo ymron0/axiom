@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/di/services/initialize_settings_service_provider.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';

@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/accounts/application/use_cases/search_accounts_use_case.dart';
 import 'package:axiom/src/features/accounts/domain/entities/account.dart';

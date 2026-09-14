@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:test/test.dart';
 

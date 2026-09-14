@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/services/initialize_settings_service.dart';
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';

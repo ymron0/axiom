@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/services/get_valuation_asset_service.dart';
 import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';

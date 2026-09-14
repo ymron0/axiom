@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/jars/application/use_cases/restore_jar_use_case.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_already_exists_failure.dart';

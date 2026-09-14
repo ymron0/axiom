@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'dart:convert';
 
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';

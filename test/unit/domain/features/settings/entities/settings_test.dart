@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:test/test.dart';

@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/services/delete_account_service.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/accounts/domain/entities/account.dart';

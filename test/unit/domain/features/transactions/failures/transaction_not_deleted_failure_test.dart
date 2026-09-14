@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/transactions/domain/failures/transaction_not_deleted_failure.dart';
 import 'package:test/test.dart';
 

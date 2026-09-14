@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/di/services/validate_transaction_allocations_service_provider.dart';
 import 'package:axiom/src/features/categories/di/get_category_by_id_use_case_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';

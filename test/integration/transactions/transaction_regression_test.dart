@@ -1,3 +1,6 @@
+@Tags(['integration'])
+library;
+
 import 'package:axiom/src/application/services/create_transaction_service.dart';
 import 'package:axiom/src/application/services/update_transaction_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';

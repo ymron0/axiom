@@ -1,3 +1,6 @@
+@Tags(['data'])
+library;
+
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/features/jars/data/repositories/in_memory_jar_repository_impl.dart';
 import 'package:axiom/src/features/jars/domain/enums/jar_kind.dart';

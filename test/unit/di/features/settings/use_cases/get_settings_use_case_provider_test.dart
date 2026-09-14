@@ -1,3 +1,6 @@
+@Tags(['application', 'di'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/settings/di/get_settings_use_case_provider.dart';
 import 'package:axiom/src/features/settings/di/settings_repository_provider.dart';

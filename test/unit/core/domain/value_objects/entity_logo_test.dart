@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/domain/enums/entity_logo_source.dart';
 import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:test/test.dart';

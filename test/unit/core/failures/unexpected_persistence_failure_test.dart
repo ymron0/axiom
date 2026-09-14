@@ -1,3 +1,6 @@
+@Tags(['core'])
+library;
+
 import 'package:axiom/src/core/failures/unexpected_persistence_failure.dart';
 import 'package:test/test.dart';
 

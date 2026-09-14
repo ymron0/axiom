@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/domain/mixins/archivable.dart';
 import 'package:test/test.dart';
 

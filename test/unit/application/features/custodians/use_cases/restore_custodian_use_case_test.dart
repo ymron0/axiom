@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/custodians/application/use_cases/restore_custodian_use_case.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_already_exists_failure.dart';

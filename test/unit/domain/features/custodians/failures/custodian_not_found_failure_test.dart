@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_found_failure.dart';
 import 'package:test/test.dart';
 

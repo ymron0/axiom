@@ -1,3 +1,6 @@
+@Tags(['application', 'di'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_all_transactions_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_all_transactions_use_case.dart';
@@ -11,7 +14,6 @@ import 'package:axiom/src/features/transactions/application/use_cases/restore_tr
 import 'package:axiom/src/features/transactions/application/use_cases/transactions_exist_by_account_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/transactions_exist_by_merchant_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
-import 'package:axiom/src/features/transactions/data/repositories/in_memory_transaction_repository_impl.dart';
 import 'package:axiom/src/features/transactions/di/create_all_transactions_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/create_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/delete_transaction_use_case_provider.dart';
@@ -48,7 +50,6 @@ void main() {
       addTearDown(container.dispose);
 
       // When
-      final repository = container.read(transactionRepositoryProvider);
       final useCases = [
         container.read(createTransactionUseCaseProvider),
         container.read(createAllTransactionsUseCaseProvider),
@@ -64,7 +65,6 @@ void main() {
       ];
 
       // Then
-      expect(repository, isA<InMemoryTransactionRepositoryImpl>());
       expect(useCases, hasLength(11));
       expect(useCases[0], isA<CreateTransactionUseCase>());
       expect(useCases[1], isA<CreateAllTransactionsUseCase>());

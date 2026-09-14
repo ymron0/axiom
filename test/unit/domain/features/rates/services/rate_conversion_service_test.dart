@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/features/rates/domain/services/rate_conversion_service.dart';
 import 'package:decimal/decimal.dart';

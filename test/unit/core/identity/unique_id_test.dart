@@ -1,3 +1,6 @@
+@Tags(['core'])
+library;
+
 import 'package:axiom/src/core/identity/unique_id.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:nanoid/nanoid.dart';

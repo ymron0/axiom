@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_version_conflict_failure.dart';

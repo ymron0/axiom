@@ -1,3 +1,6 @@
+@Tags(['application', 'di'])
+library;
+
 import 'package:axiom/src/core/di/clock_provider.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/assets/application/commands/create_all_assets_command.dart';

@@ -1,3 +1,6 @@
+@Tags(['data'])
+library;
+
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/features/merchants/data/repositories/in_memory_merchant_repository_impl.dart';
 import 'package:axiom/src/features/merchants/domain/entities/merchant.dart';

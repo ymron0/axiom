@@ -1,3 +1,6 @@
+@Tags(['core'])
+library;
+
 import 'package:axiom/src/core/ports/clock/system_clock.dart';
 import 'package:test/test.dart';
 

@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';

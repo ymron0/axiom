@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/di/services/update_transaction_service_provider.dart';
 import 'package:axiom/src/application/services/update_transaction_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';

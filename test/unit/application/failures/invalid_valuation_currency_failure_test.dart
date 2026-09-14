@@ -1,3 +1,6 @@
+@Tags(['application'])
+library;
+
 import 'package:axiom/src/application/failures/invalid_valuation_currency_failure.dart';
 import 'package:test/test.dart';
 

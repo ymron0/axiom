@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/features/jars/domain/failures/jar_not_deleted_failure.dart';
 import 'package:test/test.dart';
 

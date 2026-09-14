@@ -1,3 +1,6 @@
+@Tags(['core'])
+library;
+
 import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
 import 'package:test/test.dart';
 

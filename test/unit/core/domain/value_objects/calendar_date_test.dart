@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
 import 'package:test/test.dart';
 

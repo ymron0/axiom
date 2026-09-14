@@ -1,3 +1,6 @@
+@Tags(['core'])
+library;
+
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:nanoid/nanoid.dart';

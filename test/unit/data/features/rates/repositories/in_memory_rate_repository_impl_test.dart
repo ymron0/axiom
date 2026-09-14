@@ -1,3 +1,6 @@
+@Tags(['data'])
+library;
+
 import 'package:axiom/src/features/rates/domain/failures/rate_already_exists_failure.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';

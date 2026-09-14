@@ -1,3 +1,6 @@
+@Tags(['domain'])
+library;
+
 import 'package:axiom/src/core/domain/mixins/deletable.dart';
 import 'package:test/test.dart';
 
