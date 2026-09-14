@@ -6,6 +6,7 @@ import 'package:axiom/src/application/failures/allocation_category_not_found_fai
 import 'package:axiom/src/application/services/create_transaction_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
+import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/categories/domain/entities/category.dart';
@@ -20,27 +21,32 @@ import '../../../fixtures/features/categories/category_fixtures.dart';
 import '../../../fixtures/features/transactions/transaction_command_fixtures.dart';
 import '../../../fixtures/features/transactions/transaction_fixtures.dart';
 import '../../../mocks/get_category_by_id_use_case_mock.dart';
+import '../../../mocks/get_jar_by_id_use_case_mock.dart';
 import '../../../mocks/transaction_repository_mock.dart';
 
 void main() {
   group('CreateTransactionService', () {
     late MockTransactionRepository repository;
     late MockGetCategoryByIdUseCase getCategoryById;
+    late MockGetJarByIdUseCase getJarById;
     late CreateTransactionService service;
 
     setUpAll(() {
       registerFallbackValue(CategoryId.fromString('mock-category'));
+      registerFallbackValue(JarId.fromString('mock-jar'));
       registerFallbackValue(newTransactionFixture());
     });
 
     setUp(() {
       repository = MockTransactionRepository();
       getCategoryById = MockGetCategoryByIdUseCase();
+      getJarById = MockGetJarByIdUseCase();
       service = CreateTransactionService(
         clock: FixedClock(DateTime.utc(2026, 1, 1)),
         createTransaction: CreateTransactionUseCase(repository: repository),
         validateAllocations: ValidateTransactionAllocationsService(
           getCategoryById: getCategoryById,
+          getJarById: getJarById,
         ),
       );
     });

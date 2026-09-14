@@ -3,11 +3,13 @@ library;
 
 import 'package:axiom/src/application/failures/allocation_category_kind_mismatch_failure.dart';
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
+import 'package:axiom/src/application/failures/allocation_jar_not_found_failure.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
@@ -15,6 +17,7 @@ import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart
 import 'package:axiom/src/features/categories/domain/entities/category.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_found_failure.dart';
+import 'package:axiom/src/features/jars/domain/failures/jar_not_found_failure.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
@@ -27,21 +30,27 @@ import 'package:test/test.dart';
 
 import '../../../fixtures/features/categories/category_fixtures.dart';
 import '../../../mocks/get_category_by_id_use_case_mock.dart';
+import '../../../mocks/get_jar_by_id_use_case_mock.dart';
+import '../../../fixtures/features/jars/jar_fixtures.dart';
 
 void main() {
   setUpAll(() {
     registerFallbackValue(CategoryId.fromString('mock-category-id'));
+    registerFallbackValue(JarId.fromString('mock-jar-id'));
   });
 
   group('ValidateTransactionAllocationsService', () {
     late MockGetCategoryByIdUseCase getCategoryById;
+    late MockGetJarByIdUseCase getJarById;
     late ValidateTransactionAllocationsService service;
 
     setUp(() {
       getCategoryById = MockGetCategoryByIdUseCase();
+      getJarById = MockGetJarByIdUseCase();
 
       service = ValidateTransactionAllocationsService(
         getCategoryById: getCategoryById,
+        getJarById: getJarById,
       );
     });
 
@@ -60,6 +69,7 @@ void main() {
         // Then
         expect(result.isSuccess, isTrue);
         verifyNever(() => getCategoryById(any()));
+        verifyNever(() => getJarById(any()));
       },
     );
 
@@ -320,7 +330,165 @@ void main() {
       verify(() => getCategoryById(missingId)).called(1);
       verifyNever(() => getCategoryById(secondId));
     });
+
+    test('succeeds when referenced jar exists', () async {
+      final jar = jarFixture(id: 'holiday');
+      final transaction = _transaction(
+        kind: TransactionKind.expense,
+        splits: [_jarSplit(jarId: jar.id, amount: 10)],
+      );
+      when(() => getJarById(any<JarId>())).thenAnswer(
+        (_) async => Success(jar),
+      );
+
+      final result = await service(transaction);
+
+      expect(result.isSuccess, isTrue);
+      verify(() => getJarById(jar.id)).called(1);
+    });
+
+    test('accepts an archived jar reference', () async {
+      final jar = jarFixture(
+        id: 'archived',
+        archivedAt: DateTime.utc(2026, 1, 2),
+      );
+      final transaction = _transaction(
+        kind: TransactionKind.expense,
+        splits: [_jarSplit(jarId: jar.id, amount: 10)],
+      );
+      when(() => getJarById(any<JarId>())).thenAnswer(
+        (_) async => Success(jar),
+      );
+
+      final result = await service(transaction);
+
+      expect(result.isSuccess, isTrue);
+    });
+
+    test('fails when referenced jar does not exist', () async {
+      final jarId = JarId.fromString('missing-jar');
+      final transaction = _transaction(
+        kind: TransactionKind.expense,
+        splits: [_jarSplit(jarId: jarId, amount: 10)],
+      );
+      when(() => getJarById(any<JarId>())).thenAnswer(
+        (_) async => const Success(null),
+      );
+
+      final result = await service(transaction);
+
+      expect(result.failureOrNull, isA<AllocationJarNotFoundFailure>());
+      expect(result.failureOrNull?.message, contains(jarId.value));
+    });
+
+    test('propagates jar lookup failures unchanged', () async {
+      final jarId = JarId.fromString('lookup-failure');
+      final transaction = _transaction(
+        kind: TransactionKind.expense,
+        splits: [_jarSplit(jarId: jarId, amount: 10)],
+      );
+      const failure = JarNotFoundFailure(message: 'Jar lookup failed.');
+      when(() => getJarById(any<JarId>())).thenAnswer((_) async => failure);
+
+      final result = await service(transaction);
+
+      expect(result.failureOrNull, same(failure));
+    });
+
+    test('resolves each distinct jar only once', () async {
+      final jar = jarFixture(id: 'holiday');
+      final transaction = _transaction(
+        kind: TransactionKind.expense,
+        splits: [
+          _jarSplit(jarId: jar.id, amount: 4),
+          _jarSplit(jarId: jar.id, amount: 6),
+        ],
+      );
+      when(() => getJarById(any<JarId>())).thenAnswer(
+        (_) async => Success(jar),
+      );
+
+      final result = await service(transaction);
+
+      expect(result.isSuccess, isTrue);
+      verify(() => getJarById(jar.id)).called(1);
+    });
+
+    test('validates category and jar dimensions together', () async {
+      final category = categoryFixture(
+        id: 'groceries',
+        kind: CategoryKind.expense,
+      );
+      final jar = jarFixture(id: 'holiday');
+      final transaction = _transaction(
+        kind: TransactionKind.expense,
+        splits: [_allocationSplit(categoryId: category.id, jarId: jar.id)],
+      );
+      when(() => getCategoryById(any<CategoryId>())).thenAnswer(
+        (_) async => Success(category),
+      );
+      when(() => getJarById(any<JarId>())).thenAnswer(
+        (_) async => Success(jar),
+      );
+
+      final result = await service(transaction);
+
+      expect(result.isSuccess, isTrue);
+      verify(() => getCategoryById(category.id)).called(1);
+      verify(() => getJarById(jar.id)).called(1);
+    });
+
+    test('stops validation after the first invalid jar', () async {
+      final missingId = JarId.fromString('missing');
+      final secondId = JarId.fromString('second');
+      final transaction = _transaction(
+        kind: TransactionKind.expense,
+        splits: [
+          _jarSplit(jarId: missingId, amount: 4),
+          _jarSplit(jarId: secondId, amount: 6),
+        ],
+      );
+      when(() => getJarById(any<JarId>())).thenAnswer(
+        (_) async => const Success(null),
+      );
+
+      final result = await service(transaction);
+
+      expect(result.failureOrNull, isA<AllocationJarNotFoundFailure>());
+      verify(() => getJarById(missingId)).called(1);
+      verifyNever(() => getJarById(secondId));
+    });
   });
+}
+
+TransactionSplit _jarSplit({required JarId jarId, required int amount}) {
+  final assetAmount = AssetAmount(
+    assetId: AssetId.fromString('asset-chf'),
+    amount: Decimal.fromInt(amount),
+    direction: AssetAmountDirection.outgoing,
+  );
+  return TransactionSplit(
+    transactionAmount: assetAmount,
+    valuationAmount: assetAmount,
+    jarId: jarId,
+  );
+}
+
+TransactionSplit _allocationSplit({
+  required CategoryId categoryId,
+  required JarId jarId,
+}) {
+  final assetAmount = AssetAmount(
+    assetId: AssetId.fromString('asset-chf'),
+    amount: Decimal.fromInt(10),
+    direction: AssetAmountDirection.outgoing,
+  );
+  return TransactionSplit(
+    transactionAmount: assetAmount,
+    valuationAmount: assetAmount,
+    categoryId: categoryId,
+    jarId: jarId,
+  );
 }
 
 TransactionSplit _categorySplit({

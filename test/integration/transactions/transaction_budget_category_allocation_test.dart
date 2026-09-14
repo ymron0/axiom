@@ -17,6 +17,8 @@ import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart
 import 'package:axiom/src/features/categories/application/use_cases/get_category_by_id_use_case.dart';
 import 'package:axiom/src/features/categories/data/repositories/in_memory_category_repository_impl.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
+import 'package:axiom/src/features/jars/application/use_cases/get_jar_by_id_use_case.dart';
+import 'package:axiom/src/features/jars/data/repositories/in_memory_jar_repository_impl.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_transaction_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/data/repositories/in_memory_transaction_repository_impl.dart';
@@ -30,6 +32,7 @@ import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
 import '../../fixtures/features/categories/category_fixtures.dart';
+import '../../fixtures/features/jars/jar_fixtures.dart';
 
 void main() {
   group('Transaction jar and category allocation workflow', () {
@@ -58,6 +61,11 @@ void main() {
           getCategoryById: GetCategoryByIdUseCase(
             InMemoryCategoryRepositoryImpl(
               initialCategories: [expenseCategory, incomeCategory],
+            ),
+          ),
+          getJarById: GetJarByIdUseCase(
+            InMemoryJarRepositoryImpl(
+              initialJars: [jarFixture(id: jarId.value)],
             ),
           ),
         ),
