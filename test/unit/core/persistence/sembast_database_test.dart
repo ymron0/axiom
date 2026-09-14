@@ -67,10 +67,7 @@ void main() {
     test('concurrent open calls return same database instance', () async {
       final database = await _createTestDatabase();
 
-      final futures = [
-        database.open(),
-        database.open(),
-      ];
+      final futures = [database.open(), database.open()];
 
       final databases = await Future.wait(futures);
 
