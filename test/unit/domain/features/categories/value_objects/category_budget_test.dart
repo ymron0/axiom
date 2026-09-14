@@ -1,4 +1,7 @@
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/domain/enums/budget_period.dart';
 import 'package:axiom/src/features/categories/domain/value_objects/category_budget.dart';
 import 'package:decimal/decimal.dart';
@@ -7,16 +10,17 @@ import 'package:test/test.dart';
 void main() {
   group('CategoryBudget', () {
     test('accepts zero and positive limits', () {
-      final zero = _budget(limit: Decimal.zero);
-      final positive = _budget(limit: Decimal.parse('125.50'));
+      final zero = _budget(limit: _amount(Decimal.zero));
+      final positive = _budget(limit: _amount(Decimal.parse('125.50')));
 
-      expect(zero.limit, Decimal.zero);
-      expect(positive.limit, Decimal.parse('125.50'));
+      expect(zero.limit.amount, Decimal.zero);
+      expect(positive.limit.amount, Decimal.parse('125.50'));
+      expect(positive.limit.assetId, AssetId.fromString('asset-chf'));
     });
 
-    test('rejects negative limits', () {
+    test('rejects unknown limits', () {
       expect(
-        () => _budget(limit: Decimal.parse('-0.01')),
+        () => _budget(limit: _amount(Decimal.fromInt(-1))),
         throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'limit')),
       );
     });
@@ -53,13 +57,21 @@ void main() {
 }
 
 CategoryBudget _budget({
-  Decimal? limit,
+  AssetAmount? limit,
   CalendarDate? effectiveUntil,
 }) {
   return CategoryBudget(
-    limit: limit ?? Decimal.parse('100'),
+    limit: limit ?? _amount(Decimal.parse('100')),
     period: BudgetPeriod.monthly,
     effectiveFrom: CalendarDate(2026, 1, 1),
     effectiveUntil: effectiveUntil,
+  );
+}
+
+AssetAmount _amount(Decimal amount) {
+  return AssetAmount(
+    assetId: AssetId.fromString('asset-chf'),
+    amount: amount,
+    direction: AssetAmountDirection.outgoing,
   );
 }

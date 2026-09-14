@@ -1,9 +1,12 @@
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/ports/clock/clock_factory.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/domain/entities/category.dart';
 import 'package:axiom/src/features/categories/domain/enums/budget_period.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
@@ -204,7 +207,11 @@ final class InMemoryCategoryRepositoryImpl implements CategoryRepository {
 
   static CategoryBudget _budgetFromFixture(CategoryBudgetFixture fixture) {
     return CategoryBudget(
-      limit: Decimal.parse(fixture.limit),
+      limit: AssetAmount(
+        assetId: AssetId.fromString(fixture.assetId),
+        amount: Decimal.parse(fixture.limit),
+        direction: AssetAmountDirection.values.byName(fixture.direction),
+      ),
       period: BudgetPeriod.values.byName(fixture.period),
       effectiveFrom: CalendarDate.fromDateTime(fixture.effectiveFrom),
       effectiveUntil: fixture.effectiveUntil == null

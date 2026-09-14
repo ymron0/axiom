@@ -1,7 +1,7 @@
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/domain/enums/budget_period.dart';
 import 'package:dart_mappable/dart_mappable.dart';
-import 'package:decimal/decimal.dart';
 
 part 'category_budget.mapper.dart';
 
@@ -30,16 +30,19 @@ part 'category_budget.mapper.dart';
 ///
 /// ## Currency
 ///
-/// [limit] is always expressed in the application's valuation currency.
+/// [limit] is always expressed in the application's valuation currency. Its
+/// [AssetAmount.assetId] must therefore identify that valuation asset.
+/// [AssetAmount.direction] is retained as part of the value object but is not
+/// interpreted by the budget rule; the limit is a non-negative magnitude.
 ///
 /// ## Invariants
 ///
-/// - [limit] cannot be negative.
+/// - [limit] must be a known, non-negative [AssetAmount].
 /// - [effectiveUntil], when present, must be after [effectiveFrom].
 @MappableClass()
 final class CategoryBudget with CategoryBudgetMappable {
   /// Maximum amount available during [period].
-  final Decimal limit;
+  final AssetAmount limit;
 
   /// Recurring period over which [limit] applies.
   final BudgetPeriod period;
@@ -57,6 +60,9 @@ final class CategoryBudget with CategoryBudgetMappable {
   final CalendarDate? effectiveUntil;
 
   /// Creates an effective-dated category budget rule.
+  ///
+  /// Throws an [ArgumentError] when [limit] is unknown or when
+  /// [effectiveUntil] is not after [effectiveFrom].
   @MappableConstructor()
   CategoryBudget({
     required this.limit,
@@ -64,11 +70,11 @@ final class CategoryBudget with CategoryBudgetMappable {
     required this.effectiveFrom,
     this.effectiveUntil,
   }) {
-    if (limit < Decimal.zero) {
+    if (limit.isUnknownAmount) {
       throw ArgumentError.value(
         limit,
         'limit',
-        'Category budget limit cannot be negative.',
+        'Category budget limit must be a known amount.',
       );
     }
 

@@ -1,8 +1,11 @@
 import 'package:axiom/src/core/domain/enums/entity_color.dart';
 import 'package:axiom/src/core/domain/enums/entity_icon.dart';
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
+import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/domain/entities/category.dart';
 import 'package:axiom/src/features/categories/domain/enums/budget_period.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
@@ -202,7 +205,11 @@ CategoryBudget _budget({
   String limit = '100',
 }) {
   return CategoryBudget(
-    limit: Decimal.parse(limit),
+    limit: AssetAmount(
+      assetId: AssetId.fromString('asset-chf'),
+      amount: Decimal.parse(limit),
+      direction: AssetAmountDirection.outgoing,
+    ),
     period: BudgetPeriod.monthly,
     effectiveFrom: from,
     effectiveUntil: until,
