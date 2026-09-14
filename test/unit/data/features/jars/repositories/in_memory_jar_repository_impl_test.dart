@@ -236,6 +236,23 @@ void main() {
         expect(jars, [same(first), same(archived)]);
         expect(() => jars.add(first), throwsUnsupportedError);
       });
+
+      test('returns all jars for empty or whitespace-only searches', () async {
+        // Given
+        final first = jarFixture(id: 'search-empty-first');
+        final second = jarFixture(id: 'search-empty-second');
+        final repository = InMemoryJarRepositoryImpl(
+          initialJars: [first, second],
+        );
+
+        // When
+        final empty = (await repository.search('')).valueOrNull;
+        final whitespace = (await repository.search('   ')).valueOrNull;
+
+        // Then
+        expect(empty, [same(first), same(second)]);
+        expect(whitespace, [same(first), same(second)]);
+      });
     });
 
     group('update', () {

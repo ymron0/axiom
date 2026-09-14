@@ -105,6 +105,18 @@ void main() {
       expect(result.isTargetReached, isFalse);
     });
 
+    test('rounds one-third progress to six decimal places', () {
+      final jar = createJar(targets: [target(amount: '3')]);
+
+      final result = calculator.calculate(
+        jar: jar,
+        balance: AssetAmount.incoming(assetId: chf, amount: Decimal.one),
+        asOf: CalendarDate(2026, 9, 14),
+      );
+
+      expect(result.progressRatio, Decimal.parse('0.333333'));
+    });
+
     test('returns complete progress when target is reached exactly', () {
       final jar = createJar(targets: [target()]);
 

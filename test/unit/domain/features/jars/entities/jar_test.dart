@@ -163,6 +163,16 @@ void main() {
       expect(jar.hasTarget, isTrue);
     });
 
+    test('defensively copies targets and exposes them as unmodifiable', () {
+      final suppliedTargets = [_target()];
+      final jar = _jar(targets: suppliedTargets);
+
+      suppliedTargets.clear();
+
+      expect(jar.targets, hasLength(1));
+      expect(() => jar.targets.add(_target()), throwsUnsupportedError);
+    });
+
     test('rejects target histories with different currencies', () {
       expect(
         () => _jar(

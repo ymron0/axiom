@@ -4,12 +4,14 @@ import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/features/jars/application/commands/create_jar_command.dart';
 import 'package:axiom/src/features/jars/domain/entities/jar.dart';
 import 'package:axiom/src/features/jars/domain/enums/jar_kind.dart';
+import 'package:axiom/src/features/jars/domain/value_objects/jar_target.dart';
 
 /// Creates a valid jar snapshot for tests.
 Jar jarFixture({
   required String id,
   String name = 'Test Jar',
   JarKind kind = JarKind.savingsGoal,
+  List<JarTarget> targets = const [],
   DateTime? archivedAt,
   DateTime? deletedAt,
   DateTime? modifiedAt,
@@ -20,6 +22,7 @@ Jar jarFixture({
     id: JarId.fromString(id),
     name: name,
     kind: kind,
+    targets: targets,
     icon: EntityIcon.savings,
     color: EntityColor.blue,
     sortOrder: 0,
@@ -35,10 +38,12 @@ Jar jarFixture({
 CreateJarCommand createJarCommandFixture({
   String name = 'Created Jar',
   JarKind kind = JarKind.savingsGoal,
+  List<JarTarget> targets = const [],
 }) {
   return CreateJarCommand(
     name: name,
     kind: kind,
+    targets: targets,
     icon: EntityIcon.savings,
     color: EntityColor.blue,
     sortOrder: 0,

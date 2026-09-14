@@ -52,6 +52,19 @@ void main() {
       expect(result.isIncoming, isTrue);
     });
 
+    test('resolves cancelling incoming and outgoing allocations to zero', () {
+      final result = calculator.calculate(
+        valuationCurrencyId: chf,
+        allocationAmounts: [
+          AssetAmount.incoming(assetId: chf, amount: Decimal.parse('500')),
+          AssetAmount.outgoing(assetId: chf, amount: Decimal.parse('500')),
+        ],
+      );
+
+      expect(result.amount, Decimal.zero);
+      expect(result.isIncoming, isTrue);
+    });
+
     test('can produce an outgoing balance', () {
       final result = calculator.calculate(
         valuationCurrencyId: chf,
