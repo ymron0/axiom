@@ -11,6 +11,9 @@ tags:
   data:
     description: Tests for repository implementations, persistence, and data mapping.
 
+  persistence:
+    description: Tests for core persistence mechanisms, including databases and stores.
+
   presentation:
     description: Tests for notifiers, controllers, widgets, and screens.
 
