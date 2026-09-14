@@ -26,7 +26,6 @@ import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:decimal/decimal.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_transactions_by_jar_id_use_case.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_not_found_failure.dart';
-import 'package:decimal/decimal.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -34,8 +33,6 @@ import '../../../fixtures/features/jars/jar_fixtures.dart';
 import '../../../mocks/jar_repository_mock.dart';
 import '../../../mocks/settings_repository_mock.dart';
 import '../../../mocks/transaction_repository_mock.dart';
-
-
 
 void main() {
   group('GetJarProgressService', () {
@@ -64,9 +61,9 @@ void main() {
     });
 
     test('returns not-found when the jar lookup succeeds with null', () async {
-      when(() => jarRepository.getById(jarId)).thenAnswer(
-        (_) async => const Success(null),
-      );
+      when(
+        () => jarRepository.getById(jarId),
+      ).thenAnswer((_) async => const Success(null));
 
       final result = await service(jarId);
 
@@ -76,69 +73,81 @@ void main() {
     test('propagates transaction lookup failures', () async {
       final jar = jarFixture(id: jarId.value);
       const failure = TransactionNotFoundFailure(message: 'lookup failed');
-      when(() => jarRepository.getById(jarId)).thenAnswer((_) async => Success(jar));
+      when(
+        () => jarRepository.getById(jarId),
+      ).thenAnswer((_) async => Success(jar));
       when(() => settingsRepository.get()).thenAnswer(
         (_) async => Success(Settings(valuationCurrencyId: currencyId)),
       );
-      when(() => transactionRepository.getTransactionsByJarId(jarId)).thenAnswer(
-        (_) async => failure,
-      );
+      when(
+        () => transactionRepository.getTransactionsByJarId(jarId),
+      ).thenAnswer((_) async => failure);
 
       final result = await service(jarId);
 
       expect(result.failureOrNull, same(failure));
     });
 
-    test('returns zero progress when there are no eligible allocations', () async {
-      final jar = jarFixture(id: jarId.value);
-      when(() => jarRepository.getById(jarId)).thenAnswer((_) async => Success(jar));
-      when(() => settingsRepository.get()).thenAnswer(
-        (_) async => Success(Settings(valuationCurrencyId: currencyId)),
-      );
-      when(() => transactionRepository.getTransactionsByJarId(jarId)).thenAnswer(
-        (_) async => const Success([]),
-      );
+    test(
+      'returns zero progress when there are no eligible allocations',
+      () async {
+        final jar = jarFixture(id: jarId.value);
+        when(
+          () => jarRepository.getById(jarId),
+        ).thenAnswer((_) async => Success(jar));
+        when(() => settingsRepository.get()).thenAnswer(
+          (_) async => Success(Settings(valuationCurrencyId: currencyId)),
+        );
+        when(
+          () => transactionRepository.getTransactionsByJarId(jarId),
+        ).thenAnswer((_) async => const Success([]));
 
-      final result = await service(jarId);
+        final result = await service(jarId);
 
-      expect(result, isA<Success>());
-      expect(result.valueOrNull?.balance.amount, Decimal.zero);
-      verify(() => transactionRepository.getTransactionsByJarId(jarId)).called(1);
-    });
+        expect(result, isA<Success>());
+        expect(result.valueOrNull?.balance.amount, Decimal.zero);
+        verify(
+          () => transactionRepository.getTransactionsByJarId(jarId),
+        ).called(1);
+      },
+    );
 
-    test('includes only actual, effective allocations for the requested jar', () async {
-      final jar = jarFixture(id: jarId.value);
-      final otherJarId = JarId.fromString('other-jar');
-      when(() => jarRepository.getById(jarId)).thenAnswer((_) async => Success(jar));
-      when(() => settingsRepository.get()).thenAnswer(
-        (_) async => Success(Settings(valuationCurrencyId: currencyId)),
-      );
-      when(() => transactionRepository.getTransactionsByJarId(jarId)).thenAnswer(
-        (_) async => Success([
-          _transaction(
-            id: 'planned',
-            jarId: jarId,
-            state: TransactionState.planned,
-            effectiveAt: now,
-          ),
-          _transaction(
-            id: 'future',
-            jarId: jarId,
-            effectiveAt: now.add(const Duration(days: 1)),
-          ),
-          _transaction(
-            id: 'other-jar',
-            jarId: otherJarId,
-            effectiveAt: now,
-          ),
-          _transaction(id: 'eligible', jarId: jarId, effectiveAt: now),
-        ]),
-      );
+    test(
+      'includes only actual, effective allocations for the requested jar',
+      () async {
+        final jar = jarFixture(id: jarId.value);
+        final otherJarId = JarId.fromString('other-jar');
+        when(
+          () => jarRepository.getById(jarId),
+        ).thenAnswer((_) async => Success(jar));
+        when(() => settingsRepository.get()).thenAnswer(
+          (_) async => Success(Settings(valuationCurrencyId: currencyId)),
+        );
+        when(
+          () => transactionRepository.getTransactionsByJarId(jarId),
+        ).thenAnswer(
+          (_) async => Success([
+            _transaction(
+              id: 'planned',
+              jarId: jarId,
+              state: TransactionState.planned,
+              effectiveAt: now,
+            ),
+            _transaction(
+              id: 'future',
+              jarId: jarId,
+              effectiveAt: now.add(const Duration(days: 1)),
+            ),
+            _transaction(id: 'other-jar', jarId: otherJarId, effectiveAt: now),
+            _transaction(id: 'eligible', jarId: jarId, effectiveAt: now),
+          ]),
+        );
 
-      final result = await service(jarId);
+        final result = await service(jarId);
 
-      expect(result.valueOrNull?.balance.amount, Decimal.fromInt(10));
-    });
+        expect(result.valueOrNull?.balance.amount, Decimal.fromInt(10));
+      },
+    );
   });
 }
 
