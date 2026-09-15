@@ -1,8 +1,6 @@
 @Tags(['core', 'persistence'])
 library;
 
-import 'dart:io';
-
 import 'package:axiom/src/core/persistence/database_schema.dart';
 import 'package:axiom/src/core/persistence/sembast_database.dart';
 import 'package:axiom/src/core/persistence/unsupported_database_version_exception.dart';
@@ -10,6 +8,7 @@ import 'package:sembast/sembast_memory.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
+import '../../../fixtures/core/persistence/persistence_test_environment.dart';
 import '../../../mocks/database_factory_mock.dart';
 
 void main() {
@@ -44,7 +43,7 @@ void main() {
     });
 
     test('open marks database as open', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       await database.open();
 
@@ -52,7 +51,7 @@ void main() {
     });
 
     test('open returns database with current schema version', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       final openedDatabase = await database.open();
 
@@ -60,7 +59,7 @@ void main() {
     });
 
     test('repeated open calls return same database instance', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       final first = await database.open();
       final second = await database.open();
@@ -69,7 +68,7 @@ void main() {
     });
 
     test('concurrent open calls return same database instance', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       final futures = [database.open(), database.open()];
 
@@ -80,7 +79,7 @@ void main() {
     });
 
     test('database getter opens and returns database', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       final openedDatabase = await database.database;
 
@@ -89,7 +88,7 @@ void main() {
     });
 
     test('close marks database as closed', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       await database.open();
 
@@ -99,7 +98,7 @@ void main() {
     });
 
     test('close is safe when database has not been opened', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       await expectLater(database.close(), completes);
 
@@ -107,7 +106,7 @@ void main() {
     });
 
     test('close is safe when database is already closed', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       await database.open();
       await database.close();
@@ -118,7 +117,7 @@ void main() {
     });
 
     test('database can be reopened after close', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
 
       await database.open();
       await database.close();
@@ -143,7 +142,9 @@ void main() {
     test('failed open leaves database closed', () async {
       final expectedError = StateError('open failed');
       final factory = MockDatabaseFactory();
-      final database = await _createTestDatabase(databaseFactory: factory);
+      final database = await createTestSembastDatabase(
+        databaseFactory: factory,
+      );
 
       when(
         () => factory.openDatabase(
@@ -164,7 +165,9 @@ void main() {
       () async {
         final expectedError = StateError('open failed');
         final factory = MockDatabaseFactory();
-        final database = await _createTestDatabase(databaseFactory: factory);
+        final database = await createTestSembastDatabase(
+          databaseFactory: factory,
+        );
         var shouldFail = true;
 
         when(
@@ -196,7 +199,7 @@ void main() {
     );
 
     test('unsupported downgrade propagates its exception', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
       final newerDatabase = await databaseFactoryMemory.openDatabase(
         database.path,
         version: DatabaseSchema.version + 1,
@@ -210,7 +213,7 @@ void main() {
     });
 
     test('unsupported downgrade leaves database closed', () async {
-      final database = await _createTestDatabase();
+      final database = await createTestSembastDatabase();
       final newerDatabase = await databaseFactoryMemory.openDatabase(
         database.path,
         version: DatabaseSchema.version + 1,
@@ -225,27 +228,4 @@ void main() {
       expect(database.isOpen, isFalse);
     });
   });
-}
-
-Future<SembastDatabase> _createTestDatabase({
-  DatabaseFactory? databaseFactory,
-}) async {
-  final rootDirectory = await Directory.systemTemp.createTemp(
-    'sembast-database-test-',
-  );
-
-  final database = SembastDatabase(
-    databaseFactory: databaseFactory ?? databaseFactoryMemory,
-    rootPath: rootDirectory.path,
-  );
-
-  addTearDown(() async {
-    await database.close();
-
-    if (await rootDirectory.exists()) {
-      await rootDirectory.delete(recursive: true);
-    }
-  });
-
-  return database;
 }

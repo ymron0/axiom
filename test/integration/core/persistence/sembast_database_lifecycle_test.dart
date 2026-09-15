@@ -4,15 +4,14 @@ library;
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:axiom/src/core/persistence/database_lifecycle_service.dart';
 import 'package:axiom/src/core/persistence/database_schema.dart';
 import 'package:axiom/src/core/persistence/failures/database_open_failure.dart';
 import 'package:axiom/src/core/persistence/failures/database_version_failure.dart';
-import 'package:axiom/src/core/persistence/sembast_database.dart';
 import 'package:axiom/src/core/persistence/sembast_stores.dart';
-import 'package:path/path.dart' as p;
 import 'package:sembast/sembast_io.dart';
 import 'package:test/test.dart';
+
+import '../../../fixtures/core/persistence/persistence_test_environment.dart';
 
 const _testRecordKey = 'integration-test-record';
 
@@ -24,7 +23,7 @@ const _testRecord = <String, Object?>{
 void main() {
   group('Sembast database lifecycle integration', () {
     test('creates and opens a new database', () async {
-      final environment = await _TestEnvironment.create();
+      final environment = await PersistenceTestEnvironment.createIo();
       final lifecycle = environment.createLifecycle();
 
       // Use a nested database directory so we can prove that opening creates
@@ -49,7 +48,7 @@ void main() {
     });
 
     test('persisted data survives close and application restart', () async {
-      final environment = await _TestEnvironment.create();
+      final environment = await PersistenceTestEnvironment.createIo();
 
       final firstLifecycle = environment.createLifecycle();
 
@@ -89,7 +88,7 @@ void main() {
     test(
       'opens an existing database with the supported schema version',
       () async {
-        final environment = await _TestEnvironment.create();
+        final environment = await PersistenceTestEnvironment.createIo();
 
         // Create the database independently of the production lifecycle. This
         // simulates a database that already exists before application startup.
@@ -126,7 +125,7 @@ void main() {
     test(
       'rejects a database created with a newer schema without modifying it',
       () async {
-        final environment = await _TestEnvironment.create();
+        final environment = await PersistenceTestEnvironment.createIo();
 
         final newerVersion = DatabaseSchema.version + 1;
 
@@ -186,7 +185,7 @@ void main() {
     test(
       'corrupt database fails opening without deleting or replacing file',
       () async {
-        final environment = await _TestEnvironment.create();
+        final environment = await PersistenceTestEnvironment.createIo();
 
         await environment.rootDirectory.create(recursive: true);
 
@@ -228,7 +227,7 @@ void main() {
     test(
       'recovery closes and reopens database without losing persisted data',
       () async {
-        final environment = await _TestEnvironment.create();
+        final environment = await PersistenceTestEnvironment.createIo();
         final lifecycle = environment.createLifecycle();
 
         final openResult = await lifecycle.open();
@@ -265,7 +264,7 @@ void main() {
     test(
       'supports repeated open and close cycles without losing data',
       () async {
-        final environment = await _TestEnvironment.create();
+        final environment = await PersistenceTestEnvironment.createIo();
         final lifecycle = environment.createLifecycle();
 
         // First open.
@@ -324,145 +323,4 @@ void main() {
       },
     );
   });
-}
-
-/// Owns filesystem and database resources used by one integration test.
-///
-/// Each test receives a unique temporary parent directory. The actual
-/// database root is a nested directory so tests can verify whether production
-/// opening creates the root directory.
-///
-/// All created database wrappers and raw Sembast handles are closed before the
-/// temporary directory is deleted.
-final class _TestEnvironment {
-  final Directory parentDirectory;
-  final Directory rootDirectory;
-
-  final List<SembastDatabase> _managedDatabases = <SembastDatabase>[];
-  final List<_RawDatabaseHandle> _rawDatabases = <_RawDatabaseHandle>[];
-
-  _TestEnvironment({
-    required this.parentDirectory,
-    required this.rootDirectory,
-  });
-
-  /// Creates and registers an isolated integration-test environment.
-  static Future<_TestEnvironment> create() async {
-    final parentDirectory = await Directory.systemTemp.createTemp(
-      'sembast-lifecycle-integration-test-',
-    );
-
-    final environment = _TestEnvironment(
-      parentDirectory: parentDirectory,
-      rootDirectory: Directory(p.join(parentDirectory.path, 'database')),
-    );
-
-    addTearDown(environment.dispose);
-
-    return environment;
-  }
-
-  /// Path of the physical Sembast database file.
-  String get databasePath =>
-      p.join(rootDirectory.path, DatabaseSchema.fileName);
-
-  /// Creates production database infrastructure for this environment.
-  ///
-  /// Every created wrapper is tracked and closed during teardown.
-  DatabaseLifecycleService createLifecycle() {
-    final database = SembastDatabase.io(rootPath: rootDirectory.path);
-
-    _managedDatabases.add(database);
-
-    return DatabaseLifecycleService(database: database);
-  }
-
-  /// Opens the database directly through Sembast.
-  ///
-  /// This deliberately bypasses the production lifecycle and is used to
-  /// prepare persistence states that production code must subsequently handle,
-  /// such as an already-existing database or one created by a newer schema.
-  Future<_RawDatabaseHandle> openRawDatabase({required int version}) async {
-    await rootDirectory.create(recursive: true);
-
-    final database = await databaseFactoryIo.openDatabase(
-      databasePath,
-      version: version,
-
-      // Be explicit here too. The tests should not depend on Sembast's
-      // destructive `neverFails` default mode.
-      mode: DatabaseMode.create,
-    );
-
-    final handle = _RawDatabaseHandle(database);
-
-    _rawDatabases.add(handle);
-
-    return handle;
-  }
-
-  /// Closes all database resources and removes temporary files.
-  ///
-  /// Cleanup attempts continue even when one resource fails to close. The
-  /// first cleanup error is rethrown after every remaining cleanup action has
-  /// been attempted.
-  Future<void> dispose() async {
-    Object? firstError;
-    StackTrace? firstStackTrace;
-
-    for (final database in _managedDatabases.reversed) {
-      try {
-        await database.close();
-      } catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
-      }
-    }
-
-    for (final database in _rawDatabases.reversed) {
-      try {
-        await database.close();
-      } catch (error, stackTrace) {
-        firstError ??= error;
-        firstStackTrace ??= stackTrace;
-      }
-    }
-
-    try {
-      if (await parentDirectory.exists()) {
-        await parentDirectory.delete(recursive: true);
-      }
-    } catch (error, stackTrace) {
-      firstError ??= error;
-      firstStackTrace ??= stackTrace;
-    }
-
-    if (firstError != null) {
-      Error.throwWithStackTrace(firstError, firstStackTrace!);
-    }
-  }
-}
-
-/// Provides idempotent ownership of a directly opened Sembast database.
-///
-/// Some integration scenarios need to close a raw database during the test and
-/// then reopen the same file. Making [close] idempotent allows the environment
-/// teardown to safely call it again.
-final class _RawDatabaseHandle {
-  final Database database;
-
-  bool _closed = false;
-
-  _RawDatabaseHandle(this.database);
-
-  /// Closes the raw database once.
-  Future<void> close() async {
-    if (_closed) {
-      return;
-    }
-
-    await database.close();
-
-    _closed = true;
-  }
 }
