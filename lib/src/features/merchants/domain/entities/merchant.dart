@@ -43,6 +43,7 @@ final class Merchant extends AuditedEntity<MerchantId>
   @override
   final DateTime? archivedAt;
 
+  /// {@macro deletable.deleted_at}
   @override
   final DateTime? deletedAt;
 
