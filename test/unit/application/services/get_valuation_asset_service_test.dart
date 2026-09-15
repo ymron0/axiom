@@ -2,7 +2,6 @@
 library;
 
 import 'package:axiom/src/application/services/get_valuation_asset_service.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
@@ -50,7 +49,7 @@ void main() {
       verify(() => getAssetById(assetId)).called(1);
     });
 
-    test('returns not-found when settings are not initialized', () async {
+    test('returns settings-not-initialized when settings are absent', () async {
       // Given
       when(
         () => getSettings(),
@@ -60,7 +59,7 @@ void main() {
       final result = await service.call();
 
       // Then
-      expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+      expect(result.failureOrNull, isA<SettingsNotInitializedFailure>());
       expect(
         result.failureOrNull?.message,
         'Settings have not been initialized.',
@@ -68,7 +67,7 @@ void main() {
       verifyZeroInteractions(getAssetById);
     });
 
-    test('returns not-found when the configured asset is absent', () async {
+    test('returns asset-not-found when the configured asset is absent', () async {
       // Given
       final assetId = AssetId.fromString('missing-valuation');
       final settings = Settings(valuationCurrencyId: assetId);
@@ -81,7 +80,7 @@ void main() {
       final result = await service.call();
 
       // Then
-      expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+      expect(result.failureOrNull, isA<AssetNotFoundFailure>());
       expect(result.failureOrNull?.message, contains(assetId.value));
     });
 

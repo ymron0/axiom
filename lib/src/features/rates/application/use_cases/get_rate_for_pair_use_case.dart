@@ -1,8 +1,8 @@
 import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_code_use_case.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/features/rates/application/failures/unsupported_persisted_rate_quote_failure.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
@@ -20,6 +20,9 @@ import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dar
 ///
 /// A successful empty list indicates that no persisted rates exist for the
 /// requested pair.
+///
+/// An [AssetNotFoundFailure] is returned when the required USD asset is not
+/// configured.
 final class GetRateForPairUseCase {
   /// Creates a use case backed by [repository] and [getAssetByCode].
   const GetRateForPairUseCase({
@@ -47,7 +50,7 @@ final class GetRateForPairUseCase {
     return usdResult.when(
       success: (asset) async {
         if (asset == null) {
-          return RecordNotFoundFailure(message: 'USD asset is not configured.');
+          return AssetNotFoundFailure(message: 'USD asset is not configured.');
         }
 
         if (quoteAssetId != asset.id) {

@@ -2,7 +2,6 @@
 library;
 
 import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
@@ -171,7 +170,7 @@ void main() {
       );
     });
 
-    test('returns not-found when USD is not configured', () async {
+    test('returns asset-not-found when USD is not configured', () async {
       // Given
       when(
         () => assetRepository.getByCode(any()),
@@ -181,7 +180,7 @@ void main() {
       final result = await useCase(baseAssetId: chf, quoteAssetId: usd);
 
       // Then
-      expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+      expect(result.failureOrNull, isA<AssetNotFoundFailure>());
       verifyNever(
         () => rateRepository.getByPair(
           baseAssetId: any(named: 'baseAssetId'),

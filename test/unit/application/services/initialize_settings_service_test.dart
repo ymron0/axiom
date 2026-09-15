@@ -2,13 +2,12 @@
 library;
 
 import 'package:axiom/src/application/services/initialize_settings_service.dart';
-import 'package:axiom/src/core/failures/record_already_exists_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_already_initialized_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -69,7 +68,7 @@ void main() {
     });
 
     test(
-      'returns not-found failure when the valuation asset is absent',
+      'returns asset-not-found failure when the valuation asset is absent',
       () async {
         // Given
         final valuationAssetId = AssetId.fromString('absent-valuation');
@@ -81,7 +80,7 @@ void main() {
         final result = await service.call(valuationAssetId: valuationAssetId);
 
         // Then
-        expect(result.failureOrNull, isA<RecordNotFoundFailure>());
+        expect(result.failureOrNull, isA<AssetNotFoundFailure>());
         expect(result.failureOrNull?.message, contains(valuationAssetId.value));
         verifyZeroInteractions(createSettings);
       },
@@ -92,7 +91,7 @@ void main() {
       final valuationAssetId = AssetId.fromString('duplicate-valuation');
       final currency = currencyFixture(id: valuationAssetId.value);
       final settings = Settings(valuationCurrencyId: valuationAssetId);
-      const failure = RecordAlreadyExistsFailure(message: 'settings exist');
+      const failure = SettingsAlreadyInitializedFailure(message: 'settings exist');
       when(
         () => getAssetById(valuationAssetId),
       ).thenAnswer((_) async => Success<Asset?>(currency));

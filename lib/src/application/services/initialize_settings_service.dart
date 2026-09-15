@@ -1,10 +1,10 @@
 import 'package:axiom/src/application/failures/invalid_valuation_currency_failure.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/failures/record_not_found_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_id_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
 import 'package:axiom/src/features/settings/application/use_cases/create_settings_use_case.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 
@@ -39,6 +39,7 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 ///
 /// - the created [Settings] on success;
 /// - the failure returned while retrieving the asset;
+/// - [AssetNotFoundFailure] when the selected valuation asset does not exist;
 /// - [InvalidValuationCurrencyFailure] when the selected asset exists but is
 ///   not a currency;
 /// - the failure returned while creating settings.
@@ -62,7 +63,7 @@ final class InitializeSettingsService {
     return assetResult.when<Future<Result<Settings, BaseFailure>>>(
       success: (asset) async {
         if (asset == null) {
-          return RecordNotFoundFailure(
+          return AssetNotFoundFailure(
             message: 'Valuation asset was not found: $valuationAssetId',
           );
         }
