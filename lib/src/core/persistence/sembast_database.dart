@@ -13,7 +13,7 @@ import 'database_schema.dart';
 /// - resolving the database file path;
 /// - ensuring the database directory exists;
 /// - opening the database;
-/// - applying schema migrations;
+/// - invoking schema migration when required;
 /// - sharing one in-flight opening operation;
 /// - reusing the currently open database;
 /// - closing the database.
@@ -35,8 +35,8 @@ import 'database_schema.dart';
 /// - propagate corruption/opening errors rather than automatically replacing
 ///   the database.
 ///
-/// This is required because persisted financial data must never be silently
-/// discarded as an automatic recovery strategy.
+/// Persisted financial data must never be silently discarded as an automatic
+/// recovery strategy.
 final class SembastDatabase {
   final DatabaseFactory _databaseFactory;
   final DatabaseMigrator _migrator;
@@ -50,15 +50,18 @@ final class SembastDatabase {
   /// [databaseFactory] is injectable so tests can use an in-memory factory or
   /// a controlled test double.
   ///
+  /// [migrator] can be replaced by tests that need custom schema histories.
+  /// Production code uses the migration registry associated with the current
+  /// `DatabaseSchema.version`.
+  ///
   /// Throws [ArgumentError] when [rootPath] is blank.
   SembastDatabase({
     required DatabaseFactory databaseFactory,
     required this.rootPath,
-    DatabaseMigrator migrator = const DatabaseMigrator(),
+    DatabaseMigrator? migrator,
   }) : _databaseFactory = // ignore: prefer_initializing_formals
            databaseFactory,
-       _migrator = // ignore: prefer_initializing_formals
-           migrator {
+       _migrator = migrator ?? DatabaseMigrator() {
     if (rootPath.trim().isEmpty) {
       throw ArgumentError.value(
         rootPath,
@@ -73,7 +76,7 @@ final class SembastDatabase {
   /// This is the normal constructor for production Dart VM and Flutter usage.
   factory SembastDatabase.io({
     required String rootPath,
-    DatabaseMigrator migrator = const DatabaseMigrator(),
+    DatabaseMigrator? migrator,
   }) {
     return SembastDatabase(
       databaseFactory: databaseFactoryIo,
