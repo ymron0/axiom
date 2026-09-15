@@ -5,8 +5,12 @@ import 'dart:io';
 
 import 'package:axiom/src/core/persistence/database_schema.dart';
 import 'package:axiom/src/core/persistence/sembast_database.dart';
+import 'package:axiom/src/core/persistence/unsupported_database_version_exception.dart';
 import 'package:sembast/sembast_memory.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
+
+import '../../../mocks/database_factory_mock.dart';
 
 void main() {
   group('SembastDatabase', () {
@@ -135,16 +139,103 @@ void main() {
 
       expect(database.path.endsWith(DatabaseSchema.fileName), isTrue);
     });
+
+    test('failed open leaves database closed', () async {
+      final expectedError = StateError('open failed');
+      final factory = MockDatabaseFactory();
+      final database = await _createTestDatabase(databaseFactory: factory);
+
+      when(
+        () => factory.openDatabase(
+          any(),
+          version: any(named: 'version'),
+          onVersionChanged: any(named: 'onVersionChanged'),
+          mode: any(named: 'mode'),
+        ),
+      ).thenThrow(expectedError);
+
+      await expectLater(database.open(), throwsA(same(expectedError)));
+
+      expect(database.isOpen, isFalse);
+    });
+
+    test(
+      'failed open clears in-flight state so another attempt can be made',
+      () async {
+        final expectedError = StateError('open failed');
+        final factory = MockDatabaseFactory();
+        final database = await _createTestDatabase(databaseFactory: factory);
+        var shouldFail = true;
+
+        when(
+          () => factory.openDatabase(
+            any(),
+            version: any(named: 'version'),
+            onVersionChanged: any(named: 'onVersionChanged'),
+            mode: any(named: 'mode'),
+          ),
+        ).thenAnswer((_) {
+          if (shouldFail) {
+            shouldFail = false;
+            return Future<Database>.error(expectedError);
+          }
+
+          return databaseFactoryMemory.openDatabase(
+            database.path,
+            version: DatabaseSchema.version,
+          );
+        });
+
+        await expectLater(database.open(), throwsA(same(expectedError)));
+
+        final reopenedDatabase = await database.open();
+
+        expect(reopenedDatabase.version, DatabaseSchema.version);
+        expect(database.isOpen, isTrue);
+      },
+    );
+
+    test('unsupported downgrade propagates its exception', () async {
+      final database = await _createTestDatabase();
+      final newerDatabase = await databaseFactoryMemory.openDatabase(
+        database.path,
+        version: DatabaseSchema.version + 1,
+      );
+      await newerDatabase.close();
+
+      await expectLater(
+        database.open(),
+        throwsA(isA<UnsupportedDatabaseVersionException>()),
+      );
+    });
+
+    test('unsupported downgrade leaves database closed', () async {
+      final database = await _createTestDatabase();
+      final newerDatabase = await databaseFactoryMemory.openDatabase(
+        database.path,
+        version: DatabaseSchema.version + 1,
+      );
+      await newerDatabase.close();
+
+      await expectLater(
+        database.open(),
+        throwsA(isA<UnsupportedDatabaseVersionException>()),
+      );
+
+      expect(database.isOpen, isFalse);
+    });
   });
 }
 
-Future<SembastDatabase> _createTestDatabase() async {
+Future<SembastDatabase> _createTestDatabase({
+  DatabaseFactory? databaseFactory,
+}) async {
   final rootDirectory = await Directory.systemTemp.createTemp(
     'sembast-database-test-',
   );
 
   final database = SembastDatabase(
-    databaseFactory: databaseFactoryMemory,
+    databaseFactory: databaseFactory ?? databaseFactoryMemory,
     rootPath: rootDirectory.path,
   );
 
