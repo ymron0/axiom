@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:axiom/src/core/persistence/database_integrity_checker.dart';
 import 'package:axiom/src/core/persistence/failures/database_close_failure.dart';
+import 'package:axiom/src/core/persistence/failures/database_migration_failure.dart';
 import 'package:axiom/src/core/persistence/failures/database_open_failure.dart';
 import 'package:axiom/src/core/persistence/failures/database_recovery_failure.dart';
 import 'package:axiom/src/core/persistence/failures/database_version_failure.dart';
 import 'package:axiom/src/core/persistence/failures/persistence_failure.dart';
+import 'package:axiom/src/core/persistence/migrations/database_migration_exception.dart';
 import 'package:axiom/src/core/persistence/sembast_database.dart';
 import 'package:axiom/src/core/persistence/unsupported_database_version_exception.dart';
 import 'package:axiom/src/core/result/result.dart';
@@ -22,16 +24,16 @@ import 'package:sembast/sembast.dart';
 /// Opening performs:
 ///
 /// 1. raw Sembast opening;
-/// 2. schema migration through `SembastDatabase`;
+/// 2. schema migration through `SembastDatabase` when required;
 /// 3. integrity validation;
 /// 4. publication of the validated database.
 ///
-/// A database is never exposed by this service before all four stages succeed.
+/// A database is never exposed by this service before every stage succeeds.
 ///
 /// ## Failure translation
 ///
-/// Expected filesystem and Sembast operational exceptions are translated into
-/// typed [PersistenceFailure] values.
+/// Expected filesystem, Sembast, version, migration, and integrity problems are
+/// translated into typed [PersistenceFailure] values.
 ///
 /// Programmer errors and violated internal assumptions are intentionally not
 /// converted into persistence failures.
@@ -152,8 +154,6 @@ final class DatabaseLifecycleService {
   /// A cleanup failure becomes [DatabaseRecoveryFailure].
   ///
   /// Once cleanup succeeds, any failure from [open] is preserved unchanged.
-  /// For example, an unsupported version remains `DatabaseVersionFailure`
-  /// rather than being hidden behind `DatabaseRecoveryFailure`.
   Future<Result<Database, PersistenceFailure>> recover() async {
     final closeResult = await close();
 
@@ -179,6 +179,12 @@ final class DatabaseLifecycleService {
         message:
             'Database schema version ${error.existingVersion} is newer than '
             'supported version ${error.supportedVersion}.',
+      );
+    } on DatabaseMigrationException catch (error) {
+      return DatabaseMigrationFailure(
+        fromVersion: error.fromVersion,
+        toVersion: error.toVersion,
+        message: error.message,
       );
     } on FileSystemException {
       return const DatabaseOpenFailure(

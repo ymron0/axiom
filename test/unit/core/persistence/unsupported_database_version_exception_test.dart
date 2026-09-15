@@ -17,7 +17,7 @@ void main() {
 
       // When / Then
       await expectLater(
-        () => const DatabaseMigrator().migrate(database, 2, 1),
+        () => DatabaseMigrator().migrate(database, 2, 1),
         throwsA(
           isA<UnsupportedDatabaseVersionException>()
               .having(

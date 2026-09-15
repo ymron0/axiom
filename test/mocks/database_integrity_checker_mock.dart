@@ -7,5 +7,8 @@ import 'package:sembast/src/store_impl.dart';
 class MockIntegrityDatabaseClient extends Mock
     implements Database, SembastDatabaseClient {}
 
+/// A mock transaction for migration-order tests.
+class MockIntegrityTransaction extends Mock implements Transaction {}
+
 /// A mock Sembast store for integrity-probe tests.
 class MockIntegrityStore extends Mock implements SembastStore {}

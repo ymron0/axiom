@@ -109,14 +109,14 @@ final class PersistenceTestEnvironment {
   /// [DatabaseLifecycleService] through [createLifecycle] when lifecycle
   /// validation is part of the scenario.
   SembastDatabase createDatabase({
-    DatabaseMigrator migrator = const DatabaseMigrator(),
+    DatabaseMigrator? migrator,
   }) {
     _ensureActive();
 
     final database = SembastDatabase(
       databaseFactory: _databaseFactory,
       rootPath: rootDirectory.path,
-      migrator: migrator,
+      migrator: migrator ?? DatabaseMigrator(),
     );
 
     _resourceClosers.add(database.close);
@@ -132,7 +132,7 @@ final class PersistenceTestEnvironment {
   ///
   /// The underlying database wrapper is automatically registered for teardown.
   DatabaseLifecycleService createLifecycle({
-    DatabaseMigrator migrator = const DatabaseMigrator(),
+    DatabaseMigrator? migrator,
     DatabaseIntegrityChecker? integrityChecker,
   }) {
     _ensureActive();
@@ -307,7 +307,7 @@ final class PersistenceTestDatabaseHandle {
 /// scenarios.
 Future<SembastDatabase> createTestSembastDatabase({
   DatabaseFactory? databaseFactory,
-  DatabaseMigrator migrator = const DatabaseMigrator(),
+  DatabaseMigrator? migrator,
 }) async {
   final environment = databaseFactory == null
       ? await PersistenceTestEnvironment.createMemory()
