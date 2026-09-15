@@ -1,3 +1,4 @@
+import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 
 /// Input required to create and persist a new asset.
@@ -9,8 +10,7 @@ final class CreateAssetCommand {
     required this.name,
     required this.code,
     this.symbol,
-    this.remoteLogoUrl,
-    this.bundledLogoAsset,
+    this.logo,
     required this.decimalPlaces,
   });
 
@@ -23,11 +23,8 @@ final class CreateAssetCommand {
   /// The asset's optional display symbol.
   final String? symbol;
 
-  /// An optional absolute HTTP(S) URL for the asset logo.
-  final String? remoteLogoUrl;
-
-  /// An optional path to a bundled logo asset.
-  final String? bundledLogoAsset;
+  /// An optional logo associated with the asset.
+  final EntityLogo? logo;
 
   /// The number of fractional decimal places supported by the asset.
   final int decimalPlaces;

@@ -25,8 +25,7 @@ final class CreateAssetUseCase {
       name: command.name,
       code: command.code,
       symbol: command.symbol,
-      remoteLogoUrl: command.remoteLogoUrl,
-      bundledLogoAsset: command.bundledLogoAsset,
+      logo: command.logo,
       decimalPlaces: command.decimalPlaces,
       clock: _clock,
     );

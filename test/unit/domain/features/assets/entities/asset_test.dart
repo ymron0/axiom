@@ -3,6 +3,7 @@ library;
 
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
+import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:test/test.dart';
@@ -16,8 +17,7 @@ void main() {
         name: ' Euro ',
         code: AssetCode('EUR'),
         symbol: ' € ',
-        remoteLogoUrl: 'https://example.com/euro.png',
-        bundledLogoAsset: ' assets/logos/euro.png ',
+        logo: EntityLogo.remote(' https://example.com/euro.png '),
         decimalPlaces: 2,
       );
 
@@ -29,8 +29,7 @@ void main() {
       expect(asset.name, 'Euro');
       expect(asset.code.value, 'EUR');
       expect(asset.symbol, '€');
-      expect(asset.remoteLogoUrl, 'https://example.com/euro.png');
-      expect(asset.bundledLogoAsset, 'assets/logos/euro.png');
+      expect(asset.logo, EntityLogo.remote('https://example.com/euro.png'));
       expect(asset.decimalPlaces, 2);
     });
 
@@ -45,8 +44,7 @@ void main() {
         name: 'Euro',
         code: assetCode,
         symbol: '€',
-        remoteLogoUrl: 'https://example.com/euro.png',
-        bundledLogoAsset: 'assets/logos/euro.png',
+        logo: EntityLogo.asset('assets/logos/euro.png'),
         decimalPlaces: 2,
       );
 
@@ -56,8 +54,7 @@ void main() {
       expect(currency.name, 'Euro');
       expect(currency.code, same(assetCode));
       expect(currency.symbol, '€');
-      expect(currency.remoteLogoUrl, 'https://example.com/euro.png');
-      expect(currency.bundledLogoAsset, 'assets/logos/euro.png');
+      expect(currency.logo, EntityLogo.asset('assets/logos/euro.png'));
       expect(currency.decimalPlaces, 2);
     });
 
@@ -129,8 +126,7 @@ void main() {
 
       // Then
       expect(currency.symbol, isNull);
-      expect(currency.remoteLogoUrl, isNull);
-      expect(currency.bundledLogoAsset, isNull);
+      expect(currency.logo, isNull);
       expect(currency.decimalPlaces, 0);
     });
 
@@ -162,20 +158,20 @@ void main() {
       expect(currency.symbol, '€');
     });
 
-    test('normalizes optional metadata through the shared text validator', () {
+    test('preserves an optional logo', () {
       // Given / When
       final currency = _createCurrency(
         id: AssetId.fromString('currency-eur'),
         name: 'Euro',
         code: AssetCode('EUR'),
         symbol: ' € ',
-        bundledLogoAsset: ' assets/logos/euro.png ',
+        logo: EntityLogo.asset(' assets/logos/euro.png '),
         decimalPlaces: 2,
       );
 
       // Then
       expect(currency.symbol, '€');
-      expect(currency.bundledLogoAsset, 'assets/logos/euro.png');
+      expect(currency.logo, EntityLogo.asset('assets/logos/euro.png'));
     });
 
     test('rejects a blank display name', () {
@@ -239,68 +235,6 @@ void main() {
           isA<ArgumentError>().having((error) => error.name, 'name', 'symbol'),
         ),
       );
-    });
-
-    test('rejects blank optional logo metadata', () {
-      // Given / When / Then
-      for (final field in ['remoteLogoUrl', 'bundledLogoAsset']) {
-        expect(
-          () => _createCurrency(
-            id: AssetId.fromString('currency-eur'),
-            name: 'Euro',
-            code: AssetCode('EUR'),
-            remoteLogoUrl: field == 'remoteLogoUrl' ? '  ' : null,
-            bundledLogoAsset: field == 'bundledLogoAsset' ? '  ' : null,
-            decimalPlaces: 2,
-          ),
-          throwsA(
-            isA<ArgumentError>().having((error) => error.name, 'name', field),
-          ),
-          reason: 'Expected $field to reject blank input.',
-        );
-      }
-    });
-
-    test('rejects an invalid remote logo URL', () {
-      // Given / When / Then
-      for (final value in [
-        'example.com/logo.png',
-        'ftp://example.com/logo.png',
-      ]) {
-        expect(
-          () => _createCurrency(
-            id: AssetId.fromString('currency-eur'),
-            name: 'Euro',
-            code: AssetCode('EUR'),
-            remoteLogoUrl: value,
-            decimalPlaces: 2,
-          ),
-          throwsA(
-            isA<ArgumentError>().having(
-              (error) => error.name,
-              'name',
-              'remoteLogoUrl',
-            ),
-          ),
-          reason: 'Expected $value to be rejected.',
-        );
-      }
-    });
-
-    test('trims valid logo metadata', () {
-      // Given / When
-      final currency = _createCurrency(
-        id: AssetId.fromString('currency-eur'),
-        name: 'Euro',
-        code: AssetCode('EUR'),
-        remoteLogoUrl: ' https://example.com/euro.png ',
-        bundledLogoAsset: ' assets/logos/euro.png ',
-        decimalPlaces: 2,
-      );
-
-      // Then
-      expect(currency.remoteLogoUrl, 'https://example.com/euro.png');
-      expect(currency.bundledLogoAsset, 'assets/logos/euro.png');
     });
 
     test('keeps identity independent from display metadata', () {
@@ -390,8 +324,7 @@ void main() {
           name: ' Euro ',
           code: AssetCode('EUR'),
           symbol: ' € ',
-          remoteLogoUrl: ' https://example.com/euro.png ',
-          bundledLogoAsset: ' assets/logos/euro.png ',
+          logo: EntityLogo.remote(' https://example.com/euro.png '),
           decimalPlaces: 2,
           clock: clock,
         );
@@ -405,8 +338,7 @@ void main() {
         expect(currency.name, 'Euro');
         expect(currency.code.value, 'EUR');
         expect(currency.symbol, '€');
-        expect(currency.remoteLogoUrl, 'https://example.com/euro.png');
-        expect(currency.bundledLogoAsset, 'assets/logos/euro.png');
+        expect(currency.logo, EntityLogo.remote('https://example.com/euro.png'));
         expect(currency.decimalPlaces, 2);
       });
 
@@ -449,8 +381,7 @@ Currency _createCurrency({
   required String name,
   required AssetCode code,
   String? symbol,
-  String? remoteLogoUrl,
-  String? bundledLogoAsset,
+  EntityLogo? logo,
   required int decimalPlaces,
 }) {
   final createdAt = DateTime.utc(2024);
@@ -463,8 +394,7 @@ Currency _createCurrency({
     name: name,
     code: code,
     symbol: symbol,
-    remoteLogoUrl: remoteLogoUrl,
-    bundledLogoAsset: bundledLogoAsset,
+    logo: logo,
     decimalPlaces: decimalPlaces,
   );
 }

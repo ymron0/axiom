@@ -38,8 +38,7 @@ final class Currency extends Asset with CurrencyMappable {
     required super.name,
     required super.code,
     super.symbol,
-    super.remoteLogoUrl,
-    super.bundledLogoAsset,
+    super.logo,
     required super.decimalPlaces,
   }) {
     final codeValue = code.value;
@@ -64,8 +63,7 @@ final class Currency extends Asset with CurrencyMappable {
     required String name,
     required AssetCode code,
     String? symbol,
-    String? remoteLogoUrl,
-    String? bundledLogoAsset,
+    EntityLogo? logo,
     required int decimalPlaces,
     Clock? clock,
   }) {
@@ -80,8 +78,7 @@ final class Currency extends Asset with CurrencyMappable {
       name: name,
       code: code,
       symbol: symbol,
-      remoteLogoUrl: remoteLogoUrl,
-      bundledLogoAsset: bundledLogoAsset,
+      logo: logo,
       decimalPlaces: decimalPlaces,
     );
   }

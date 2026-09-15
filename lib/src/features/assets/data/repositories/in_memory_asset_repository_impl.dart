@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_failure.dart';
@@ -31,8 +32,17 @@ final class InMemoryAssetRepositoryImpl implements AssetRepository {
                     code: AssetCode(fixture.code.value),
                     symbol: fixture.symbol,
                     decimalPlaces: fixture.decimalPlaces,
-                    remoteLogoUrl: fixture.remoteLogoUrl,
-                    bundledLogoAsset: fixture.bundledLogoAsset,
+                    logo: switch (
+                      (fixture.remoteLogoUrl, fixture.bundledLogoAsset)
+                    ) {
+                      (final remoteLogoUrl?, _) => EntityLogo.remote(
+                        remoteLogoUrl,
+                      ),
+                      (null, final bundledLogoAsset?) => EntityLogo.asset(
+                        bundledLogoAsset,
+                      ),
+                      (null, null) => null,
+                    },
                   ),
                 )
                 .toList(),

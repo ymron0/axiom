@@ -1,6 +1,6 @@
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
-import 'package:axiom/src/core/domain/validation/url_validation.dart';
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
+import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/clock.dart';
@@ -25,14 +25,14 @@ part 'asset.mapper.dart';
 /// - [name] is non-blank after trimming.
 /// - [code] is a valid [AssetCode].
 /// - [decimalPlaces] is non-negative.
-/// - Optional metadata is either `null` or a valid non-blank value.
+/// - [logo] is either `null` or a valid [EntityLogo].
 /// - Asset identity is represented by [id], independently of display metadata.
 ///
 /// ## Semantics
 ///
 /// [Asset] is the common parent for financial asset types such as currencies,
 /// blockchain assets, stocks, metals, and funds. [name], [code], [symbol], and
-/// logo metadata describe an asset; they do not define its identity.
+/// logo describe an asset; they do not define its identity.
 ///
 /// ## Contract
 ///
@@ -68,19 +68,15 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
   /// The number of fractional decimal places supported by the asset.
   final int decimalPlaces;
 
-  /// An optional absolute HTTP(S) URL for the asset logo.
-  final String? remoteLogoUrl;
-
-  /// An optional path to a bundled logo asset.
-  final String? bundledLogoAsset;
+  /// An optional logo associated with the asset.
+  final EntityLogo? logo;
 
   /// Creates an asset with its identity and display metadata.
   ///
-  /// Trims [name], [symbol], and optional logo metadata when supplied.
+  /// Trims [name] and [symbol] when supplied.
   ///
   /// Throws [ArgumentError] when required text is blank, when supplied optional
-  /// text is blank, when [remoteLogoUrl] is not an absolute HTTP(S) URL, or
-  /// when [decimalPlaces] is negative.
+  /// text is blank, or when [decimalPlaces] is negative.
   Asset({
     required super.id,
     required super.entityVersion,
@@ -90,15 +86,9 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
     required this.code,
     String? symbol,
     required this.decimalPlaces,
-    String? remoteLogoUrl,
-    String? bundledLogoAsset,
+    this.logo,
   }) : name = normalizeRequiredText(name, 'name'),
-       symbol = normalizeOptionalText(symbol, 'symbol'),
-       remoteLogoUrl = normalizeOptionalHttpUrl(remoteLogoUrl, 'remoteLogoUrl'),
-       bundledLogoAsset = normalizeOptionalText(
-         bundledLogoAsset,
-         'bundledLogoAsset',
-       ) {
+       symbol = normalizeOptionalText(symbol, 'symbol') {
     if (decimalPlaces < 0) {
       throw ArgumentError.value(
         decimalPlaces,
@@ -117,8 +107,7 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
     required String name,
     required AssetCode code,
     String? symbol,
-    String? remoteLogoUrl,
-    String? bundledLogoAsset,
+    EntityLogo? logo,
     required int decimalPlaces,
     Clock? clock,
   }) {
@@ -133,8 +122,7 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
       name: name,
       code: code,
       symbol: symbol,
-      remoteLogoUrl: remoteLogoUrl,
-      bundledLogoAsset: bundledLogoAsset,
+      logo: logo,
       decimalPlaces: decimalPlaces,
     );
   }
