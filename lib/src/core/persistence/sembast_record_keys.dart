@@ -1,3 +1,5 @@
+// coverage:ignore-file
+
 /// Reserved Sembast record keys used by persistence implementations.
 ///
 /// Most persisted entities use their domain identifier value as their Sembast
