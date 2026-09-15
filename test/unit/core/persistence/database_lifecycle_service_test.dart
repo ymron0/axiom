@@ -420,6 +420,28 @@ void main() {
         },
       );
 
+      test(
+        'DatabaseException while closing after integrity failure becomes '
+        'DatabaseRecoveryFailure',
+        () async {
+          // Given
+          final harness = await _createHarness();
+          harness.stubValidationError(
+            DatabaseException.closed('integrity check failed'),
+          );
+          harness.stubCloseError(
+            DatabaseException.closed('close failed'),
+          );
+
+          // When
+          final result = await harness.service.open();
+
+          // Then
+          expect(result, isA<DatabaseRecoveryFailure>());
+          expect(harness.service.isOpen, isFalse);
+        },
+      );
+
       test('ArgumentError from an injected dependency propagates', () async {
         // Given
         final harness = await _createHarness();
