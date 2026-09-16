@@ -8,6 +8,8 @@ import 'package:axiom/src/core/persistence/database_schema.dart';
 import 'package:axiom/src/core/persistence/failures/database_open_failure.dart';
 import 'package:axiom/src/core/persistence/failures/database_version_failure.dart';
 import 'package:axiom/src/core/persistence/sembast_stores.dart';
+import 'package:axiom/src/core/persistence/database_integrity_checker.dart';
+import 'package:axiom/src/core/persistence/failures/database_integrity_failure.dart';
 import 'package:sembast/sembast_io.dart';
 import 'package:test/test.dart';
 
@@ -320,6 +322,82 @@ void main() {
             .get(thirdDatabase);
 
         expect(recordAfterThirdOpen, equals(_testRecord));
+      },
+    );
+
+    test(
+      'integrity failure closes database without destroying persisted data',
+      () async {
+        // Given
+        final environment = await PersistenceTestEnvironment.createIo(
+          prefix: 'persistence-integrity-failure-',
+        );
+
+        // Prepare a valid existing database independently of the lifecycle.
+        final rawDatabase = await environment.openRawDatabase(
+          version: DatabaseSchema.version,
+        );
+
+        await SembastStores.settings
+            .record(_testRecordKey)
+            .put(rawDatabase.database, _testRecord);
+
+        await rawDatabase.close();
+
+        expect(await environment.databaseFile.exists(), isTrue);
+
+        // The database itself is valid. Force the integrity layer to reject it by
+        // requiring a different version after Sembast has successfully opened it.
+        //
+        // This allows the test to exercise the lifecycle branch where:
+        //
+        // 1. raw opening succeeds;
+        // 2. integrity validation fails;
+        // 3. the lifecycle closes the opened database;
+        // 4. persisted data remains untouched.
+        final rejectingLifecycle = environment.createLifecycle(
+          integrityChecker: DatabaseIntegrityChecker(
+            expectedVersion: DatabaseSchema.version + 1,
+          ),
+        );
+
+        // When
+        final rejectedResult = await rejectingLifecycle.open();
+
+        // Then
+        expect(rejectedResult.isFailure, isTrue);
+        expect(rejectedResult.isSuccess, isFalse);
+        expect(rejectedResult.valueOrNull, isNull);
+        expect(rejectedResult.failureOrNull, isA<DatabaseIntegrityFailure>());
+
+        // A database that did not pass validation must never remain published as
+        // usable through the lifecycle.
+        expect(rejectingLifecycle.isOpen, isFalse);
+
+        // Integrity failure is non-destructive.
+        expect(await environment.databaseFile.exists(), isTrue);
+
+        // When
+        //
+        // Create completely new production infrastructure using the normal
+        // integrity policy.
+        final healthyLifecycle = environment.createLifecycle();
+
+        final healthyOpenResult = await healthyLifecycle.open();
+
+        // Then
+        //
+        // The same physical database can still be opened and its previous content
+        // is intact.
+        expect(healthyOpenResult.isSuccess, isTrue);
+        expect(healthyOpenResult.failureOrNull, isNull);
+        expect(healthyLifecycle.isOpen, isTrue);
+
+        final persistedRecord = await SembastStores.settings
+            .record(_testRecordKey)
+            .get(healthyOpenResult.valueOrNull!);
+
+        expect(persistedRecord, equals(_testRecord));
       },
     );
   });

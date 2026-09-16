@@ -1,7 +1,11 @@
 @Tags(['application', 'di'])
 library;
 
+import 'dart:io';
+
 import 'package:axiom/src/core/di/clock_provider.dart';
+import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
+import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/custodians/application/use_cases/create_custodian_use_case.dart';
@@ -11,7 +15,7 @@ import 'package:axiom/src/features/custodians/application/use_cases/get_custodia
 import 'package:axiom/src/features/custodians/application/use_cases/restore_custodian_use_case.dart';
 import 'package:axiom/src/features/custodians/application/use_cases/search_custodians_use_case.dart';
 import 'package:axiom/src/features/custodians/application/use_cases/update_custodian_use_case.dart';
-import 'package:axiom/src/features/custodians/data/repositories/in_memory_custodian_repository_impl.dart';
+import 'package:axiom/src/features/custodians/data/repositories/sembast_custodian_repository_impl.dart';
 import 'package:axiom/src/features/custodians/di/create_custodian_use_case_provider.dart';
 import 'package:axiom/src/features/custodians/di/custodian_repository_provider.dart';
 import 'package:axiom/src/features/custodians/di/delete_custodian_use_case_provider.dart';
@@ -22,6 +26,7 @@ import 'package:axiom/src/features/custodians/di/search_custodians_use_case_prov
 import 'package:axiom/src/features/custodians/di/update_custodian_use_case_provider.dart';
 import 'package:axiom/src/features/custodians/domain/entities/custodian.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
@@ -35,12 +40,24 @@ void main() {
       registerFallbackValue(custodianFixture(id: 'fallback'));
     });
 
-    test('resolves every use case from the default repository', () {
+    test('resolves every use case from the default repository', () async {
       // Given
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+      final rootPath = _uniqueRootPath();
+      final rootDirectory = Directory(rootPath);
+      final container = ProviderContainer(
+        overrides: [databaseRootPathProvider.overrideWithValue(rootPath)],
+      );
+      final lifecycleService = container.read(databaseLifecycleServiceProvider);
+      addTearDown(() async {
+        await lifecycleService.close();
+        container.dispose();
+        if (await rootDirectory.exists()) {
+          await rootDirectory.delete(recursive: true);
+        }
+      });
 
       // When
+      expect((await lifecycleService.open()).isSuccess, isTrue);
       final repository = container.read(custodianRepositoryProvider);
       final useCases = [
         container.read(createCustodianUseCaseProvider),
@@ -53,7 +70,7 @@ void main() {
       ];
 
       // Then
-      expect(repository, isA<InMemoryCustodianRepositoryImpl>());
+      expect(repository, isA<SembastCustodianRepositoryImpl>());
       expect(useCases, hasLength(7));
       expect(useCases[0], isA<CreateCustodianUseCase>());
       expect(useCases[1], isA<GetCustodiansUseCase>());
@@ -125,4 +142,12 @@ void main() {
       verify(() => repository.restore(deleted)).called(1);
     });
   });
+}
+
+String _uniqueRootPath() {
+  return p.join(
+    Directory.systemTemp.path,
+    'custodian-use-case-providers-'
+    '${DateTime.now().microsecondsSinceEpoch}',
+  );
 }

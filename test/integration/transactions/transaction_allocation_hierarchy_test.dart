@@ -13,13 +13,13 @@ import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/application/use_cases/get_category_by_id_use_case.dart';
-import 'package:axiom/src/features/categories/data/repositories/in_memory_category_repository_impl.dart';
+import 'package:axiom/src/features/categories/data/repositories/sembast_category_repository_impl.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
 import 'package:axiom/src/features/jars/application/use_cases/get_jar_by_id_use_case.dart';
-import 'package:axiom/src/features/jars/data/repositories/in_memory_jar_repository_impl.dart';
+import 'package:axiom/src/features/jars/data/repositories/sembast_jar_repository_impl.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_transaction_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
-import 'package:axiom/src/features/transactions/data/repositories/in_memory_transaction_repository_impl.dart';
+import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
@@ -28,6 +28,7 @@ import 'package:axiom/src/features/transactions/domain/value_objects/transaction
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
+import '../../fixtures/core/persistence/persistence_test_environment.dart';
 import '../../fixtures/features/categories/category_fixtures.dart';
 
 void main() {
@@ -52,20 +53,25 @@ void main() {
       kind: CategoryKind.income,
     );
 
-    late InMemoryTransactionRepositoryImpl transactionRepository;
+    late SembastTransactionRepositoryImpl transactionRepository;
     late CreateTransactionService service;
 
-    setUp(() {
-      final categoryRepository = InMemoryCategoryRepositoryImpl(
-        initialCategories: [
-          expenseParent,
-          expenseChild,
-          incomeParent,
-          incomeChild,
-        ],
+    setUp(() async {
+      final sembastDatabase = await createTestSembastDatabase();
+      final database = await sembastDatabase.open();
+      final categoryRepository = SembastCategoryRepositoryImpl(
+        database: database,
       );
-      transactionRepository = InMemoryTransactionRepositoryImpl(
-        initialTransactions: const [],
+      for (final category in [
+        expenseParent,
+        expenseChild,
+        incomeParent,
+        incomeChild,
+      ]) {
+        await categoryRepository.create(category);
+      }
+      transactionRepository = SembastTransactionRepositoryImpl(
+        database: database,
       );
       service = CreateTransactionService(
         clock: FixedClock(timestamp),
@@ -74,7 +80,9 @@ void main() {
         ),
         validateAllocations: ValidateTransactionAllocationsService(
           getCategoryById: GetCategoryByIdUseCase(categoryRepository),
-          getJarById: GetJarByIdUseCase(InMemoryJarRepositoryImpl()),
+          getJarById: GetJarByIdUseCase(
+            SembastJarRepositoryImpl(database: database),
+          ),
         ),
       );
     });
@@ -137,13 +145,26 @@ void main() {
       final result = await service(createCommand);
 
       // Then
+      expect(result.isSuccess, isTrue);
       final transaction = result.valueOrNull!;
       expect(
         transaction.splits.map((split) => split.categoryId),
         [expenseParent.id, expenseChild.id],
       );
       final persisted = await transactionRepository.getById(transaction.id);
-      expect(persisted.valueOrNull, same(transaction));
+      final persistedTransaction = persisted.valueOrNull;
+      expect(persistedTransaction, isNotNull);
+      expect(persistedTransaction!.id, transaction.id);
+      expect(persistedTransaction.kind, transaction.kind);
+      expect(
+        persistedTransaction.splits.map((split) => split.categoryId?.value),
+        transaction.splits.map((split) => split.categoryId?.value),
+      );
+      expect(persistedTransaction.ledgerEntries, hasLength(1));
+      expect(
+        persistedTransaction.ledgerEntries.single.accountId.value,
+        transaction.ledgerEntries.single.accountId.value,
+      );
     });
 
     test('persists income allocations to parent and child categories', () async {

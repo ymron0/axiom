@@ -1,7 +1,11 @@
 @Tags(['application', 'di'])
 library;
 
+import 'dart:io';
+
 import 'package:axiom/src/core/di/clock_provider.dart';
+import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
+import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/categories/application/use_cases/archive_category_use_case.dart';
@@ -14,6 +18,7 @@ import 'package:axiom/src/features/categories/di/get_active_categories_use_case_
 import 'package:axiom/src/features/categories/di/get_archived_categories_use_case_provider.dart';
 import 'package:axiom/src/features/categories/di/unarchive_category_use_case_provider.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
@@ -24,12 +29,24 @@ void main() {
   final timestamp = DateTime.utc(2026, 1, 2);
 
   group('category archival use-case providers', () {
-    test('resolves archival use cases with the default repository', () {
+    test('resolves archival use cases with the default repository', () async {
       // Given
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+      final rootPath = _uniqueRootPath();
+      final rootDirectory = Directory(rootPath);
+      final container = ProviderContainer(
+        overrides: [databaseRootPathProvider.overrideWithValue(rootPath)],
+      );
+      final lifecycleService = container.read(databaseLifecycleServiceProvider);
+      addTearDown(() async {
+        await lifecycleService.close();
+        container.dispose();
+        if (await rootDirectory.exists()) {
+          await rootDirectory.delete(recursive: true);
+        }
+      });
 
       // Then
+      expect((await lifecycleService.open()).isSuccess, isTrue);
       expect(container.read(archiveCategoryUseCaseProvider), isA<ArchiveCategoryUseCase>());
       expect(container.read(unarchiveCategoryUseCaseProvider), isA<UnarchiveCategoryUseCase>());
       expect(container.read(getActiveCategoriesUseCaseProvider), isA<GetActiveCategoriesUseCase>());
@@ -73,4 +90,12 @@ void main() {
       verify(() => repository.getArchived()).called(1);
     });
   });
+}
+
+String _uniqueRootPath() {
+  return p.join(
+    Directory.systemTemp.path,
+    'category-archival-use-case-providers-'
+    '${DateTime.now().microsecondsSinceEpoch}',
+  );
 }

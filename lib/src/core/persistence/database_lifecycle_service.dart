@@ -70,40 +70,22 @@ final class DatabaseLifecycleService {
   /// open at this layer only after validation has succeeded.
   bool get isOpen => _validatedDatabase != null && _database.isOpen;
 
-  /// Opens and validates the persistent database.
+  /// Returns the currently validated database, or `null` when no validated
+  /// database is available.
   ///
-  /// Repeated calls reuse the already validated database.
+  /// A database is exposed here only after [open] has completed successfully,
+  /// including schema migration and integrity validation.
   ///
-  /// Concurrent callers share one lifecycle opening operation, which prevents
-  /// duplicate integrity checks and ensures all callers observe the same
-  /// opening outcome.
-  Future<Result<Database, PersistenceFailure>> open() async {
-    final currentDatabase = _validatedDatabase;
-
-    if (currentDatabase != null && _database.isOpen) {
-      return Success<Database>(currentDatabase);
+  /// This getter never opens the database.
+  ///
+  /// Dependency-injection composition can therefore consume the validated
+  /// database without introducing database-opening side effects into providers.
+  Database? get validatedDatabaseOrNull {
+    if (!isOpen) {
+      return null;
     }
 
-    // Discard stale validated state if the raw database is no longer open.
-    if (!_database.isOpen) {
-      _validatedDatabase = null;
-    }
-
-    final currentOpening = _opening;
-
-    if (currentOpening != null) {
-      return currentOpening;
-    }
-
-    final opening = _openAndValidate();
-
-    _opening = opening;
-
-    try {
-      return await opening;
-    } finally {
-      _opening = null;
-    }
+    return _validatedDatabase;
   }
 
   /// Closes the persistent database.
@@ -140,6 +122,42 @@ final class DatabaseLifecycleService {
     }
   }
 
+  /// Opens and validates the persistent database.
+  ///
+  /// Repeated calls reuse the already validated database.
+  ///
+  /// Concurrent callers share one lifecycle opening operation, which prevents
+  /// duplicate integrity checks and ensures all callers observe the same
+  /// opening outcome.
+  Future<Result<Database, PersistenceFailure>> open() async {
+    final currentDatabase = _validatedDatabase;
+
+    if (currentDatabase != null && _database.isOpen) {
+      return Success<Database>(currentDatabase);
+    }
+
+    // Discard stale validated state if the raw database is no longer open.
+    if (!_database.isOpen) {
+      _validatedDatabase = null;
+    }
+
+    final currentOpening = _opening;
+
+    if (currentOpening != null) {
+      return currentOpening;
+    }
+
+    final opening = _openAndValidate();
+
+    _opening = opening;
+
+    try {
+      return await opening;
+    } finally {
+      _opening = null;
+    }
+  }
+
   /// Attempts non-destructive database recovery.
   ///
   /// Recovery means:
@@ -164,6 +182,35 @@ final class DatabaseLifecycleService {
     }
 
     return open();
+  }
+
+  /// Closes a database that opened successfully but failed validation.
+  ///
+  /// This method deliberately bypasses public [close].
+  ///
+  /// Calling [close] from inside [_openAndValidate] would wait on [_opening],
+  /// which is the operation currently executing, and would therefore
+  /// deadlock.
+  Future<DatabaseRecoveryFailure?> _closeAfterFailedValidation() async {
+    _validatedDatabase = null;
+
+    try {
+      await _database.close();
+
+      return null;
+    } on FileSystemException {
+      return const DatabaseRecoveryFailure(
+        message:
+            'Database integrity validation failed and the database could not '
+            'be closed safely.',
+      );
+    } on DatabaseException {
+      return const DatabaseRecoveryFailure(
+        message:
+            'Database integrity validation failed and the database could not '
+            'be closed safely.',
+      );
+    }
   }
 
   /// Performs one complete raw-open plus integrity-validation operation.
@@ -223,34 +270,5 @@ final class DatabaseLifecycleService {
     _validatedDatabase = database;
 
     return Success<Database>(database);
-  }
-
-  /// Closes a database that opened successfully but failed validation.
-  ///
-  /// This method deliberately bypasses public [close].
-  ///
-  /// Calling [close] from inside [_openAndValidate] would wait on [_opening],
-  /// which is the operation currently executing, and would therefore
-  /// deadlock.
-  Future<DatabaseRecoveryFailure?> _closeAfterFailedValidation() async {
-    _validatedDatabase = null;
-
-    try {
-      await _database.close();
-
-      return null;
-    } on FileSystemException {
-      return const DatabaseRecoveryFailure(
-        message:
-            'Database integrity validation failed and the database could not '
-            'be closed safely.',
-      );
-    } on DatabaseException {
-      return const DatabaseRecoveryFailure(
-        message:
-            'Database integrity validation failed and the database could not '
-            'be closed safely.',
-      );
-    }
   }
 }

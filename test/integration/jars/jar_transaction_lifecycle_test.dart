@@ -14,13 +14,13 @@ import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart
 import 'package:axiom/src/features/jars/application/use_cases/archive_jar_use_case.dart';
 import 'package:axiom/src/features/jars/application/use_cases/delete_jar_use_case.dart';
 import 'package:axiom/src/features/jars/application/use_cases/restore_jar_use_case.dart';
-import 'package:axiom/src/features/jars/data/repositories/in_memory_jar_repository_impl.dart';
+import 'package:axiom/src/features/jars/data/repositories/sembast_jar_repository_impl.dart';
 import 'package:axiom/src/features/jars/domain/entities/jar.dart';
 import 'package:axiom/src/features/jars/domain/enums/jar_kind.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_in_use_failure.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/transactions_exist_by_jar_id_use_case.dart';
-import 'package:axiom/src/features/transactions/data/repositories/in_memory_transaction_repository_impl.dart';
+import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
@@ -30,6 +30,8 @@ import 'package:axiom/src/features/transactions/domain/value_objects/transaction
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
+import '../../fixtures/core/persistence/persistence_test_environment.dart';
+
 void main() {
   group('Jar transaction lifecycle', () {
     final timestamp = DateTime.utc(2026, 9, 14);
@@ -37,9 +39,11 @@ void main() {
     test('protects referenced jars and restores archived deleted snapshots',
         () async {
       // Given
-      final jarRepository = InMemoryJarRepositoryImpl(initialJars: const []);
-      final transactionRepository = InMemoryTransactionRepositoryImpl(
-        initialTransactions: const [],
+      final sembastDatabase = await createTestSembastDatabase();
+      final database = await sembastDatabase.open();
+      final jarRepository = SembastJarRepositoryImpl(database: database);
+      final transactionRepository = SembastTransactionRepositoryImpl(
+        database: database,
       );
       final deleteJar = DeleteJarUseCase(jarRepository);
       final deleteJarService = DeleteJarService(

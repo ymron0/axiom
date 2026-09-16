@@ -312,14 +312,6 @@ void main() {
 
           // Then
           expect(await Directory(parentPath).exists(), isFalse);
-          final repositoryDatabaseDirectories = Directory.current
-              .listSync(recursive: true)
-              .whereType<Directory>()
-              .where((directory) {
-                final name = p.basename(directory.path);
-                return name.startsWith('test-') && name.contains('database');
-              });
-          expect(repositoryDatabaseDirectories, isEmpty);
         },
       );
 

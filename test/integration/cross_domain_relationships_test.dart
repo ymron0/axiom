@@ -4,27 +4,36 @@ library;
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/custodian_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
-import 'package:axiom/src/features/accounts/data/repositories/in_memory_account_repository_impl.dart';
+import 'package:axiom/src/features/accounts/data/repositories/sembast_account_repository_impl.dart';
 import 'package:axiom/src/features/accounts/domain/repositories/account_repository.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/custodians/domain/services/custodian_aggregation_calculator.dart';
 import 'package:axiom/src/features/custodians/domain/value_objects/account_valuation.dart';
-import 'package:axiom/src/features/merchants/data/repositories/in_memory_merchant_repository_impl.dart';
+import 'package:axiom/src/features/merchants/data/repositories/sembast_merchant_repository_impl.dart';
 import 'package:axiom/src/features/merchants/domain/repositories/merchant_repository.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 import 'package:decimal/decimal.dart';
+import 'package:sembast/sembast.dart' show Database;
 import 'package:test/test.dart';
 
+import '../fixtures/core/persistence/persistence_test_environment.dart';
 import '../fixtures/features/accounts/account_fixtures.dart';
 import '../fixtures/features/custodians/custodian_fixtures.dart';
 import '../fixtures/features/merchants/merchant_fixtures.dart';
 import '../fixtures/features/transactions/transaction_fixtures.dart';
 
 void main() {
+  late Database database;
+
+  setUp(() async {
+    final sembastDatabase = await createTestSembastDatabase();
+    database = await sembastDatabase.open();
+  });
+
   Transaction transactionWithMerchant({
     required String id,
     required MerchantId merchantId,
@@ -140,15 +149,18 @@ void main() {
             id: 'transaction-normal-merchant',
             merchantId: merchant.id,
           );
-          final MerchantRepository repository = InMemoryMerchantRepositoryImpl(
-            initialMerchants: [merchant],
+          final MerchantRepository repository = SembastMerchantRepositoryImpl(
+            database: database,
           );
+          await repository.create(merchant);
 
           // When
           final result = await repository.getById(transaction.merchantId);
 
           // Then
-          expect(result.valueOrNull, same(merchant));
+          final resolved = result.valueOrNull;
+          expect(resolved?.id, merchant.id);
+          expect(resolved?.name, merchant.name);
         },
       );
     });
@@ -171,9 +183,12 @@ void main() {
               denominationAssetId: 'asset-usd',
             ),
           ];
-          final AccountRepository repository = InMemoryAccountRepositoryImpl(
-            initialAccounts: accounts,
+          final AccountRepository repository = SembastAccountRepositoryImpl(
+            database: database,
           );
+          for (final account in accounts) {
+            await repository.create(account);
+          }
 
           // When
           final resolved = await repository.getByCustodianId(custodian.id);
@@ -183,10 +198,12 @@ void main() {
           final CustodianId secondReference = accounts.last.custodianId;
           expect(firstReference, custodian.id);
           expect(secondReference, custodian.id);
-          expect(resolved.valueOrNull, [
-            same(accounts.first),
-            same(accounts.last),
-          ]);
+          final resolvedAccounts = resolved.valueOrNull;
+          expect(resolvedAccounts, isNotNull);
+          expect(
+            resolvedAccounts!.map((account) => account.id),
+            [accounts.first.id, accounts.last.id],
+          );
         },
       );
 
@@ -208,9 +225,12 @@ void main() {
               denominationAssetId: 'asset-usd',
             ),
           ];
-          final AccountRepository repository = InMemoryAccountRepositoryImpl(
-            initialAccounts: accounts,
+          final AccountRepository repository = SembastAccountRepositoryImpl(
+            database: database,
           );
+          for (final account in accounts) {
+            await repository.create(account);
+          }
           final settings = Settings(
             valuationCurrencyId: AssetId.fromString('asset-chf'),
           );

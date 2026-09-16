@@ -1,6 +1,10 @@
 @Tags(['application', 'di'])
 library;
 
+import 'dart:io';
+
+import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
+import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/features/rates/application/use_cases/create_exchange_rate_use_case.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_at_use_case.dart';
@@ -11,26 +15,51 @@ import 'package:axiom/src/features/rates/di/get_rate_at_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/get_rate_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/get_rate_for_pair_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/rate_repository_provider.dart';
+import 'package:axiom/src/features/assets/di/asset_repository_provider.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
 import '../../../../../fixtures/features/rates/rate_fixtures.dart';
+import '../../../../../mocks/asset_repository_mock.dart';
 import '../../../../../mocks/rate_repository_mock.dart';
 
 void main() {
+  late String rootPath;
+  late Directory rootDirectory;
+  late ProviderContainer container;
+
   setUpAll(() {
     registerFallbackValue(AssetId.fromString('fallback'));
     registerFallbackValue(DateTime.utc(1970));
     registerFallbackValue(exchangeRateFixture());
   });
 
+  setUp(() async {
+    rootPath = _uniqueRootPath();
+    rootDirectory = Directory(rootPath);
+    container = ProviderContainer(
+      overrides: [databaseRootPathProvider.overrideWithValue(rootPath)],
+    );
+    final lifecycleService = container.read(databaseLifecycleServiceProvider);
+
+    expect((await lifecycleService.open()).isSuccess, isTrue);
+  });
+
+  tearDown(() async {
+    final lifecycleService = container.read(databaseLifecycleServiceProvider);
+
+    await lifecycleService.close();
+    container.dispose();
+    if (await rootDirectory.exists()) {
+      await rootDirectory.delete(recursive: true);
+    }
+  });
+
   group('rate use-case providers', () {
     test('resolves rate use cases from the default dependencies', () {
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
-
       final providers = [
         container.read(createExchangeRateUseCaseProvider),
         container.read(getRateAtUseCaseProvider),
@@ -53,7 +82,10 @@ void main() {
         effectiveAt: any(named: 'effectiveAt'),
       )).thenAnswer((_) async => failure);
       final container = ProviderContainer(
-        overrides: [rateRepositoryProvider.overrideWithValue(repository)],
+        overrides: [
+          assetRepositoryProvider.overrideWithValue(MockAssetRepository()),
+          rateRepositoryProvider.overrideWithValue(repository),
+        ],
       );
       addTearDown(container.dispose);
 
@@ -71,4 +103,12 @@ void main() {
       expect(forPairUseCase, isA<GetRateForPairUseCase>());
     });
   });
+}
+
+String _uniqueRootPath() {
+  return p.join(
+    Directory.systemTemp.path,
+    'rate-use-case-providers-'
+    '${DateTime.now().microsecondsSinceEpoch}',
+  );
 }

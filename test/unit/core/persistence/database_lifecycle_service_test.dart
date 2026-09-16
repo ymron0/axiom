@@ -221,28 +221,25 @@ void main() {
         },
       );
 
-      test(
-        'a successfully migrated but structurally invalid database returns '
-        'DatabaseIntegrityFailure',
-        () async {
-          // Given
-          final events = <String>[];
-          final store = stringMapStoreFactory.store('actual');
-          final harness = await _createMigrationHarness(
-            store: store,
-            migration: (_) async => events.add('migration'),
-            storeNames: ['declared'],
-          );
+      test('a successfully migrated but structurally invalid database returns '
+          'DatabaseIntegrityFailure', () async {
+        // Given
+        final events = <String>[];
+        final store = stringMapStoreFactory.store('actual');
+        final harness = await _createMigrationHarness(
+          store: store,
+          migration: (_) async => events.add('migration'),
+          storeNames: ['declared'],
+        );
 
-          // When
-          final result = await harness.service.open();
+        // When
+        final result = await harness.service.open();
 
-          // Then
-          expect(result, isA<DatabaseIntegrityFailure>());
-          expect(events, ['migration']);
-          expect(harness.service.isOpen, isFalse);
-        },
-      );
+        // Then
+        expect(result, isA<DatabaseIntegrityFailure>());
+        expect(events, ['migration']);
+        expect(harness.service.isOpen, isFalse);
+      });
 
       test(
         'an already-open raw database is validated before exposure',
@@ -420,7 +417,8 @@ void main() {
           final result = await harness.service.open();
 
           // Then
-          if (result.failureOrNull case final DatabaseMigrationFailure failure) {
+          if (result.failureOrNull
+              case final DatabaseMigrationFailure failure) {
             expect(failure.message, 'Safe migration diagnostic.');
           } else {
             fail('Expected a DatabaseMigrationFailure.');
@@ -559,27 +557,22 @@ void main() {
         },
       );
 
-      test(
-        'DatabaseException while closing after integrity failure becomes '
-        'DatabaseRecoveryFailure',
-        () async {
-          // Given
-          final harness = await _createHarness();
-          harness.stubValidationError(
-            DatabaseException.closed('integrity check failed'),
-          );
-          harness.stubCloseError(
-            DatabaseException.closed('close failed'),
-          );
+      test('DatabaseException while closing after integrity failure becomes '
+          'DatabaseRecoveryFailure', () async {
+        // Given
+        final harness = await _createHarness();
+        harness.stubValidationError(
+          DatabaseException.closed('integrity check failed'),
+        );
+        harness.stubCloseError(DatabaseException.closed('close failed'));
 
-          // When
-          final result = await harness.service.open();
+        // When
+        final result = await harness.service.open();
 
-          // Then
-          expect(result, isA<DatabaseRecoveryFailure>());
-          expect(harness.service.isOpen, isFalse);
-        },
-      );
+        // Then
+        expect(result, isA<DatabaseRecoveryFailure>());
+        expect(harness.service.isOpen, isFalse);
+      });
 
       test('ArgumentError from an injected dependency propagates', () async {
         // Given
@@ -1064,6 +1057,69 @@ void main() {
         await expectLater(harness.service.close(), throwsA(same(error)));
         expect(harness.service.isOpen, isFalse);
       });
+
+      test('validatedDatabaseOrNull is null before successful open', () {
+        // Given
+        final database = SembastDatabase(
+          databaseFactory: databaseFactoryMemoryFs,
+          rootPath: 'test-database',
+        );
+
+        final service = DatabaseLifecycleService(database: database);
+
+        // When
+        final result = service.validatedDatabaseOrNull;
+
+        // Then
+        expect(result, isNull);
+      });
+
+      test(
+        'validatedDatabaseOrNull exposes database after successful open',
+        () async {
+          // Given
+          final database = SembastDatabase(
+            databaseFactory: databaseFactoryMemoryFs,
+            rootPath: 'test-database',
+          );
+
+          final service = DatabaseLifecycleService(database: database);
+
+          addTearDown(service.close);
+
+          final openResult = await service.open();
+
+          expect(openResult.isSuccess, isTrue);
+
+          // When
+          final validatedDatabase = service.validatedDatabaseOrNull;
+
+          // Then
+          expect(validatedDatabase, same(openResult.valueOrNull));
+        },
+      );
+
+      test('validatedDatabaseOrNull becomes null after close', () async {
+        // Given
+        final database = SembastDatabase(
+          databaseFactory: databaseFactoryMemoryFs,
+          rootPath: 'test-database',
+        );
+
+        final service = DatabaseLifecycleService(database: database);
+
+        final openResult = await service.open();
+
+        expect(openResult.isSuccess, isTrue);
+        expect(service.validatedDatabaseOrNull, isNotNull);
+
+        // When
+        final closeResult = await service.close();
+
+        // Then
+        expect(closeResult.isSuccess, isTrue);
+        expect(service.validatedDatabaseOrNull, isNull);
+      });
     });
   });
 }
@@ -1085,7 +1141,9 @@ Future<_LifecycleHarness> _createMigrationHarness({
   when(() => rawDatabase.version).thenReturn(migratedVersion);
   when(() => rawDatabase.getSembastStore(store)).thenReturn(integrityStore);
   when(() => rawDatabase.close()).thenAnswer((_) async {});
-  when(() => rawDatabase.transaction<Null>(any())).thenAnswer((invocation) async {
+  when(() => rawDatabase.transaction<Null>(any())).thenAnswer((
+    invocation,
+  ) async {
     final action = invocation.positionalArguments.single;
     await action(transaction);
     return null;
@@ -1110,11 +1168,7 @@ Future<_LifecycleHarness> _createMigrationHarness({
     migrator: DatabaseMigrator(
       supportedVersion: 2,
       migrations: [
-        DatabaseMigration(
-          fromVersion: 1,
-          toVersion: 2,
-          operation: migration,
-        ),
+        DatabaseMigration(fromVersion: 1, toVersion: 2, operation: migration),
       ],
     ),
   );

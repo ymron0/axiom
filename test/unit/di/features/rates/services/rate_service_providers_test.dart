@@ -34,8 +34,13 @@ void main() {
   });
 
   group('rate service providers', () {
-    test('resolves rate services from the default dependencies', () {
-      final container = ProviderContainer();
+    test('resolves rate services with repository dependencies overridden', () {
+      final container = ProviderContainer(
+        overrides: [
+          assetRepositoryProvider.overrideWithValue(MockAssetRepository()),
+          rateRepositoryProvider.overrideWithValue(MockRateRepository()),
+        ],
+      );
       addTearDown(container.dispose);
 
       expect(container.read(createRateServiceProvider), isA<CreateRateService>());

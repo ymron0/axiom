@@ -1,7 +1,11 @@
 @Tags(['application', 'di'])
 library;
 
+import 'dart:io';
+
 import 'package:axiom/src/core/di/clock_provider.dart';
+import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
+import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/jars/application/use_cases/archive_jar_use_case.dart';
@@ -16,7 +20,7 @@ import 'package:axiom/src/features/jars/application/use_cases/restore_jar_use_ca
 import 'package:axiom/src/features/jars/application/use_cases/search_jars_use_case.dart';
 import 'package:axiom/src/features/jars/application/use_cases/unarchive_jar_use_case.dart';
 import 'package:axiom/src/features/jars/application/use_cases/update_jar_use_case.dart';
-import 'package:axiom/src/features/jars/data/repositories/in_memory_jar_repository_impl.dart';
+import 'package:axiom/src/features/jars/data/repositories/sembast_jar_repository_impl.dart';
 import 'package:axiom/src/features/jars/di/archive_jar_use_case_provider.dart';
 import 'package:axiom/src/features/jars/di/create_jar_use_case_provider.dart';
 import 'package:axiom/src/features/jars/di/delete_jar_use_case_provider.dart';
@@ -31,12 +35,15 @@ import 'package:axiom/src/features/jars/di/search_jars_use_case_provider.dart';
 import 'package:axiom/src/features/jars/di/unarchive_jar_use_case_provider.dart';
 import 'package:axiom/src/features/jars/di/update_jar_use_case_provider.dart';
 import 'package:axiom/src/features/jars/domain/entities/jar.dart';
+import 'package:axiom/src/features/settings/di/settings_repository_provider.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
 import '../../../../../fixtures/features/jars/jar_fixtures.dart';
 import '../../../../../mocks/jar_repository_mock.dart';
+import '../../../../../mocks/settings_repository_mock.dart';
 
 void main() {
   group('jar use-case providers', () {
@@ -44,12 +51,24 @@ void main() {
       registerFallbackValue(jarFixture(id: 'fallback'));
     });
 
-    test('resolves every use case from the default repository', () {
+    test('resolves every use case from the default repository', () async {
       // Given
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+      final rootPath = _uniqueRootPath();
+      final rootDirectory = Directory(rootPath);
+      final container = ProviderContainer(
+        overrides: [databaseRootPathProvider.overrideWithValue(rootPath)],
+      );
+      final lifecycleService = container.read(databaseLifecycleServiceProvider);
+      addTearDown(() async {
+        await lifecycleService.close();
+        container.dispose();
+        if (await rootDirectory.exists()) {
+          await rootDirectory.delete(recursive: true);
+        }
+      });
 
       // When
+      expect((await lifecycleService.open()).isSuccess, isTrue);
       final repository = container.read(jarRepositoryProvider);
       final useCases = [
         container.read(createJarUseCaseProvider),
@@ -67,7 +86,7 @@ void main() {
       ];
 
       // Then
-      expect(repository, isA<InMemoryJarRepositoryImpl>());
+      expect(repository, isA<SembastJarRepositoryImpl>());
       expect(useCases, hasLength(12));
       expect(useCases[0], isA<CreateJarUseCase>());
       expect(useCases[1], isA<GetJarsUseCase>());
@@ -135,6 +154,9 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           jarRepositoryProvider.overrideWithValue(repository),
+          settingsRepositoryProvider.overrideWithValue(
+            MockSettingsRepository(),
+          ),
           clockProvider.overrideWithValue(clock),
         ],
       );
@@ -172,4 +194,12 @@ void main() {
       verify(() => repository.restore(deleted)).called(1);
     });
   });
+}
+
+String _uniqueRootPath() {
+  return p.join(
+    Directory.systemTemp.path,
+    'jar-use-case-providers-'
+    '${DateTime.now().microsecondsSinceEpoch}',
+  );
 }

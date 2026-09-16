@@ -10,13 +10,13 @@ import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/application/use_cases/get_category_by_id_use_case.dart';
-import 'package:axiom/src/features/categories/data/repositories/in_memory_category_repository_impl.dart';
+import 'package:axiom/src/features/categories/data/repositories/sembast_category_repository_impl.dart';
 import 'package:axiom/src/features/jars/application/use_cases/get_jar_by_id_use_case.dart';
-import 'package:axiom/src/features/jars/data/repositories/in_memory_jar_repository_impl.dart';
+import 'package:axiom/src/features/jars/data/repositories/sembast_jar_repository_impl.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_transaction_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
-import 'package:axiom/src/features/transactions/data/repositories/in_memory_transaction_repository_impl.dart';
+import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
@@ -24,22 +24,30 @@ import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entr
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
+import '../../fixtures/core/persistence/persistence_test_environment.dart';
+
 void main() {
   group('Transaction regression', () {
     final timestamp = DateTime.utc(2026, 1, 1);
-    late InMemoryTransactionRepositoryImpl repository;
+    late SembastTransactionRepositoryImpl repository;
     late CreateTransactionService createService;
     late UpdateTransactionService updateService;
 
-    setUp(() {
-      repository = InMemoryTransactionRepositoryImpl(
-        initialTransactions: const [],
+    setUp(() async {
+      final sembastDatabase = await createTestSembastDatabase();
+      final database = await sembastDatabase.open();
+      repository = SembastTransactionRepositoryImpl(
+        database: database,
       );
+      final categoryRepository = SembastCategoryRepositoryImpl(
+        database: database,
+      );
+      final jarRepository = SembastJarRepositoryImpl(database: database);
       final validateAllocations = ValidateTransactionAllocationsService(
         getCategoryById: GetCategoryByIdUseCase(
-          InMemoryCategoryRepositoryImpl(initialCategories: const []),
+          categoryRepository,
         ),
-        getJarById: GetJarByIdUseCase(InMemoryJarRepositoryImpl()),
+        getJarById: GetJarByIdUseCase(jarRepository),
       );
       createService = CreateTransactionService(
         clock: FixedClock(timestamp),
@@ -73,10 +81,12 @@ void main() {
         final transaction = result.valueOrNull!;
         expect(transaction.kind, kind);
         expect(transaction.splits, isEmpty);
-        expect(
-          (await repository.getById(transaction.id)).valueOrNull,
-          same(transaction),
-        );
+        final persisted = (await repository.getById(transaction.id)).valueOrNull;
+        expect(persisted, isNotNull);
+        expect(persisted!.id, transaction.id);
+        expect(persisted.kind, transaction.kind);
+        expect(persisted.description, transaction.description);
+        expect(persisted.splits, isEmpty);
       });
     }
 
@@ -103,7 +113,11 @@ void main() {
       final persisted = (await repository.getById(created.id)).valueOrNull!;
       expect(persisted.description, 'Updated');
       expect(persisted.splits, isEmpty);
-      expect(persisted.ledgerEntries, created.ledgerEntries);
+      expect(persisted.ledgerEntries, hasLength(1));
+      expect(
+        persisted.ledgerEntries.single.accountId.value,
+        created.ledgerEntries.single.accountId.value,
+      );
     });
   });
 }

@@ -1,6 +1,10 @@
 @Tags(['application', 'di'])
 library;
 
+import 'dart:io';
+
+import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
+import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_all_transactions_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_all_transactions_use_case.dart';
@@ -30,6 +34,7 @@ import 'package:axiom/src/features/transactions/domain/entities/transaction.dart
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
@@ -44,10 +49,22 @@ void main() {
       registerFallbackValue(<Transaction>[]);
     });
 
-    test('resolves every use case from the default repository', () {
+    test('resolves every use case from the default repository', () async {
       // Given
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+      final rootPath = _uniqueRootPath();
+      final rootDirectory = Directory(rootPath);
+      final container = ProviderContainer(
+        overrides: [databaseRootPathProvider.overrideWithValue(rootPath)],
+      );
+      final lifecycleService = container.read(databaseLifecycleServiceProvider);
+      addTearDown(() async {
+        await lifecycleService.close();
+        container.dispose();
+        if (await rootDirectory.exists()) {
+          await rootDirectory.delete(recursive: true);
+        }
+      });
+      expect((await lifecycleService.open()).isSuccess, isTrue);
 
       // When
       final useCases = [
@@ -190,4 +207,12 @@ void main() {
       verify(() => repository.restore(deleted)).called(1);
     });
   });
+}
+
+String _uniqueRootPath() {
+  return p.join(
+    Directory.systemTemp.path,
+    'transaction-use-case-providers-'
+    '${DateTime.now().microsecondsSinceEpoch}',
+  );
 }

@@ -15,13 +15,13 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/application/use_cases/get_category_by_id_use_case.dart';
-import 'package:axiom/src/features/categories/data/repositories/in_memory_category_repository_impl.dart';
+import 'package:axiom/src/features/categories/data/repositories/sembast_category_repository_impl.dart';
 import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
 import 'package:axiom/src/features/jars/application/use_cases/get_jar_by_id_use_case.dart';
-import 'package:axiom/src/features/jars/data/repositories/in_memory_jar_repository_impl.dart';
+import 'package:axiom/src/features/jars/data/repositories/sembast_jar_repository_impl.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_transaction_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
-import 'package:axiom/src/features/transactions/data/repositories/in_memory_transaction_repository_impl.dart';
+import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
@@ -31,6 +31,7 @@ import 'package:axiom/src/features/transactions/domain/value_objects/transaction
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
+import '../../fixtures/core/persistence/persistence_test_environment.dart';
 import '../../fixtures/features/categories/category_fixtures.dart';
 import '../../fixtures/features/jars/jar_fixtures.dart';
 
@@ -45,12 +46,21 @@ void main() {
     );
     final jarId = JarId.fromString('monthly-budget');
 
-    late InMemoryTransactionRepositoryImpl transactionRepository;
+    late SembastTransactionRepositoryImpl transactionRepository;
     late CreateTransactionService service;
 
-    setUp(() {
-      transactionRepository = InMemoryTransactionRepositoryImpl(
-        initialTransactions: const [],
+    setUp(() async {
+      final sembastDatabase = await createTestSembastDatabase();
+      final database = await sembastDatabase.open();
+      final categoryRepository = SembastCategoryRepositoryImpl(
+        database: database,
+      );
+      await categoryRepository.create(expenseCategory);
+      await categoryRepository.create(incomeCategory);
+      final jarRepository = SembastJarRepositoryImpl(database: database);
+      await jarRepository.create(jarFixture(id: jarId.value));
+      transactionRepository = SembastTransactionRepositoryImpl(
+        database: database,
       );
       service = CreateTransactionService(
         clock: FixedClock(timestamp),
@@ -59,14 +69,10 @@ void main() {
         ),
         validateAllocations: ValidateTransactionAllocationsService(
           getCategoryById: GetCategoryByIdUseCase(
-            InMemoryCategoryRepositoryImpl(
-              initialCategories: [expenseCategory, incomeCategory],
-            ),
+            categoryRepository,
           ),
           getJarById: GetJarByIdUseCase(
-            InMemoryJarRepositoryImpl(
-              initialJars: [jarFixture(id: jarId.value)],
-            ),
+            jarRepository,
           ),
         ),
       );
@@ -177,13 +183,17 @@ void main() {
       final result = await service(createCommand);
 
       // Then
+      expect(result.isSuccess, isTrue);
       final transaction = result.valueOrNull!;
       expect(transaction.splits.single.categoryId, expenseCategory.id);
       expect(transaction.splits.single.jarId, jarId);
-      expect(
-        (await transactionRepository.getById(transaction.id)).valueOrNull,
-        same(transaction),
-      );
+      final persisted = (await transactionRepository.getById(transaction.id))
+          .valueOrNull;
+      expect(persisted, isNotNull);
+      expect(persisted!.id, transaction.id);
+      expect(persisted.kind, transaction.kind);
+      expect(persisted.splits.single.categoryId, transaction.splits.single.categoryId);
+      expect(persisted.splits.single.jarId, transaction.splits.single.jarId);
     });
 
     test('rejects missing and incompatible category allocations', () async {

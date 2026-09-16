@@ -1,7 +1,11 @@
 @Tags(['application', 'di'])
 library;
 
+import 'dart:io';
+
 import 'package:axiom/src/core/di/clock_provider.dart';
+import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
+import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/assets/application/commands/create_all_assets_command.dart';
 import 'package:axiom/src/features/assets/application/use_cases/create_all_assets_use_case.dart';
@@ -12,7 +16,7 @@ import 'package:axiom/src/features/assets/application/use_cases/get_asset_use_ca
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/assets/application/use_cases/update_all_assets_use_case.dart';
 import 'package:axiom/src/features/assets/application/use_cases/update_asset_use_case.dart';
-import 'package:axiom/src/features/assets/data/repositories/in_memory_asset_repository_impl.dart';
+import 'package:axiom/src/features/assets/data/repositories/sembast_asset_repository_impl.dart';
 import 'package:axiom/src/features/assets/di/asset_repository_provider.dart';
 import 'package:axiom/src/features/assets/di/create_all_assets_use_case_provider.dart';
 import 'package:axiom/src/features/assets/di/create_asset_use_case_provider.dart';
@@ -25,6 +29,7 @@ import 'package:axiom/src/features/assets/di/update_asset_use_case_provider.dart
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
@@ -37,12 +42,24 @@ void main() {
       registerFallbackValue(<Asset>[]);
     });
 
-    test('resolves every use case from the default repository', () {
+    test('resolves every use case from the default repository', () async {
       // Given
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+      final rootPath = _uniqueRootPath();
+      final rootDirectory = Directory(rootPath);
+      final container = ProviderContainer(
+        overrides: [databaseRootPathProvider.overrideWithValue(rootPath)],
+      );
+      final lifecycleService = container.read(databaseLifecycleServiceProvider);
+      addTearDown(() async {
+        await lifecycleService.close();
+        container.dispose();
+        if (await rootDirectory.exists()) {
+          await rootDirectory.delete(recursive: true);
+        }
+      });
 
       // When
+      expect((await lifecycleService.open()).isSuccess, isTrue);
       final repository = container.read(assetRepositoryProvider);
       final useCases = [
         container.read(createAssetUseCaseProvider),
@@ -56,7 +73,7 @@ void main() {
       ];
 
       // Then
-      expect(repository, isA<InMemoryAssetRepositoryImpl>());
+      expect(repository, isA<SembastAssetRepositoryImpl>());
       expect(useCases, hasLength(8));
       expect(useCases[0], isA<CreateAssetUseCase>());
       expect(useCases[1], isA<CreateAllAssetsUseCase>());
@@ -99,4 +116,12 @@ void main() {
       verify(() => repository.createAll(assets)).called(1);
     });
   });
+}
+
+String _uniqueRootPath() {
+  return p.join(
+    Directory.systemTemp.path,
+    'asset-use-case-providers-'
+    '${DateTime.now().microsecondsSinceEpoch}',
+  );
 }

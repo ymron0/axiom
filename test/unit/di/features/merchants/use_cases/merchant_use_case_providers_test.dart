@@ -1,7 +1,11 @@
 @Tags(['application', 'di'])
 library;
 
+import 'dart:io';
+
 import 'package:axiom/src/core/di/clock_provider.dart';
+import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
+import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/merchants/application/use_cases/create_merchant_use_case.dart';
@@ -11,7 +15,7 @@ import 'package:axiom/src/features/merchants/application/use_cases/get_merchants
 import 'package:axiom/src/features/merchants/application/use_cases/restore_merchant_use_case.dart';
 import 'package:axiom/src/features/merchants/application/use_cases/search_merchants_use_case.dart';
 import 'package:axiom/src/features/merchants/application/use_cases/update_merchant_use_case.dart';
-import 'package:axiom/src/features/merchants/data/repositories/in_memory_merchant_repository_impl.dart';
+import 'package:axiom/src/features/merchants/data/repositories/sembast_merchant_repository_impl.dart';
 import 'package:axiom/src/features/merchants/di/create_merchant_use_case_provider.dart';
 import 'package:axiom/src/features/merchants/di/delete_merchant_use_case_provider.dart';
 import 'package:axiom/src/features/merchants/di/get_merchant_by_id_use_case_provider.dart';
@@ -22,6 +26,7 @@ import 'package:axiom/src/features/merchants/di/search_merchants_use_case_provid
 import 'package:axiom/src/features/merchants/di/update_merchant_use_case_provider.dart';
 import 'package:axiom/src/features/merchants/domain/entities/merchant.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
@@ -34,12 +39,24 @@ void main() {
       registerFallbackValue(merchantFixture(id: 'fallback'));
     });
 
-    test('resolves every use case from the default repository', () {
+    test('resolves every use case from the default repository', () async {
       // Given
-      final container = ProviderContainer();
-      addTearDown(container.dispose);
+      final rootPath = _uniqueRootPath();
+      final rootDirectory = Directory(rootPath);
+      final container = ProviderContainer(
+        overrides: [databaseRootPathProvider.overrideWithValue(rootPath)],
+      );
+      final lifecycleService = container.read(databaseLifecycleServiceProvider);
+      addTearDown(() async {
+        await lifecycleService.close();
+        container.dispose();
+        if (await rootDirectory.exists()) {
+          await rootDirectory.delete(recursive: true);
+        }
+      });
 
       // When
+      expect((await lifecycleService.open()).isSuccess, isTrue);
       final repository = container.read(merchantRepositoryProvider);
       final useCases = [
         container.read(createMerchantUseCaseProvider),
@@ -52,7 +69,7 @@ void main() {
       ];
 
       // Then
-      expect(repository, isA<InMemoryMerchantRepositoryImpl>());
+      expect(repository, isA<SembastMerchantRepositoryImpl>());
       expect(useCases, hasLength(7));
       expect(useCases[0], isA<CreateMerchantUseCase>());
       expect(useCases[1], isA<GetMerchantsUseCase>());
@@ -124,4 +141,12 @@ void main() {
       verify(() => repository.restore(deleted)).called(1);
     });
   });
+}
+
+String _uniqueRootPath() {
+  return p.join(
+    Directory.systemTemp.path,
+    'merchant-use-case-providers-'
+    '${DateTime.now().microsecondsSinceEpoch}',
+  );
 }
