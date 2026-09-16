@@ -7,7 +7,8 @@
             "type": "dart",
             "flutterMode": "debug",
             "toolArgs": [
-                "--dart-define=DEBUG_NOW=2026-01-01T08:05:00"
+                "--dart-define=DEBUG_NOW=2026-01-01T08:05:00",
+                "--dart-define=DATABASE_STORAGE=memory"
             ]
         },
         {

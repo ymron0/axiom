@@ -74,3 +74,15 @@ dart run --define=DEBUG_NOW=2026-01-01T08:05:00Z path/to/script.dart
 If `DEBUG_NOW` is not set, `createClock` returns a `SystemClock`, which reads
 the current system time on every access. The selection is compile-time; there
 is no runtime setting for changing the clock.
+
+## Database storage
+
+The application uses persistent database storage by default. For local
+development, select in-memory storage with:
+
+```bash
+flutter run --dart-define=DATABASE_STORAGE=memory
+```
+
+In-memory data is discarded when the application stops. Memory storage is not
+allowed in release builds.

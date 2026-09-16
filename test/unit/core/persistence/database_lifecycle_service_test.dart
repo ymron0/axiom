@@ -1058,11 +1058,13 @@ void main() {
         expect(harness.service.isOpen, isFalse);
       });
 
-      test('validatedDatabaseOrNull is null before successful open', () {
+      test('validatedDatabaseOrNull is null before successful open', () async {
         // Given
+        final rootDirectory = await _createTemporaryDatabaseRootDirectory();
+        addTearDown(() => rootDirectory.delete(recursive: true));
         final database = SembastDatabase(
-          databaseFactory: databaseFactoryMemoryFs,
-          rootPath: 'test-database',
+          databaseFactory: databaseFactoryMemory,
+          rootPath: rootDirectory.path,
         );
 
         final service = DatabaseLifecycleService(database: database);
@@ -1078,14 +1080,18 @@ void main() {
         'validatedDatabaseOrNull exposes database after successful open',
         () async {
           // Given
+          final rootDirectory = await _createTemporaryDatabaseRootDirectory();
           final database = SembastDatabase(
-            databaseFactory: databaseFactoryMemoryFs,
-            rootPath: 'test-database',
+            databaseFactory: databaseFactoryMemory,
+            rootPath: rootDirectory.path,
           );
 
           final service = DatabaseLifecycleService(database: database);
 
-          addTearDown(service.close);
+          addTearDown(() async {
+            await service.close();
+            await rootDirectory.delete(recursive: true);
+          });
 
           final openResult = await service.open();
 
@@ -1101,9 +1107,11 @@ void main() {
 
       test('validatedDatabaseOrNull becomes null after close', () async {
         // Given
+        final rootDirectory = await _createTemporaryDatabaseRootDirectory();
+        addTearDown(() => rootDirectory.delete(recursive: true));
         final database = SembastDatabase(
-          databaseFactory: databaseFactoryMemoryFs,
-          rootPath: 'test-database',
+          databaseFactory: databaseFactoryMemory,
+          rootPath: rootDirectory.path,
         );
 
         final service = DatabaseLifecycleService(database: database);
@@ -1122,6 +1130,10 @@ void main() {
       });
     });
   });
+}
+
+Future<Directory> _createTemporaryDatabaseRootDirectory() {
+  return Directory.systemTemp.createTemp('database-lifecycle-memory-test-');
 }
 
 Future<_LifecycleHarness> _createMigrationHarness({

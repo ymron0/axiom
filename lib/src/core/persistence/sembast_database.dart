@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:sembast/sembast_io.dart';
+import 'package:sembast/sembast_memory.dart';
 
 import 'database_migrator.dart';
 import 'database_schema.dart';
@@ -10,8 +11,8 @@ import 'database_schema.dart';
 ///
 /// This class is responsible only for Sembast infrastructure:
 ///
-/// - resolving the database file path;
-/// - ensuring the database directory exists;
+/// - resolving the database path;
+/// - creating the database directory when filesystem storage is used;
 /// - opening the database;
 /// - invoking schema migration when required;
 /// - sharing one in-flight opening operation;
@@ -22,6 +23,16 @@ import 'database_schema.dart';
 /// and recovery belongs to `DatabaseLifecycleService`.
 ///
 /// Feature repositories must never open or close the database themselves.
+///
+/// ## Storage
+///
+/// Two storage strategies are supported:
+///
+/// - [SembastDatabase.io] uses Sembast's filesystem-backed IO factory;
+/// - [SembastDatabase.memory] uses Sembast's in-memory factory.
+///
+/// The generic constructor remains available for tests and infrastructure that
+/// need to inject a custom [DatabaseFactory].
 ///
 /// ## Safety
 ///
@@ -40,12 +51,28 @@ import 'database_schema.dart';
 final class SembastDatabase {
   final DatabaseFactory _databaseFactory;
   final DatabaseMigrator _migrator;
+  final bool _createRootDirectory;
+
+  /// Root path associated with this database.
+  ///
+  /// For a filesystem-backed database this is the directory containing the
+  /// database file.
+  ///
+  /// For an in-memory database this is only a logical namespace used to
+  /// construct the Sembast database name. No filesystem directory is created.
   final String rootPath;
 
   Database? _database;
   Future<Database>? _opening;
 
-  /// Creates a database lifecycle manager.
+  /// Creates a database lifecycle manager using an injected factory.
+  ///
+  /// This constructor preserves the existing storage behavior: [rootPath] is
+  /// treated as a filesystem directory and is created before the database is
+  /// opened.
+  ///
+  /// Tests that need an in-memory database without filesystem interaction
+  /// should use [SembastDatabase.memory].
   ///
   /// [databaseFactory] is injectable so tests can use an in-memory factory or
   /// a controlled test double.
@@ -57,10 +84,24 @@ final class SembastDatabase {
   /// Throws [ArgumentError] when [rootPath] is blank.
   SembastDatabase({
     required DatabaseFactory databaseFactory,
+    required String rootPath,
+    DatabaseMigrator? migrator,
+  }) : this._(
+         databaseFactory: databaseFactory,
+         rootPath: rootPath,
+         migrator: migrator,
+         createRootDirectory: true,
+       );
+
+  SembastDatabase._({
+    required DatabaseFactory databaseFactory,
     required this.rootPath,
+    required bool createRootDirectory,
     DatabaseMigrator? migrator,
   }) : _databaseFactory = // ignore: prefer_initializing_formals
            databaseFactory,
+       _createRootDirectory = // ignore: prefer_initializing_formals
+           createRootDirectory,
        _migrator = migrator ?? DatabaseMigrator() {
     if (rootPath.trim().isEmpty) {
       throw ArgumentError.value(
@@ -73,19 +114,45 @@ final class SembastDatabase {
 
   /// Creates a file-backed Sembast database using the standard IO factory.
   ///
-  /// This is the normal constructor for production Dart VM and Flutter usage.
+  /// The database directory is created automatically when [open] is called.
+  ///
+  /// This is the normal constructor for production Dart VM and Flutter usage
+  /// when persistent storage is required.
   factory SembastDatabase.io({
     required String rootPath,
     DatabaseMigrator? migrator,
   }) {
-    return SembastDatabase(
+    return SembastDatabase._(
       databaseFactory: databaseFactoryIo,
       rootPath: rootPath,
       migrator: migrator,
+      createRootDirectory: true,
     );
   }
 
-  /// Absolute or relative path of the database file.
+  /// Creates an in-memory Sembast database.
+  ///
+  /// No database directory or database file is created.
+  ///
+  /// [rootPath] is a logical namespace only. It is used to produce a stable
+  /// Sembast database name for this application database.
+  factory SembastDatabase.memory({
+    DatabaseMigrator? migrator,
+  }) {
+    return SembastDatabase._(
+      databaseFactory: databaseFactoryMemory,
+      rootPath: 'memory',
+      migrator: migrator,
+      createRootDirectory: false,
+    );
+  }
+
+  /// Path or logical database name supplied to Sembast.
+  ///
+  /// For an IO database this is the filesystem database path.
+  ///
+  /// For an in-memory database this value is only an identifier understood by
+  /// the in-memory Sembast factory and does not represent a physical file.
   String get path => p.join(rootPath, DatabaseSchema.fileName);
 
   /// Whether this wrapper currently owns an open database.
@@ -161,7 +228,13 @@ final class SembastDatabase {
 
   /// Performs the actual Sembast open operation.
   Future<Database> _open() async {
-    await Directory(rootPath).create(recursive: true);
+    // A physical directory is required only for filesystem-backed databases.
+    //
+    // In-memory Sembast databases use a logical database name and must not
+    // create filesystem resources.
+    if (_createRootDirectory) {
+      await Directory(rootPath).create(recursive: true);
+    }
 
     return _databaseFactory.openDatabase(
       path,
