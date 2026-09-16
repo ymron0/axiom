@@ -4,8 +4,10 @@ library;
 import 'dart:io';
 
 import 'package:axiom/src/core/di/database_root_path_provider.dart';
+import 'package:axiom/src/core/di/database_storage_mode_provider.dart';
 import 'package:axiom/src/core/di/sembast_database_provider.dart';
 import 'package:axiom/src/core/persistence/database_schema.dart';
+import 'package:axiom/src/core/persistence/database_storage_mode.dart';
 import 'package:axiom/src/core/persistence/sembast_database.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -38,6 +40,26 @@ void main() {
       // Then
       expect(database.rootPath, rootPath);
       expect(database.path, p.join(rootPath, DatabaseSchema.fileName));
+    });
+
+    test('constructs an in-memory database for memory storage mode', () {
+      // Given
+      final container = ProviderContainer(
+        overrides: [
+          databaseStorageModeProvider.overrideWithValue(
+            DatabaseStorageMode.memory,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // When
+      final database = container.read(sembastDatabaseProvider);
+
+      // Then
+      expect(database, isA<SembastDatabase>());
+      expect(database.rootPath, 'memory');
+      expect(database.isOpen, isFalse);
     });
 
     test('returns the same instance on repeated reads', () {

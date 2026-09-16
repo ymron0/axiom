@@ -6,6 +6,7 @@ import 'package:axiom/src/core/persistence/database_schema.dart';
 import 'package:axiom/src/core/persistence/migrations/database_migration.dart';
 import 'package:axiom/src/core/persistence/sembast_database.dart';
 import 'package:axiom/src/core/persistence/unsupported_database_version_exception.dart';
+import 'package:path/path.dart' as p;
 import 'package:sembast/sembast_memory.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -43,6 +44,23 @@ void main() {
         ),
         returnsNormally,
       );
+    });
+
+    test('memory construction uses an in-memory database', () async {
+      // Given
+      final database = SembastDatabase.memory();
+      expect(database.isOpen, isFalse);
+
+      // When
+      final openedDatabase = await database.open();
+
+      // Then
+      expect(database.rootPath, 'memory');
+      expect(database.path, p.join('memory', DatabaseSchema.fileName));
+      expect(openedDatabase.version, DatabaseSchema.version);
+      expect(database.isOpen, isTrue);
+
+      await database.close();
     });
 
     test('starts closed', () {
