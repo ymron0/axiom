@@ -1,2 +1,0 @@
-ignore:
-  - "lib/src/core/ports/clock/clock.dart"
