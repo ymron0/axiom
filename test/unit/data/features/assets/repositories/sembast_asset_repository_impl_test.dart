@@ -180,6 +180,27 @@ void main() {
         expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
         expect((await repository.getAll()).valueOrNull, isEmpty);
       });
+
+      test('rejects a code already persisted by another asset', () async {
+        // Given
+        final existing = currencyFixture(
+          id: 'batch-persisted-code',
+          code: 'AAA',
+        );
+        final candidate = currencyFixture(
+          id: 'batch-conflicting-code',
+          code: 'AAA',
+        );
+
+        await repository.create(existing);
+
+        // When
+        final result = await repository.createAll([candidate]);
+
+        // Then
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
+        expect((await repository.getById(candidate.id)).valueOrNull, isNull);
+      });
     });
 
     group('queries', () {
@@ -312,6 +333,40 @@ void main() {
     });
 
     group('updateAll', () {
+      test('accepts an empty batch', () async {
+        // When
+        final result = await repository.updateAll([]);
+
+        // Then
+        expect(result.isSuccess, isTrue);
+        expect(result.valueOrNull, isEmpty);
+        expect(() => result.valueOrNull!.clear(), throwsUnsupportedError);
+      });
+
+      test('rejects duplicate IDs before touching the database', () async {
+        // Given
+        final original = currencyFixture(
+          id: 'duplicate-update-all-id',
+          code: 'AAA',
+        );
+        final duplicate = currencyFixture(
+          id: original.id.value,
+          code: 'BBB',
+        );
+
+        await repository.create(original);
+
+        // When
+        final result = await repository.updateAll([original, duplicate]);
+
+        // Then
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
+        expect(
+          (await repository.getById(original.id)).valueOrNull?.code,
+          original.code,
+        );
+      });
+
       test(
         'updates all assets atomically and returns immutable results',
         () async {
@@ -391,6 +446,40 @@ void main() {
         expect(
           (await repository.getById(original.id)).valueOrNull?.name,
           'Original',
+        );
+      });
+
+      test('rejects a code persisted by an asset outside the batch', () async {
+        // Given
+        final first = currencyFixture(
+          id: 'update-all-code-first',
+          code: 'AAA',
+        );
+        final second = currencyFixture(
+          id: 'update-all-code-second',
+          code: 'BBB',
+        );
+
+        await repository.createAll([first, second]);
+
+        final conflicting = currencyFixture(
+          id: first.id.value,
+          name: 'Conflicting',
+          code: second.code.value,
+        );
+
+        // When
+        final result = await repository.updateAll([conflicting]);
+
+        // Then
+        expect(result.failureOrNull, isA<AssetAlreadyExistsFailure>());
+        expect(
+          (await repository.getById(first.id)).valueOrNull?.name,
+          first.name,
+        );
+        expect(
+          (await repository.getById(first.id)).valueOrNull?.code,
+          first.code,
         );
       });
     });
