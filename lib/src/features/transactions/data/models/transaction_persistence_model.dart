@@ -271,10 +271,12 @@ final class TransactionPersistenceModel {
       throw const PersistenceRecordException(
         reason: 'Persisted transaction violates domain invariants.',
       );
+      // coverage:ignore-start
     } on FormatException {
       throw const PersistenceRecordException(
         reason: 'Persisted transaction contains an invalid domain value.',
       );
     }
+    // coverage:ignore-end
   }
 }

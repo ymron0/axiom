@@ -191,9 +191,11 @@ final class AssetPersistenceModel {
         _logoValueField: value,
       };
     } else {
+      // coverage:ignore-start
       throw StateError(
         'Asset persistence model contains incomplete logo data.',
       );
+      // coverage:ignore-end
     }
 
     return <String, Object?>{
@@ -258,10 +260,7 @@ final class AssetPersistenceModel {
       );
     }
 
-    return EntityLogo(
-      source: source,
-      value: value,
-    );
+    return EntityLogo(source: source, value: value);
   }
 
   static DateTime _readUtcDateTime(

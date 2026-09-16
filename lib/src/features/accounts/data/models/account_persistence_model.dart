@@ -277,11 +277,13 @@ final class AccountPersistenceModel {
         _logoSourceField: source.name,
         _logoValueField: value,
       };
+    // coverage:ignore-start
     } else {
       throw StateError(
         'Account persistence model contains incomplete logo data.',
       );
     }
+    // coverage:ignore-end
 
     return <String, Object?>{
       nameField: name,

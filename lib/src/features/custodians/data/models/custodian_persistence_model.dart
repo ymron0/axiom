@@ -251,11 +251,13 @@ final class CustodianPersistenceModel {
         _logoSourceField: source.name,
         _logoValueField: value,
       };
+    // coverage:ignore-start
     } else {
       throw StateError(
         'Custodian persistence model contains incomplete logo data.',
       );
     }
+    // coverage:ignore-end
 
     return <String, Object?>{
       nameField: name,

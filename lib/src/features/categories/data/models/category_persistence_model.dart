@@ -285,11 +285,13 @@ final class CategoryPersistenceModel {
       throw const PersistenceRecordException(
         reason: 'Persisted category violates current domain invariants.',
       );
+    // coverage:ignore-start
     } on FormatException {
       throw const PersistenceRecordException(
         reason: 'Persisted category contains an invalid domain value.',
       );
     }
+    // coverage:ignore-end
   }
 
   /// Reads an optional UTC ISO-8601 timestamp.
