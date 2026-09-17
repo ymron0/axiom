@@ -17,12 +17,12 @@ import 'package:test/test.dart';
 
 import '../../../fixtures/features/rates/rate_fixtures.dart';
 import '../../../mocks/get_settings_use_case_mock.dart';
-import '../../../mocks/rate_repository_mock.dart';
+import '../../../mocks/get_rate_at_use_case_mock.dart';
 
 void main() {
   group('AssetValuationService', () {
     late MockGetSettingsUseCase getSettings;
-    late MockRateRepository rateRepository;
+    late MockGetRateAtUseCase getRateAt;
     late AssetValuationService service;
 
     late AssetId eur;
@@ -31,14 +31,14 @@ void main() {
 
     setUp(() {
       getSettings = MockGetSettingsUseCase();
-      rateRepository = MockRateRepository();
+      getRateAt = MockGetRateAtUseCase();
 
       eur = AssetId.fromString('asset-eur');
       usd = AssetId.fromString('asset-usd');
       at = DateTime.utc(2026, 9, 17, 7, 30);
 
       final resolveConversionRate = ResolveConversionRateService(
-        repository: rateRepository,
+        getRateAt: getRateAt,
         canonicalBridgeAssetId: usd,
         rateConversion: const RateConversionService(),
       );
@@ -77,7 +77,7 @@ void main() {
       expect(result.valueOrNull, same(amount));
 
       verify(() => getSettings()).called(1);
-      verifyZeroInteractions(rateRepository);
+      verifyZeroInteractions(getRateAt);
     });
 
     test('converts a known amount using the resolved historical rate', () async {
@@ -103,10 +103,10 @@ void main() {
       );
 
       when(
-        () => rateRepository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => Success(eurUsd));
 
@@ -127,10 +127,10 @@ void main() {
 
       verify(() => getSettings()).called(1);
       verify(
-        () => rateRepository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).called(1);
     });
@@ -158,10 +158,10 @@ void main() {
       );
 
       when(
-        () => rateRepository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => Success(eurUsd));
 
@@ -209,7 +209,7 @@ void main() {
       expect(valuation.amount, Decimal.zero);
       expect(valuation.isIncoming, isTrue);
 
-      verifyZeroInteractions(rateRepository);
+      verifyZeroInteractions(getRateAt);
     });
 
     test('propagates an unknown amount without resolving a rate', () async {
@@ -242,7 +242,7 @@ void main() {
       expect(valuation.isUnknownAmount, isTrue);
       expect(valuation.isOutgoing, isTrue);
 
-      verifyZeroInteractions(rateRepository);
+      verifyZeroInteractions(getRateAt);
     });
 
     test('returns settings-not-initialized when settings are absent', () async {
@@ -275,7 +275,7 @@ void main() {
         'Settings have not been initialized.',
       );
 
-      verifyZeroInteractions(rateRepository);
+      verifyZeroInteractions(getRateAt);
     });
 
     test('propagates settings failures unchanged', () async {
@@ -301,7 +301,7 @@ void main() {
 
       // Then
       expect(result.failureOrNull, same(failure));
-      verifyZeroInteractions(rateRepository);
+      verifyZeroInteractions(getRateAt);
     });
 
     test('propagates rate-resolution failures unchanged', () async {
@@ -324,10 +324,10 @@ void main() {
       );
 
       when(
-        () => rateRepository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => failure);
 
@@ -366,10 +366,10 @@ void main() {
       );
 
       when(
-        () => rateRepository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: historicalAt,
+          at: historicalAt,
         ),
       ).thenAnswer((_) async => Success(eurUsd));
 
@@ -383,10 +383,10 @@ void main() {
       expect(result.valueOrNull?.amount, Decimal.parse('12'));
 
       verify(
-        () => rateRepository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: historicalAt,
+          at: historicalAt,
         ),
       ).called(1);
     });

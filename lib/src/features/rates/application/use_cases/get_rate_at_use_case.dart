@@ -19,7 +19,7 @@ import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dar
 ///
 /// Missing rates are returned as a failure according to
 /// [RateRepository.getAtOrBefore].
-final class GetRateAtUseCase {
+class GetRateAtUseCase {
   /// Creates a use case backed by [repository].
   const GetRateAtUseCase({
     required RateRepository repository,

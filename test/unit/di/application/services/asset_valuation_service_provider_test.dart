@@ -12,7 +12,7 @@ import 'package:axiom/src/features/settings/di/get_settings_use_case_provider.da
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
-import '../../../../mocks/rate_repository_mock.dart';
+import '../../../../mocks/get_rate_at_use_case_mock.dart';
 import '../../../../mocks/settings_repository_mock.dart';
 
 void main() {
@@ -25,7 +25,7 @@ void main() {
           ),
           resolveConversionRateServiceProvider.overrideWithValue(
             ResolveConversionRateService(
-              repository: MockRateRepository(),
+              getRateAt: MockGetRateAtUseCase(),
               canonicalBridgeAssetId: AssetId.fromString('usd'),
               rateConversion: const RateConversionService(),
             ),

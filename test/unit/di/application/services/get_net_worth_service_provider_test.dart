@@ -21,7 +21,7 @@ import 'package:test/test.dart';
 
 import '../../../../mocks/account_repository_mock.dart';
 import '../../../../mocks/get_account_balance_service_mock.dart';
-import '../../../../mocks/rate_repository_mock.dart';
+import '../../../../mocks/get_rate_at_use_case_mock.dart';
 import '../../../../mocks/settings_repository_mock.dart';
 
 void main() {
@@ -42,7 +42,7 @@ void main() {
             AssetValuationService(
               getSettings: GetSettingsUseCase(MockSettingsRepository()),
               resolveConversionRate: ResolveConversionRateService(
-                repository: MockRateRepository(),
+                getRateAt: MockGetRateAtUseCase(),
                 canonicalBridgeAssetId: AssetId.fromString('usd'),
                 rateConversion: const RateConversionService(),
               ),

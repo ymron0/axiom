@@ -27,6 +27,7 @@ import '../../../fixtures/features/rates/rate_fixtures.dart';
 import '../../../mocks/account_repository_mock.dart';
 import '../../../mocks/get_account_balance_service_mock.dart';
 import '../../../mocks/get_settings_use_case_mock.dart';
+import '../../../mocks/get_rate_at_use_case_mock.dart';
 import '../../../mocks/rate_repository_mock.dart';
 
 void main() {
@@ -34,6 +35,7 @@ void main() {
     late MockGetSettingsUseCase getSettings;
     late MockAccountRepository accountRepository;
     late MockGetAccountBalanceService getAccountBalance;
+    late MockGetRateAtUseCase getRateAt;
     late MockRateRepository rateRepository;
 
     late GetAccountsUseCase getAccounts;
@@ -49,12 +51,15 @@ void main() {
       registerFallbackValue(
         AccountId.fromString('fallback-account'),
       );
+      registerFallbackValue(AssetId.fromString('fallback-asset'));
+      registerFallbackValue(DateTime.utc(1970));
     });
 
     setUp(() {
       getSettings = MockGetSettingsUseCase();
       accountRepository = MockAccountRepository();
       getAccountBalance = MockGetAccountBalanceService();
+      getRateAt = MockGetRateAtUseCase();
       rateRepository = MockRateRepository();
 
       usd = AssetId.fromString('asset-usd');
@@ -63,12 +68,37 @@ void main() {
 
       now = DateTime.utc(2026, 9, 17, 8, 30);
 
+      when(
+        () => getRateAt(
+          baseAssetId: any(named: 'baseAssetId'),
+          quoteAssetId: any(named: 'quoteAssetId'),
+          at: any(named: 'at'),
+        ),
+      ).thenAnswer((invocation) {
+        final arguments = invocation.namedArguments;
+        final baseAssetId = arguments[#baseAssetId];
+        final quoteAssetId = arguments[#quoteAssetId];
+        final at = arguments[#at];
+
+        if (baseAssetId is! AssetId ||
+            quoteAssetId is! AssetId ||
+            at is! DateTime) {
+          throw StateError('Unexpected rate lookup arguments.');
+        }
+
+        return rateRepository.getAtOrBefore(
+          baseAssetId: baseAssetId,
+          quoteAssetId: quoteAssetId,
+          effectiveAt: at,
+        );
+      });
+
       getAccounts = GetAccountsUseCase(accountRepository);
 
       assetValuation = AssetValuationService(
         getSettings: getSettings,
         resolveConversionRate: ResolveConversionRateService(
-          repository: rateRepository,
+          getRateAt: getRateAt,
           canonicalBridgeAssetId: usd,
           rateConversion: const RateConversionService(),
         ),

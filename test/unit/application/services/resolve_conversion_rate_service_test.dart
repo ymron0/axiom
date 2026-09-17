@@ -1,6 +1,7 @@
 @Tags(['application'])
 library;
 
+import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
@@ -12,7 +13,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../../fixtures/features/rates/rate_fixtures.dart';
-import '../../../mocks/rate_repository_mock.dart';
+import '../../../mocks/get_rate_at_use_case_mock.dart';
 
 void main() {
   setUpAll(() {
@@ -21,7 +22,7 @@ void main() {
   });
 
   group('ResolveConversionRateService', () {
-    late MockRateRepository repository;
+    late MockGetRateAtUseCase getRateAt;
     late ResolveConversionRateService service;
     late AssetId eur;
     late AssetId chf;
@@ -29,13 +30,13 @@ void main() {
     late DateTime at;
 
     setUp(() {
-      repository = MockRateRepository();
+      getRateAt = MockGetRateAtUseCase();
       eur = AssetId.fromString('asset-eur');
       chf = AssetId.fromString('asset-chf');
       usd = AssetId.fromString('asset-usd');
       at = DateTime.utc(2026, 9, 10, 12);
       service = ResolveConversionRateService(
-        repository: repository,
+        getRateAt: getRateAt,
         canonicalBridgeAssetId: usd,
         rateConversion: const RateConversionService(),
       );
@@ -46,10 +47,10 @@ void main() {
 
       expect(result.valueOrNull, Decimal.one);
       verifyNever(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: any(named: 'baseAssetId'),
           quoteAssetId: any(named: 'quoteAssetId'),
-          effectiveAt: any(named: 'effectiveAt'),
+          at: any(named: 'at'),
         ),
       );
     });
@@ -62,10 +63,10 @@ void main() {
         rate: '0.8',
       );
       when(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => Success(eurUsd));
 
@@ -73,10 +74,10 @@ void main() {
 
       expect(result.valueOrNull, Decimal.parse('0.8'));
       verify(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).called(1);
     });
@@ -89,10 +90,10 @@ void main() {
         rate: '0.8',
       );
       when(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => Success(eurUsd));
 
@@ -100,17 +101,17 @@ void main() {
 
       expect(result.valueOrNull, Decimal.parse('1.25'));
       verify(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).called(1);
       verifyNever(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: usd,
           quoteAssetId: eur,
-          effectiveAt: at,
+          at: at,
         ),
       );
     });
@@ -129,17 +130,17 @@ void main() {
         rate: '1.26',
       );
       when(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => Success(eurUsd));
       when(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: chf,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => Success(chfUsd));
 
@@ -147,17 +148,17 @@ void main() {
 
       expect(result.valueOrNull, Decimal.parse('0.936507936507936507'));
       verifyNever(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: chf,
-          effectiveAt: at,
+          at: at,
         ),
       );
       verifyNever(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: chf,
           quoteAssetId: eur,
-          effectiveAt: at,
+          at: at,
         ),
       );
     });
@@ -165,10 +166,10 @@ void main() {
     test('returns the missing canonical bridge rate failure', () async {
       const failure = RateNotFoundFailure(message: 'EUR/USD missing');
       when(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => failure);
 
@@ -176,10 +177,10 @@ void main() {
 
       expect(result.failureOrNull, same(failure));
       verifyNever(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: chf,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       );
     });
@@ -187,15 +188,35 @@ void main() {
     test('propagates non-not-found failures unchanged', () async {
       const failure = RatePersistenceFailure(message: 'storage failure');
       when(
-        () => repository.getAtOrBefore(
+        () => getRateAt(
           baseAssetId: eur,
           quoteAssetId: usd,
-          effectiveAt: at,
+          at: at,
         ),
       ).thenAnswer((_) async => failure);
 
       final result = await service(fromAssetId: eur, toAssetId: chf, at: at);
 
+      expect(result.failureOrNull, same(failure));
+    });
+
+    test('propagates referenced-asset failures unchanged', () async {
+      // Given
+      const failure = ReferencedAssetNotFoundFailure(
+        message: 'Referenced rate asset was not found: asset-eur',
+      );
+      when(
+        () => getRateAt(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          at: at,
+        ),
+      ).thenAnswer((_) async => failure);
+
+      // When
+      final result = await service(fromAssetId: eur, toAssetId: usd, at: at);
+
+      // Then
       expect(result.failureOrNull, same(failure));
     });
   });
