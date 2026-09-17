@@ -149,5 +149,42 @@ void main() {
         ),
       ).called(1);
     });
+
+    test('normalizes an offset historical instant to UTC before lookup',
+        () async {
+      // Given
+      final offsetAt = DateTime.parse('2026-09-10T14:30:45.123+02:00');
+      final rate = exchangeRateFixture(baseAssetId: 'EUR', quoteAssetId: 'USD');
+      when(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          effectiveAt: any(named: 'effectiveAt'),
+        ),
+      ).thenAnswer((_) async => Success(rate));
+
+      // When
+      await useCase(baseAssetId: eur, quoteAssetId: usd, at: offsetAt);
+
+      // Then
+      final effectiveAt = verify(
+        () => repository.getAtOrBefore(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          effectiveAt: captureAny(named: 'effectiveAt'),
+        ),
+      ).captured.single;
+
+      expect(
+        effectiveAt,
+        isA<DateTime>()
+            .having(
+              (value) => value,
+              'instant',
+              DateTime.utc(2026, 9, 10, 12, 30, 45, 123),
+            )
+            .having((value) => value.isUtc, 'is UTC', isTrue),
+      );
+    });
   });
 }

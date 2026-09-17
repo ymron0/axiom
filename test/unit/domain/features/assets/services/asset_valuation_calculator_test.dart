@@ -177,18 +177,23 @@ void main() {
       expect(result.isOutgoing, isTrue);
     });
 
-    test('requires a rate for a known non-zero cross-asset amount', () {
+    test('returns an unknown target amount when a cross-asset rate is absent', () {
       // Given
-      final amount = AssetAmount.incoming(
+      final amount = AssetAmount.outgoing(
         assetId: eur,
         amount: Decimal.parse('100'),
       );
 
-      // When / Then
-      expect(
-        () => calculator.calculate(amount: amount, valuationCurrencyId: chf),
-        throwsArgumentError,
+      // When
+      final result = calculator.calculate(
+        amount: amount,
+        valuationCurrencyId: chf,
       );
+
+      // Then
+      expect(result.assetId, chf);
+      expect(result.isUnknownAmount, isTrue);
+      expect(result.isOutgoing, isTrue);
     });
 
     test('rejects a zero conversion rate', () {

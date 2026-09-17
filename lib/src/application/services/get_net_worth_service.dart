@@ -87,6 +87,10 @@ import 'package:decimal/decimal.dart';
 /// Expected failures from Settings, Accounts, account-balance calculation, or
 /// asset valuation are propagated unchanged.
 ///
+/// If an asset cannot be valued because its market rate is unavailable, the
+/// result is an unknown amount in the configured valuation currency. A partial
+/// total would falsely imply an exact net worth.
+///
 /// [SettingsNotInitializedFailure] is returned when application settings do not
 /// exist.
 ///
@@ -199,6 +203,15 @@ final class GetNetWorthService {
               'Net worth valuation returned asset '
               '${valuation.assetId.value}, but the configured valuation '
               'currency is ${valuationCurrencyId.value}.',
+        );
+      }
+
+      if (valuation.isUnknownAmount) {
+        return Success(
+          AssetAmount.incoming(
+            assetId: valuationCurrencyId,
+            amount: Decimal.fromInt(-1),
+          ),
         );
       }
 

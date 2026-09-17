@@ -738,7 +738,7 @@ void main() {
     );
 
     test(
-      'propagates valuation failures unchanged',
+      'returns an unknown net worth when a foreign rate is missing',
       () async {
         // Given
         final account = createAccount(
@@ -768,10 +768,13 @@ void main() {
         final result = await service();
 
         // Then
-        expect(
-          result.failureOrNull,
-          same(failure),
-        );
+        expect(result.failureOrNull, isNull);
+
+        final netWorth = result.valueOrNull!;
+
+        expect(netWorth.assetId, usd);
+        expect(netWorth.isUnknownAmount, isTrue);
+        expect(netWorth.isIncoming, isTrue);
 
         verify(
           () => rateRepository.getAtOrBefore(

@@ -14,6 +14,10 @@ import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dar
 /// to return the most recent rate whose effective timestamp is less than or
 /// equal to [at]. A future rate must never be returned.
 ///
+/// The requested instant is normalized to UTC before lookup. This preserves
+/// instant-based historical resolution when callers supply an offset-based
+/// [DateTime].
+///
 /// This use case does not invert rates, calculate cross-rates, or otherwise
 /// resolve arbitrary asset pairs.
 ///
@@ -40,10 +44,11 @@ class GetRateAtUseCase {
     required AssetId quoteAssetId,
     required DateTime at,
   }) async {
+    final effectiveAt = at.toUtc();
     final rateResult = await _repository.getAtOrBefore(
       baseAssetId: baseAssetId,
       quoteAssetId: quoteAssetId,
-      effectiveAt: at,
+      effectiveAt: effectiveAt,
     );
 
     return rateResult.when<Future<Result<Rate, BaseFailure>>>(

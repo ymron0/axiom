@@ -3,6 +3,7 @@ import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/services/asset_valuation_calculator.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/features/settings/application/use_cases/get_settings_use_case.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
 import 'package:decimal/decimal.dart';
@@ -38,7 +39,9 @@ import 'package:decimal/decimal.dart';
 ///
 /// ## Failure semantics
 ///
-/// Failures returned by Settings or rate resolution are propagated unchanged.
+/// Failures returned by Settings are propagated unchanged. A
+/// [RateNotFoundFailure] is represented as an unknown amount in the valuation
+/// currency; other rate-resolution failures are propagated unchanged.
 ///
 /// When Settings have not yet been initialized, the service returns
 /// [SettingsNotInitializedFailure].
@@ -113,7 +116,18 @@ final class AssetValuationService {
           conversionRate: conversionRate,
         ),
       ),
-      failure: (failure) => failure,
+      failure: (failure) {
+        if (failure is RateNotFoundFailure) {
+          return Success(
+            _calculator.calculate(
+              amount: amount,
+              valuationCurrencyId: valuationCurrencyId,
+            ),
+          );
+        }
+
+        return failure;
+      },
     );
   }
 }

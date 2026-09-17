@@ -46,6 +46,10 @@ import 'package:decimal/decimal.dart';
 /// conversion. No rate is required because applying a rate cannot make the
 /// underlying quantity known.
 ///
+/// A known non-zero cross-asset amount also becomes unknown when
+/// [conversionRate] is absent. This represents an unavailable market
+/// observation without inventing a value such as zero.
+///
 /// The returned unknown amount nevertheless uses [valuationCurrencyId], making
 /// the asset represented by the result explicit.
 ///
@@ -57,14 +61,14 @@ import 'package:decimal/decimal.dart';
 ///
 /// ## Contract
 ///
-/// A non-zero known amount whose source asset differs from
-/// [valuationCurrencyId] requires a strictly positive [conversionRate].
+/// A supplied [conversionRate] must be strictly positive. A known, non-zero
+/// cross-asset amount without a rate is returned as an unknown amount in
+/// [valuationCurrencyId].
 ///
 /// Throws [ArgumentError] when:
 ///
 /// - a supplied conversion rate is zero or negative;
-/// - a same-asset valuation supplies a conversion rate other than one; or
-/// - a known non-zero cross-asset valuation omits [conversionRate].
+/// - a same-asset valuation supplies a conversion rate other than one.
 final class AssetValuationCalculator {
   /// Creates a stateless asset valuation calculator.
   const AssetValuationCalculator();
@@ -100,7 +104,11 @@ final class AssetValuationCalculator {
     final rate = conversionRate;
 
     if (rate == null) {
-      throw ArgumentError.notNull('conversionRate');
+      return AssetAmount(
+        assetId: valuationCurrencyId,
+        amount: Decimal.fromInt(-1),
+        direction: amount.direction,
+      );
     }
 
     return AssetAmount(

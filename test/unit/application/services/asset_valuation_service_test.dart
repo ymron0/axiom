@@ -8,6 +8,7 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/services/asset_valuation_calculator.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
 import 'package:axiom/src/features/rates/domain/services/rate_conversion_service.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
@@ -304,7 +305,8 @@ void main() {
       verifyZeroInteractions(getRateAt);
     });
 
-    test('propagates rate-resolution failures unchanged', () async {
+    test('returns an unknown valuation when the conversion rate is missing',
+        () async {
       // Given
       final amount = AssetAmount.incoming(
         assetId: eur,
@@ -313,6 +315,49 @@ void main() {
 
       const failure = RateNotFoundFailure(
         message: 'EUR/USD rate was not found.',
+      );
+
+      when(
+        () => getSettings(),
+      ).thenAnswer(
+        (_) async => Success(
+          Settings(valuationCurrencyId: usd),
+        ),
+      );
+
+      when(
+        () => getRateAt(
+          baseAssetId: eur,
+          quoteAssetId: usd,
+          at: at,
+        ),
+      ).thenAnswer((_) async => failure);
+
+      // When
+      final result = await service(
+        amount: amount,
+        at: at,
+      );
+
+      // Then
+      expect(result.failureOrNull, isNull);
+
+      final valuation = result.valueOrNull!;
+
+      expect(valuation.assetId, usd);
+      expect(valuation.isUnknownAmount, isTrue);
+      expect(valuation.isIncoming, isTrue);
+    });
+
+    test('propagates non-missing rate failures unchanged', () async {
+      // Given
+      final amount = AssetAmount.incoming(
+        assetId: eur,
+        amount: Decimal.parse('100'),
+      );
+
+      const failure = RatePersistenceFailure(
+        message: 'Rate store unavailable.',
       );
 
       when(
