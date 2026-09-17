@@ -13,5 +13,13 @@ void main() {
       // Then
       expect(failure.type, SettingsAlreadyInitializedFailure.typeId);
     });
+
+    test('returns itself from failureOrNull', () {
+      // Given
+      const failure = SettingsAlreadyInitializedFailure();
+
+      // Then
+      expect(failure.failureOrNull, same(failure));
+    });
   });
 }
