@@ -4,7 +4,6 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/application/use_cases/get_categories_use_case.dart';
 import 'package:axiom/src/features/categories/application/use_cases/get_category_by_id_use_case.dart';
-import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_found_failure.dart';
 import 'package:axiom/src/features/categories/domain/services/category_spending_calculator.dart';
@@ -17,7 +16,7 @@ import 'package:axiom/src/features/transactions/domain/enums/transaction_state.d
 import 'package:axiom/src/features/transactions/domain/failures/transaction_failure.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
 
-/// Derives category spending for a requested transaction period.
+/// Derives category activity for a requested transaction period.
 ///
 /// This service coordinates:
 ///
@@ -41,11 +40,21 @@ import 'package:axiom/src/features/transactions/domain/repositories/transaction_
 ///
 /// Only actual transactions participate.
 ///
-/// Expense categories query expense transactions.
+/// All transaction kinds that support allocation splits are queried regardless
+/// of [CategorySpending.kind].
 ///
-/// Income categories query income transactions.
+/// Category kind is a classification and reporting property, not a transaction
+/// direction restriction.
 ///
-/// Planned transactions are excluded because category spending represents
+/// Consequently, an expense category includes both:
+///
+/// - outgoing expense transactions; and
+/// - incoming transactions such as refunds and reimbursements.
+///
+/// Likewise, an income category includes both incoming transactions and
+/// outgoing adjustments.
+///
+/// Planned transactions are excluded because category activity represents
 /// realized financial activity rather than forecast activity.
 ///
 /// ## Hierarchy semantics
@@ -54,8 +63,8 @@ import 'package:axiom/src/features/transactions/domain/repositories/transaction_
 ///
 /// For a top-level category:
 ///
-/// - `directTotal` counts allocations made directly to that category;
-/// - `aggregateTotal` additionally counts allocations made to its direct
+/// - `directTotal` contains net allocations made directly to that category;
+/// - `aggregateTotal` additionally contains net allocations made to its direct
 ///   children.
 ///
 /// Archived children remain relevant because their historical allocations still
@@ -109,7 +118,7 @@ final class GetCategorySpendingService {
        _calculator = // ignore: prefer_initializing_formals
            calculator;
 
-  /// Derives category spending for `[effectiveFrom, effectiveUntil)`.
+  /// Derives category activity for `[effectiveFrom, effectiveUntil)`.
   Future<Result<CategorySpending, BaseFailure>> call(
     CategoryId categoryId, {
     required DateTime effectiveFrom,
@@ -171,7 +180,9 @@ final class GetCategorySpendingService {
     }
 
     final query = TransactionQuery(
-      kinds: {_transactionKindFor(category.kind)},
+      kinds: TransactionKind.values
+          .where((kind) => kind.supportsSplits)
+          .toSet(),
       states: {TransactionState.actual},
       effectiveFrom: effectiveFromUtc,
       effectiveUntil: effectiveUntilUtc,
@@ -211,12 +222,5 @@ final class GetCategorySpendingService {
         childAllocationAmounts: childAllocationAmounts,
       ),
     );
-  }
-
-  TransactionKind _transactionKindFor(CategoryKind categoryKind) {
-    return switch (categoryKind) {
-      CategoryKind.expense => TransactionKind.expense,
-      CategoryKind.income => TransactionKind.income,
-    };
   }
 }

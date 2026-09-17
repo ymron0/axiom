@@ -100,14 +100,17 @@ void main() {
         final spending = result.valueOrNull!;
 
         expect(spending.categoryId, category.id);
+        expect(spending.kind, CategoryKind.expense);
 
         expect(spending.directTotal.assetId, chf);
         expect(spending.directTotal.amount, Decimal.zero);
         expect(spending.directTotal.isOutgoing, isTrue);
+        expect(spending.directSignedValue, Decimal.zero);
 
         expect(spending.aggregateTotal.assetId, chf);
         expect(spending.aggregateTotal.amount, Decimal.zero);
         expect(spending.aggregateTotal.isOutgoing, isTrue);
+        expect(spending.aggregateSignedValue, Decimal.zero);
       },
     );
 
@@ -145,7 +148,12 @@ void main() {
 
         expect(spending.directTotal.assetId, chf);
         expect(spending.directTotal.amount, Decimal.parse('94.25'));
+        expect(spending.directTotal.isOutgoing, isTrue);
+        expect(spending.directSignedValue, Decimal.parse('94.25'));
+
         expect(spending.aggregateTotal.amount, Decimal.parse('94.25'));
+        expect(spending.aggregateTotal.isOutgoing, isTrue);
+        expect(spending.aggregateSignedValue, Decimal.parse('94.25'));
       },
     );
 
@@ -231,7 +239,12 @@ void main() {
         final spending = result.valueOrNull!;
 
         expect(spending.directTotal.amount, Decimal.parse('18'));
+        expect(spending.directTotal.isOutgoing, isTrue);
+        expect(spending.directSignedValue, Decimal.parse('18'));
+
         expect(spending.aggregateTotal.amount, Decimal.parse('27.50'));
+        expect(spending.aggregateTotal.isOutgoing, isTrue);
+        expect(spending.aggregateSignedValue, Decimal.parse('27.50'));
       },
     );
 
@@ -287,7 +300,11 @@ void main() {
         final spending = result.valueOrNull!;
 
         expect(spending.directTotal.amount, Decimal.zero);
+        expect(spending.directSignedValue, Decimal.zero);
+
         expect(spending.aggregateTotal.amount, Decimal.parse('47.50'));
+        expect(spending.aggregateTotal.isOutgoing, isTrue);
+        expect(spending.aggregateSignedValue, Decimal.parse('47.50'));
       },
     );
 
@@ -333,37 +350,43 @@ void main() {
         final spending = result.valueOrNull!;
 
         expect(spending.directTotal.amount, Decimal.parse('23'));
+        expect(spending.directTotal.isOutgoing, isTrue);
+        expect(spending.directSignedValue, Decimal.parse('23'));
+
         expect(spending.aggregateTotal.amount, Decimal.parse('23'));
+        expect(spending.aggregateTotal.isOutgoing, isTrue);
+        expect(spending.aggregateSignedValue, Decimal.parse('23'));
 
         verifyNever(() => getCategories());
       },
     );
 
-    test(
-      'queries actual expense transactions for the requested UTC period',
-      () async {
-        // Given
-        final from = DateTime.parse('2026-01-01T01:00:00+02:00');
-        final until = DateTime.parse('2026-02-01T01:00:00+02:00');
+    test('queries all allocatable actual transactions for the requested UTC '
+        'period', () async {
+      // Given
+      final from = DateTime.parse('2026-01-01T01:00:00+02:00');
+      final until = DateTime.parse('2026-02-01T01:00:00+02:00');
 
-        // When
-        await service(category.id, effectiveFrom: from, effectiveUntil: until);
+      // When
+      await service(category.id, effectiveFrom: from, effectiveUntil: until);
 
-        // Then
-        final captured =
-            verify(() => queryTransactions(captureAny())).captured.single
-                as TransactionQuery;
+      // Then
+      final captured =
+          verify(() => queryTransactions(captureAny())).captured.single
+              as TransactionQuery;
 
-        expect(captured.kinds, equals({TransactionKind.expense}));
+      expect(
+        captured.kinds,
+        equals({TransactionKind.expense, TransactionKind.income}),
+      );
 
-        expect(captured.states, equals({TransactionState.actual}));
+      expect(captured.states, equals({TransactionState.actual}));
 
-        expect(captured.effectiveFrom, from.toUtc());
-        expect(captured.effectiveUntil, until.toUtc());
-      },
-    );
+      expect(captured.effectiveFrom, from.toUtc());
+      expect(captured.effectiveUntil, until.toUtc());
+    });
 
-    test('queries income transactions and returns incoming totals', () async {
+    test('returns incoming totals for an income category', () async {
       // Given
       final incomeCategory = categoryFixture(
         id: 'salary',
@@ -402,17 +425,436 @@ void main() {
       // Then
       final spending = result.valueOrNull!;
 
+      expect(spending.kind, CategoryKind.income);
+
       expect(spending.directTotal.amount, Decimal.parse('3800'));
       expect(spending.directTotal.isIncoming, isTrue);
+      expect(spending.directSignedValue, Decimal.parse('3800'));
+
+      expect(spending.aggregateTotal.amount, Decimal.parse('3800'));
       expect(spending.aggregateTotal.isIncoming, isTrue);
+      expect(spending.aggregateSignedValue, Decimal.parse('3800'));
 
       final captured =
           verify(() => queryTransactions(captureAny())).captured.single
               as TransactionQuery;
 
-      expect(captured.kinds, equals({TransactionKind.income}));
+      expect(
+        captured.kinds,
+        equals({TransactionKind.expense, TransactionKind.income}),
+      );
+
       expect(captured.states, equals({TransactionState.actual}));
     });
+
+    test(
+      'nets income against expenses posted to an expense category',
+      () async {
+        // Given
+        final insuranceCategory = categoryFixture(
+          id: 'insurances',
+          kind: CategoryKind.expense,
+        );
+
+        when(
+          () => getCategoryById(insuranceCategory.id),
+        ).thenAnswer((_) async => Success<Category?>(insuranceCategory));
+
+        final premium = _transaction(
+          id: 'insurance-premium',
+          kind: TransactionKind.expense,
+          transactionAssetId: eur,
+          valuationAssetId: chf,
+          allocations: [
+            _AllocationSpec(
+              categoryId: insuranceCategory.id,
+              transactionAmount: '200',
+              valuationAmount: '200',
+            ),
+          ],
+        );
+
+        final reimbursement = _transaction(
+          id: 'insurance-reimbursement',
+          kind: TransactionKind.income,
+          transactionAssetId: eur,
+          valuationAssetId: chf,
+          allocations: [
+            _AllocationSpec(
+              categoryId: insuranceCategory.id,
+              transactionAmount: '75',
+              valuationAmount: '75',
+            ),
+          ],
+        );
+
+        when(() => queryTransactions(any())).thenAnswer(
+          (_) async => Success<List<Transaction>>([premium, reimbursement]),
+        );
+
+        // When
+        final result = await service(
+          insuranceCategory.id,
+          effectiveFrom: effectiveFrom,
+          effectiveUntil: effectiveUntil,
+        );
+
+        // Then
+        final spending = result.valueOrNull!;
+
+        expect(spending.kind, CategoryKind.expense);
+
+        expect(spending.directTotal.amount, Decimal.parse('125'));
+        expect(spending.directTotal.isOutgoing, isTrue);
+        expect(spending.directSignedValue, Decimal.parse('125'));
+
+        expect(spending.aggregateTotal.amount, Decimal.parse('125'));
+        expect(spending.aggregateTotal.isOutgoing, isTrue);
+        expect(spending.aggregateSignedValue, Decimal.parse('125'));
+      },
+    );
+
+    test('allows an expense category to become negative when income exceeds '
+        'expenses', () async {
+      // Given
+      final insuranceCategory = categoryFixture(
+        id: 'insurances',
+        kind: CategoryKind.expense,
+      );
+
+      when(
+        () => getCategoryById(insuranceCategory.id),
+      ).thenAnswer((_) async => Success<Category?>(insuranceCategory));
+
+      final premium = _transaction(
+        id: 'insurance-premium',
+        kind: TransactionKind.expense,
+        transactionAssetId: eur,
+        valuationAssetId: chf,
+        allocations: [
+          _AllocationSpec(
+            categoryId: insuranceCategory.id,
+            transactionAmount: '200',
+            valuationAmount: '200',
+          ),
+        ],
+      );
+
+      final reimbursement = _transaction(
+        id: 'insurance-reimbursement',
+        kind: TransactionKind.income,
+        transactionAssetId: eur,
+        valuationAssetId: chf,
+        allocations: [
+          _AllocationSpec(
+            categoryId: insuranceCategory.id,
+            transactionAmount: '350',
+            valuationAmount: '350',
+          ),
+        ],
+      );
+
+      when(() => queryTransactions(any())).thenAnswer(
+        (_) async => Success<List<Transaction>>([premium, reimbursement]),
+      );
+
+      // When
+      final result = await service(
+        insuranceCategory.id,
+        effectiveFrom: effectiveFrom,
+        effectiveUntil: effectiveUntil,
+      );
+
+      // Then
+      final spending = result.valueOrNull!;
+
+      expect(spending.kind, CategoryKind.expense);
+
+      // The real financial net flow is CHF 150 incoming.
+      expect(spending.directTotal.assetId, chf);
+      expect(spending.directTotal.amount, Decimal.parse('150'));
+      expect(spending.directTotal.isIncoming, isTrue);
+
+      // Relative to an expense category, this means -CHF 150 spending.
+      expect(spending.directSignedValue, Decimal.parse('-150'));
+
+      expect(spending.aggregateTotal.assetId, chf);
+      expect(spending.aggregateTotal.amount, Decimal.parse('150'));
+      expect(spending.aggregateTotal.isIncoming, isTrue);
+      expect(spending.aggregateSignedValue, Decimal.parse('-150'));
+    });
+
+    test('nets expenses against income posted to an income category', () async {
+      // Given
+      final incomeCategory = categoryFixture(
+        id: 'salary',
+        kind: CategoryKind.income,
+      );
+
+      when(
+        () => getCategoryById(incomeCategory.id),
+      ).thenAnswer((_) async => Success<Category?>(incomeCategory));
+
+      final salary = _transaction(
+        id: 'salary-income',
+        kind: TransactionKind.income,
+        transactionAssetId: eur,
+        valuationAssetId: chf,
+        allocations: [
+          _AllocationSpec(
+            categoryId: incomeCategory.id,
+            transactionAmount: '1000',
+            valuationAmount: '1000',
+          ),
+        ],
+      );
+
+      final repayment = _transaction(
+        id: 'salary-repayment',
+        kind: TransactionKind.expense,
+        transactionAssetId: eur,
+        valuationAssetId: chf,
+        allocations: [
+          _AllocationSpec(
+            categoryId: incomeCategory.id,
+            transactionAmount: '250',
+            valuationAmount: '250',
+          ),
+        ],
+      );
+
+      when(() => queryTransactions(any())).thenAnswer(
+        (_) async => Success<List<Transaction>>([salary, repayment]),
+      );
+
+      // When
+      final result = await service(
+        incomeCategory.id,
+        effectiveFrom: effectiveFrom,
+        effectiveUntil: effectiveUntil,
+      );
+
+      // Then
+      final spending = result.valueOrNull!;
+
+      expect(spending.kind, CategoryKind.income);
+
+      expect(spending.directTotal.amount, Decimal.parse('750'));
+      expect(spending.directTotal.isIncoming, isTrue);
+      expect(spending.directSignedValue, Decimal.parse('750'));
+
+      expect(spending.aggregateTotal.amount, Decimal.parse('750'));
+      expect(spending.aggregateTotal.isIncoming, isTrue);
+      expect(spending.aggregateSignedValue, Decimal.parse('750'));
+    });
+
+    test('allows an income category to become negative when expenses exceed '
+        'income', () async {
+      // Given
+      final incomeCategory = categoryFixture(
+        id: 'salary',
+        kind: CategoryKind.income,
+      );
+
+      when(
+        () => getCategoryById(incomeCategory.id),
+      ).thenAnswer((_) async => Success<Category?>(incomeCategory));
+
+      final salary = _transaction(
+        id: 'salary-income',
+        kind: TransactionKind.income,
+        transactionAssetId: eur,
+        valuationAssetId: chf,
+        allocations: [
+          _AllocationSpec(
+            categoryId: incomeCategory.id,
+            transactionAmount: '100',
+            valuationAmount: '100',
+          ),
+        ],
+      );
+
+      final repayment = _transaction(
+        id: 'salary-repayment',
+        kind: TransactionKind.expense,
+        transactionAssetId: eur,
+        valuationAssetId: chf,
+        allocations: [
+          _AllocationSpec(
+            categoryId: incomeCategory.id,
+            transactionAmount: '150',
+            valuationAmount: '150',
+          ),
+        ],
+      );
+
+      when(() => queryTransactions(any())).thenAnswer(
+        (_) async => Success<List<Transaction>>([salary, repayment]),
+      );
+
+      // When
+      final result = await service(
+        incomeCategory.id,
+        effectiveFrom: effectiveFrom,
+        effectiveUntil: effectiveUntil,
+      );
+
+      // Then
+      final spending = result.valueOrNull!;
+
+      expect(spending.kind, CategoryKind.income);
+
+      expect(spending.directTotal.amount, Decimal.parse('50'));
+      expect(spending.directTotal.isOutgoing, isTrue);
+      expect(spending.directSignedValue, Decimal.parse('-50'));
+
+      expect(spending.aggregateTotal.amount, Decimal.parse('50'));
+      expect(spending.aggregateTotal.isOutgoing, isTrue);
+      expect(spending.aggregateSignedValue, Decimal.parse('-50'));
+    });
+
+    test(
+      'nets opposite-direction child activity into the parent aggregate',
+      () async {
+        // Given
+        final parent = categoryFixture(
+          id: 'insurances',
+          kind: CategoryKind.expense,
+        );
+
+        final child = categoryFixture(
+          id: 'health-insurance',
+          parentCategoryId: parent.id.value,
+          kind: CategoryKind.expense,
+        );
+
+        when(
+          () => getCategoryById(parent.id),
+        ).thenAnswer((_) async => Success<Category?>(parent));
+
+        when(
+          () => getCategories(),
+        ).thenAnswer((_) async => Success<List<Category>>([parent, child]));
+
+        final directPremium = _transaction(
+          id: 'direct-premium',
+          kind: TransactionKind.expense,
+          transactionAssetId: eur,
+          valuationAssetId: chf,
+          allocations: [
+            _AllocationSpec(
+              categoryId: parent.id,
+              transactionAmount: '100',
+              valuationAmount: '100',
+            ),
+          ],
+        );
+
+        final childReimbursement = _transaction(
+          id: 'child-reimbursement',
+          kind: TransactionKind.income,
+          transactionAssetId: eur,
+          valuationAssetId: chf,
+          allocations: [
+            _AllocationSpec(
+              categoryId: child.id,
+              transactionAmount: '150',
+              valuationAmount: '150',
+            ),
+          ],
+        );
+
+        when(() => queryTransactions(any())).thenAnswer(
+          (_) async =>
+              Success<List<Transaction>>([directPremium, childReimbursement]),
+        );
+
+        // When
+        final result = await service(
+          parent.id,
+          effectiveFrom: effectiveFrom,
+          effectiveUntil: effectiveUntil,
+        );
+
+        // Then
+        final spending = result.valueOrNull!;
+
+        expect(spending.directTotal.amount, Decimal.parse('100'));
+        expect(spending.directTotal.isOutgoing, isTrue);
+        expect(spending.directSignedValue, Decimal.parse('100'));
+
+        expect(spending.aggregateTotal.amount, Decimal.parse('50'));
+        expect(spending.aggregateTotal.isIncoming, isTrue);
+        expect(spending.aggregateSignedValue, Decimal.parse('-50'));
+      },
+    );
+
+    test(
+      'returns deterministic category zero when opposite flows cancel exactly',
+      () async {
+        // Given
+        final insuranceCategory = categoryFixture(
+          id: 'insurances',
+          kind: CategoryKind.expense,
+        );
+
+        when(
+          () => getCategoryById(insuranceCategory.id),
+        ).thenAnswer((_) async => Success<Category?>(insuranceCategory));
+
+        final premium = _transaction(
+          id: 'insurance-premium',
+          kind: TransactionKind.expense,
+          transactionAssetId: eur,
+          valuationAssetId: chf,
+          allocations: [
+            _AllocationSpec(
+              categoryId: insuranceCategory.id,
+              transactionAmount: '200',
+              valuationAmount: '200',
+            ),
+          ],
+        );
+
+        final reimbursement = _transaction(
+          id: 'insurance-reimbursement',
+          kind: TransactionKind.income,
+          transactionAssetId: eur,
+          valuationAssetId: chf,
+          allocations: [
+            _AllocationSpec(
+              categoryId: insuranceCategory.id,
+              transactionAmount: '200',
+              valuationAmount: '200',
+            ),
+          ],
+        );
+
+        when(() => queryTransactions(any())).thenAnswer(
+          (_) async => Success<List<Transaction>>([reimbursement, premium]),
+        );
+
+        // When
+        final result = await service(
+          insuranceCategory.id,
+          effectiveFrom: effectiveFrom,
+          effectiveUntil: effectiveUntil,
+        );
+
+        // Then
+        final spending = result.valueOrNull!;
+
+        expect(spending.directTotal.amount, Decimal.zero);
+
+        // Expense-category zero has a deterministic outgoing representation.
+        expect(spending.directTotal.isOutgoing, isTrue);
+        expect(spending.directSignedValue, Decimal.zero);
+
+        expect(spending.aggregateTotal.amount, Decimal.zero);
+        expect(spending.aggregateTotal.isOutgoing, isTrue);
+        expect(spending.aggregateSignedValue, Decimal.zero);
+      },
+    );
 
     test('rejects an invalid period before loading dependencies', () async {
       // Given
@@ -600,6 +1042,7 @@ Transaction _transaction({
 
   for (final allocation in allocations) {
     final transactionValue = Decimal.parse(allocation.transactionAmount);
+
     final valuationValue = Decimal.parse(allocation.valuationAmount);
 
     transactionTotal += transactionValue;

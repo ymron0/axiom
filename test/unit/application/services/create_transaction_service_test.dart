@@ -1,7 +1,6 @@
 @Tags(['application'])
 library;
 
-import 'package:axiom/src/application/failures/allocation_category_kind_mismatch_failure.dart';
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
 import 'package:axiom/src/application/services/create_transaction_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
@@ -98,29 +97,32 @@ void main() {
     });
 
     test(
-      'does not persist when an allocated category has the wrong kind',
+      'persists when an expense transaction targets an income category',
       () async {
         // Given
         final category = categoryFixture(
           id: 'income',
           kind: CategoryKind.income,
         );
+
         final command = createTransactionCommandWithCategoryAllocationFixture(
           category.id,
         );
+
         when(
-          () => getCategoryById(any()),
+          () => getCategoryById(category.id),
         ).thenAnswer((_) async => Success<Category?>(category));
+
+        when(
+          () => repository.create(any()),
+        ).thenAnswer((_) async => const Success(null));
 
         // When
         final result = await service(command);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<AllocationCategoryKindMismatchFailure>(),
-        );
-        verifyNever(() => repository.create(any()));
+        expect(result.isSuccess, isTrue);
+        verify(() => repository.create(any())).called(1);
       },
     );
 

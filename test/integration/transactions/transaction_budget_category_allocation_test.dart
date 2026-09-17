@@ -1,7 +1,6 @@
 @Tags(['integration'])
 library;
 
-import 'package:axiom/src/application/failures/allocation_category_kind_mismatch_failure.dart';
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
 import 'package:axiom/src/application/services/create_transaction_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
@@ -68,12 +67,8 @@ void main() {
           repository: transactionRepository,
         ),
         validateAllocations: ValidateTransactionAllocationsService(
-          getCategoryById: GetCategoryByIdUseCase(
-            categoryRepository,
-          ),
-          getJarById: GetJarByIdUseCase(
-            jarRepository,
-          ),
+          getCategoryById: GetCategoryByIdUseCase(categoryRepository),
+          getJarById: GetJarByIdUseCase(jarRepository),
         ),
       );
     });
@@ -187,40 +182,50 @@ void main() {
       final transaction = result.valueOrNull!;
       expect(transaction.splits.single.categoryId, expenseCategory.id);
       expect(transaction.splits.single.jarId, jarId);
-      final persisted = (await transactionRepository.getById(transaction.id))
-          .valueOrNull;
+      final persisted = (await transactionRepository.getById(
+        transaction.id,
+      )).valueOrNull;
       expect(persisted, isNotNull);
       expect(persisted!.id, transaction.id);
       expect(persisted.kind, transaction.kind);
-      expect(persisted.splits.single.categoryId, transaction.splits.single.categoryId);
+      expect(
+        persisted.splits.single.categoryId,
+        transaction.splits.single.categoryId,
+      );
       expect(persisted.splits.single.jarId, transaction.splits.single.jarId);
     });
 
-    test('rejects missing and incompatible category allocations', () async {
-      // Given
-      final missingCategoryCommand = command(
-        kind: TransactionKind.expense,
-        categoryId: CategoryId.fromString('missing'),
-      );
-      final incompatibleCategoryCommand = command(
-        kind: TransactionKind.expense,
-        categoryId: incomeCategory.id,
-      );
+    test(
+      'rejects missing categories but accepts opposite-kind allocations',
+      () async {
+        // Given
+        final missingCategoryCommand = command(
+          kind: TransactionKind.expense,
+          categoryId: CategoryId.fromString('missing'),
+        );
 
-      // When
-      final missingResult = await service(missingCategoryCommand);
-      final incompatibleResult = await service(incompatibleCategoryCommand);
+        final oppositeKindCommand = command(
+          kind: TransactionKind.expense,
+          categoryId: incomeCategory.id,
+        );
 
-      // Then
-      expect(
-        missingResult.failureOrNull,
-        isA<AllocationCategoryNotFoundFailure>(),
-      );
-      expect(
-        incompatibleResult.failureOrNull,
-        isA<AllocationCategoryKindMismatchFailure>(),
-      );
-      expect((await transactionRepository.getAll()).valueOrNull, isEmpty);
-    });
+        // When
+        final missingResult = await service(missingCategoryCommand);
+        final oppositeKindResult = await service(oppositeKindCommand);
+
+        // Then
+        expect(
+          missingResult.failureOrNull,
+          isA<AllocationCategoryNotFoundFailure>(),
+        );
+
+        expect(oppositeKindResult.isSuccess, isTrue);
+
+        final persisted = (await transactionRepository.getAll()).valueOrNull!;
+
+        expect(persisted, hasLength(1));
+        expect(persisted.single.splits.single.categoryId, incomeCategory.id);
+      },
+    );
   });
 }

@@ -1,7 +1,6 @@
 @Tags(['integration'])
 library;
 
-import 'package:axiom/src/application/failures/allocation_category_kind_mismatch_failure.dart';
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
 import 'package:axiom/src/application/services/create_transaction_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
@@ -134,54 +133,60 @@ void main() {
       );
     }
 
-    test('persists expense allocations to parent and child categories', () async {
-      // Given
-      final createCommand = command(
-        kind: TransactionKind.expense,
-        categoryIds: [expenseParent.id, expenseChild.id],
-      );
+    test(
+      'persists expense allocations to parent and child categories',
+      () async {
+        // Given
+        final createCommand = command(
+          kind: TransactionKind.expense,
+          categoryIds: [expenseParent.id, expenseChild.id],
+        );
 
-      // When
-      final result = await service(createCommand);
+        // When
+        final result = await service(createCommand);
 
-      // Then
-      expect(result.isSuccess, isTrue);
-      final transaction = result.valueOrNull!;
-      expect(
-        transaction.splits.map((split) => split.categoryId),
-        [expenseParent.id, expenseChild.id],
-      );
-      final persisted = await transactionRepository.getById(transaction.id);
-      final persistedTransaction = persisted.valueOrNull;
-      expect(persistedTransaction, isNotNull);
-      expect(persistedTransaction!.id, transaction.id);
-      expect(persistedTransaction.kind, transaction.kind);
-      expect(
-        persistedTransaction.splits.map((split) => split.categoryId?.value),
-        transaction.splits.map((split) => split.categoryId?.value),
-      );
-      expect(persistedTransaction.ledgerEntries, hasLength(1));
-      expect(
-        persistedTransaction.ledgerEntries.single.accountId.value,
-        transaction.ledgerEntries.single.accountId.value,
-      );
-    });
+        // Then
+        expect(result.isSuccess, isTrue);
+        final transaction = result.valueOrNull!;
+        expect(transaction.splits.map((split) => split.categoryId), [
+          expenseParent.id,
+          expenseChild.id,
+        ]);
+        final persisted = await transactionRepository.getById(transaction.id);
+        final persistedTransaction = persisted.valueOrNull;
+        expect(persistedTransaction, isNotNull);
+        expect(persistedTransaction!.id, transaction.id);
+        expect(persistedTransaction.kind, transaction.kind);
+        expect(
+          persistedTransaction.splits.map((split) => split.categoryId?.value),
+          transaction.splits.map((split) => split.categoryId?.value),
+        );
+        expect(persistedTransaction.ledgerEntries, hasLength(1));
+        expect(
+          persistedTransaction.ledgerEntries.single.accountId.value,
+          transaction.ledgerEntries.single.accountId.value,
+        );
+      },
+    );
 
-    test('persists income allocations to parent and child categories', () async {
-      // Given
-      final createCommand = command(
-        kind: TransactionKind.income,
-        categoryIds: [incomeParent.id, incomeChild.id],
-      );
+    test(
+      'persists income allocations to parent and child categories',
+      () async {
+        // Given
+        final createCommand = command(
+          kind: TransactionKind.income,
+          categoryIds: [incomeParent.id, incomeChild.id],
+        );
 
-      // When
-      final result = await service(createCommand);
+        // When
+        final result = await service(createCommand);
 
-      // Then
-      expect(result.isSuccess, isTrue);
-      expect(result.valueOrNull!.kind, TransactionKind.income);
-      expect(result.valueOrNull!.splits, hasLength(2));
-    });
+        // Then
+        expect(result.isSuccess, isTrue);
+        expect(result.valueOrNull!.kind, TransactionKind.income);
+        expect(result.valueOrNull!.splits, hasLength(2));
+      },
+    );
 
     test('rejects a missing category without persisting', () async {
       // Given
@@ -198,22 +203,30 @@ void main() {
       expect((await transactionRepository.getAll()).valueOrNull, isEmpty);
     });
 
-    test('rejects an incompatible category kind without persisting', () async {
-      // Given
-      final createCommand = command(
-        kind: TransactionKind.expense,
-        categoryIds: [incomeChild.id],
-      );
+    test(
+      'persists a transaction allocated to a category of the opposite kind',
+      () async {
+        // Given
+        final createCommand = command(
+          kind: TransactionKind.expense,
+          categoryIds: [incomeChild.id],
+        );
 
-      // When
-      final result = await service(createCommand);
+        // When
+        final result = await service(createCommand);
 
-      // Then
-      expect(
-        result.failureOrNull,
-        isA<AllocationCategoryKindMismatchFailure>(),
-      );
-      expect((await transactionRepository.getAll()).valueOrNull, isEmpty);
-    });
+        // Then
+        expect(result.isSuccess, isTrue);
+
+        final transaction = result.valueOrNull!;
+        expect(transaction.kind, TransactionKind.expense);
+        expect(transaction.splits.single.categoryId, incomeChild.id);
+
+        final persisted = await transactionRepository.getById(transaction.id);
+
+        expect(persisted.valueOrNull, isNotNull);
+        expect(persisted.valueOrNull!.splits.single.categoryId, incomeChild.id);
+      },
+    );
   });
 }

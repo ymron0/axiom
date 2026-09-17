@@ -1,7 +1,6 @@
 @Tags(['application'])
 library;
 
-import 'package:axiom/src/application/failures/allocation_category_kind_mismatch_failure.dart';
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
 import 'package:axiom/src/application/failures/allocation_jar_not_found_failure.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
@@ -162,74 +161,71 @@ void main() {
       verify(() => getCategoryById(categoryId)).called(1);
     });
 
-    test('fails when expense transaction references income category', () async {
-      // Given
-      final category = categoryFixture(id: 'salary', kind: CategoryKind.income);
+    test(
+      'allows an expense transaction to reference an income category',
+      () async {
+        // Given
+        final category = categoryFixture(
+          id: 'salary',
+          kind: CategoryKind.income,
+        );
 
-      final transaction = _transaction(
-        kind: TransactionKind.expense,
-        splits: [
-          _categorySplit(
-            categoryId: category.id,
-            amount: 10,
-            direction: AssetAmountDirection.outgoing,
-          ),
-        ],
-      );
+        final transaction = _transaction(
+          kind: TransactionKind.expense,
+          splits: [
+            _categorySplit(
+              categoryId: category.id,
+              amount: 10,
+              direction: AssetAmountDirection.outgoing,
+            ),
+          ],
+        );
 
-      when(
-        () => getCategoryById(any<CategoryId>()),
-      ).thenAnswer((_) async => Success<Category?>(category));
+        when(
+          () => getCategoryById(any<CategoryId>()),
+        ).thenAnswer((_) async => Success<Category?>(category));
 
-      // When
-      final result = await service(transaction);
+        // When
+        final result = await service(transaction);
 
-      // Then
-      expect(
-        result.failureOrNull,
-        isA<AllocationCategoryKindMismatchFailure>(),
-      );
-      expect(
-        result.failureOrNull?.message,
-        allOf(
-          contains(category.id.value),
-          contains(CategoryKind.income.name),
-          contains(CategoryKind.expense.name),
-        ),
-      );
-    });
+        // Then
+        expect(result.isSuccess, isTrue);
+        verify(() => getCategoryById(category.id)).called(1);
+      },
+    );
 
-    test('fails when income transaction references expense category', () async {
-      // Given
-      final category = categoryFixture(
-        id: 'groceries',
-        kind: CategoryKind.expense,
-      );
+    test(
+      'allows an income transaction to reference an expense category',
+      () async {
+        // Given
+        final category = categoryFixture(
+          id: 'insurance',
+          kind: CategoryKind.expense,
+        );
 
-      final transaction = _transaction(
-        kind: TransactionKind.income,
-        splits: [
-          _categorySplit(
-            categoryId: category.id,
-            amount: 10,
-            direction: AssetAmountDirection.incoming,
-          ),
-        ],
-      );
+        final transaction = _transaction(
+          kind: TransactionKind.income,
+          splits: [
+            _categorySplit(
+              categoryId: category.id,
+              amount: 10,
+              direction: AssetAmountDirection.incoming,
+            ),
+          ],
+        );
 
-      when(
-        () => getCategoryById(any<CategoryId>()),
-      ).thenAnswer((_) async => Success<Category?>(category));
+        when(
+          () => getCategoryById(any<CategoryId>()),
+        ).thenAnswer((_) async => Success<Category?>(category));
 
-      // When
-      final result = await service(transaction);
+        // When
+        final result = await service(transaction);
 
-      // Then
-      expect(
-        result.failureOrNull,
-        isA<AllocationCategoryKindMismatchFailure>(),
-      );
-    });
+        // Then
+        expect(result.isSuccess, isTrue);
+        verify(() => getCategoryById(category.id)).called(1);
+      },
+    );
 
     test('propagates category lookup failures unchanged', () async {
       // Given
@@ -337,9 +333,9 @@ void main() {
         kind: TransactionKind.expense,
         splits: [_jarSplit(jarId: jar.id, amount: 10)],
       );
-      when(() => getJarById(any<JarId>())).thenAnswer(
-        (_) async => Success(jar),
-      );
+      when(
+        () => getJarById(any<JarId>()),
+      ).thenAnswer((_) async => Success(jar));
 
       final result = await service(transaction);
 
@@ -356,9 +352,9 @@ void main() {
         kind: TransactionKind.expense,
         splits: [_jarSplit(jarId: jar.id, amount: 10)],
       );
-      when(() => getJarById(any<JarId>())).thenAnswer(
-        (_) async => Success(jar),
-      );
+      when(
+        () => getJarById(any<JarId>()),
+      ).thenAnswer((_) async => Success(jar));
 
       final result = await service(transaction);
 
@@ -371,9 +367,9 @@ void main() {
         kind: TransactionKind.expense,
         splits: [_jarSplit(jarId: jarId, amount: 10)],
       );
-      when(() => getJarById(any<JarId>())).thenAnswer(
-        (_) async => const Success(null),
-      );
+      when(
+        () => getJarById(any<JarId>()),
+      ).thenAnswer((_) async => const Success(null));
 
       final result = await service(transaction);
 
@@ -404,9 +400,9 @@ void main() {
           _jarSplit(jarId: jar.id, amount: 6),
         ],
       );
-      when(() => getJarById(any<JarId>())).thenAnswer(
-        (_) async => Success(jar),
-      );
+      when(
+        () => getJarById(any<JarId>()),
+      ).thenAnswer((_) async => Success(jar));
 
       final result = await service(transaction);
 
@@ -424,12 +420,12 @@ void main() {
         kind: TransactionKind.expense,
         splits: [_allocationSplit(categoryId: category.id, jarId: jar.id)],
       );
-      when(() => getCategoryById(any<CategoryId>())).thenAnswer(
-        (_) async => Success(category),
-      );
-      when(() => getJarById(any<JarId>())).thenAnswer(
-        (_) async => Success(jar),
-      );
+      when(
+        () => getCategoryById(any<CategoryId>()),
+      ).thenAnswer((_) async => Success(category));
+      when(
+        () => getJarById(any<JarId>()),
+      ).thenAnswer((_) async => Success(jar));
 
       final result = await service(transaction);
 
@@ -448,9 +444,9 @@ void main() {
           _jarSplit(jarId: secondId, amount: 6),
         ],
       );
-      when(() => getJarById(any<JarId>())).thenAnswer(
-        (_) async => const Success(null),
-      );
+      when(
+        () => getJarById(any<JarId>()),
+      ).thenAnswer((_) async => const Success(null));
 
       final result = await service(transaction);
 

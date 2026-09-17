@@ -90,58 +90,78 @@ void main() {
       );
     });
 
-    test('rejects expense totals represented as incoming amounts', () {
-      expect(
-        () => CategorySpending(
-          categoryId: categoryId,
-          kind: CategoryKind.expense,
-          directTotal: AssetAmount.incoming(
-            assetId: chf,
-            amount: Decimal.parse('100'),
-          ),
-          aggregateTotal: AssetAmount.incoming(
-            assetId: chf,
-            amount: Decimal.parse('150'),
-          ),
+    test('accepts a net-negative expense category', () {
+      final spending = CategorySpending(
+        categoryId: categoryId,
+        kind: CategoryKind.expense,
+        directTotal: AssetAmount.incoming(
+          assetId: chf,
+          amount: Decimal.parse('50'),
         ),
-        throwsArgumentError,
+        aggregateTotal: AssetAmount.incoming(
+          assetId: chf,
+          amount: Decimal.parse('75'),
+        ),
       );
+
+      expect(spending.directTotal.isIncoming, isTrue);
+      expect(spending.directSignedValue, Decimal.parse('-50'));
+      expect(spending.aggregateSignedValue, Decimal.parse('-75'));
     });
 
-    test('rejects income totals represented as outgoing amounts', () {
-      expect(
-        () => CategorySpending(
-          categoryId: categoryId,
-          kind: CategoryKind.income,
-          directTotal: AssetAmount.outgoing(
-            assetId: chf,
-            amount: Decimal.parse('100'),
-          ),
-          aggregateTotal: AssetAmount.outgoing(
-            assetId: chf,
-            amount: Decimal.parse('150'),
-          ),
+    test('accepts a net-negative income category', () {
+      final spending = CategorySpending(
+        categoryId: categoryId,
+        kind: CategoryKind.income,
+        directTotal: AssetAmount.outgoing(
+          assetId: chf,
+          amount: Decimal.parse('50'),
         ),
-        throwsArgumentError,
+        aggregateTotal: AssetAmount.outgoing(
+          assetId: chf,
+          amount: Decimal.parse('75'),
+        ),
       );
+
+      expect(spending.directTotal.isOutgoing, isTrue);
+      expect(spending.directSignedValue, Decimal.parse('-50'));
+      expect(spending.aggregateSignedValue, Decimal.parse('-75'));
     });
 
-    test('rejects an aggregate total smaller than the direct total', () {
-      expect(
-        () => CategorySpending(
-          categoryId: categoryId,
-          kind: CategoryKind.expense,
-          directTotal: AssetAmount.outgoing(
-            assetId: chf,
-            amount: Decimal.parse('150'),
-          ),
-          aggregateTotal: AssetAmount.outgoing(
-            assetId: chf,
-            amount: Decimal.parse('100'),
-          ),
+    test('accepts an aggregate total smaller than the direct magnitude', () {
+      final spending = CategorySpending(
+        categoryId: categoryId,
+        kind: CategoryKind.expense,
+        directTotal: AssetAmount.outgoing(
+          assetId: chf,
+          amount: Decimal.parse('150'),
         ),
-        throwsArgumentError,
+        aggregateTotal: AssetAmount.outgoing(
+          assetId: chf,
+          amount: Decimal.parse('100'),
+        ),
       );
+
+      expect(spending.directSignedValue, Decimal.parse('150'));
+      expect(spending.aggregateSignedValue, Decimal.parse('100'));
+    });
+
+    test('accepts an aggregate total with the opposite net direction', () {
+      final spending = CategorySpending(
+        categoryId: categoryId,
+        kind: CategoryKind.expense,
+        directTotal: AssetAmount.outgoing(
+          assetId: chf,
+          amount: Decimal.parse('100'),
+        ),
+        aggregateTotal: AssetAmount.incoming(
+          assetId: chf,
+          amount: Decimal.parse('50'),
+        ),
+      );
+
+      expect(spending.directSignedValue, Decimal.parse('100'));
+      expect(spending.aggregateSignedValue, Decimal.parse('-50'));
     });
   });
 }

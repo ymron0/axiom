@@ -4,10 +4,25 @@ import 'package:dart_mappable/dart_mappable.dart';
 
 part 'category_kind.mapper.dart';
 
-/// Describes the financial nature of a category.
+/// Describes the classification and reporting nature of a category.
 ///
-/// The kind determines whether transactions classified under the category
-/// represent money spent or money received.
+/// Category kind groups categories into expense-oriented and income-oriented
+/// hierarchies. It is used for hierarchy validation, budgeting semantics,
+/// reporting, and presentation.
+///
+/// Category kind does not restrict the direction of transactions that may be
+/// allocated to the category.
+///
+/// For example, an expense category may contain:
+///
+/// - outgoing expense transactions such as insurance premiums; and
+/// - incoming transactions such as insurance reimbursements.
+///
+/// Likewise, an income category may contain outgoing adjustments, reversals,
+/// chargebacks, or repayments.
+///
+/// Opposite-direction allocations reduce the category's net activity and may
+/// cause its value for a period to become negative relative to its normal kind.
 ///
 /// A child category must have the same kind as its parent. For example:
 ///
@@ -25,9 +40,15 @@ part 'category_kind.mapper.dart';
 /// valid.
 @MappableEnum()
 enum CategoryKind {
-  /// Classifies money leaving the user's finances.
+  /// An expense-oriented category.
+  ///
+  /// Outgoing allocations normally increase its expense value, while incoming
+  /// allocations reduce it.
   expense,
 
-  /// Classifies money entering the user's finances.
+  /// An income-oriented category.
+  ///
+  /// Incoming allocations normally increase its income value, while outgoing
+  /// allocations reduce it.
   income,
 }

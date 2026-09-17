@@ -197,34 +197,145 @@ void main() {
       );
     });
 
-    test('rejects incoming allocations for an expense category', () {
-      expect(
-        () => calculator.calculate(
-          categoryId: categoryId,
-          kind: CategoryKind.expense,
-          valuationCurrencyId: chf,
-          directAllocationAmounts: [
-            AssetAmount.incoming(assetId: chf, amount: Decimal.parse('100')),
-          ],
-          childAllocationAmounts: const [],
-        ),
-        throwsArgumentError,
+    test('nets incoming reimbursements against an expense category', () {
+      final result = calculator.calculate(
+        categoryId: categoryId,
+        kind: CategoryKind.expense,
+        valuationCurrencyId: chf,
+        directAllocationAmounts: [
+          AssetAmount.outgoing(assetId: chf, amount: Decimal.parse('200')),
+          AssetAmount.incoming(assetId: chf, amount: Decimal.parse('75')),
+        ],
+        childAllocationAmounts: const [],
       );
+
+      expect(result.directTotal.amount, Decimal.parse('125'));
+      expect(result.directTotal.isOutgoing, isTrue);
+      expect(result.directSignedValue, Decimal.parse('125'));
+
+      expect(result.aggregateTotal.amount, Decimal.parse('125'));
+      expect(result.aggregateTotal.isOutgoing, isTrue);
+      expect(result.aggregateSignedValue, Decimal.parse('125'));
     });
 
-    test('rejects outgoing allocations for an income category', () {
-      expect(
-        () => calculator.calculate(
+    test('allows an expense category to become negative when reimbursements '
+        'exceed expenses', () {
+      final result = calculator.calculate(
+        categoryId: categoryId,
+        kind: CategoryKind.expense,
+        valuationCurrencyId: chf,
+        directAllocationAmounts: [
+          AssetAmount.outgoing(assetId: chf, amount: Decimal.parse('200')),
+          AssetAmount.incoming(assetId: chf, amount: Decimal.parse('350')),
+        ],
+        childAllocationAmounts: const [],
+      );
+
+      expect(result.directTotal.amount, Decimal.parse('150'));
+      expect(result.directTotal.isIncoming, isTrue);
+      expect(result.directSignedValue, Decimal.parse('-150'));
+
+      expect(result.aggregateTotal.amount, Decimal.parse('150'));
+      expect(result.aggregateTotal.isIncoming, isTrue);
+      expect(result.aggregateSignedValue, Decimal.parse('-150'));
+    });
+
+    test('nets outgoing adjustments against an income category', () {
+      final result = calculator.calculate(
+        categoryId: categoryId,
+        kind: CategoryKind.income,
+        valuationCurrencyId: chf,
+        directAllocationAmounts: [
+          AssetAmount.incoming(assetId: chf, amount: Decimal.parse('1000')),
+          AssetAmount.outgoing(assetId: chf, amount: Decimal.parse('250')),
+        ],
+        childAllocationAmounts: const [],
+      );
+
+      expect(result.directTotal.amount, Decimal.parse('750'));
+      expect(result.directTotal.isIncoming, isTrue);
+      expect(result.directSignedValue, Decimal.parse('750'));
+    });
+
+    test(
+      'allows an income category to become negative when outgoing adjustments '
+      'exceed income',
+      () {
+        final result = calculator.calculate(
           categoryId: categoryId,
           kind: CategoryKind.income,
           valuationCurrencyId: chf,
           directAllocationAmounts: [
-            AssetAmount.outgoing(assetId: chf, amount: Decimal.parse('100')),
+            AssetAmount.incoming(assetId: chf, amount: Decimal.parse('100')),
+            AssetAmount.outgoing(assetId: chf, amount: Decimal.parse('150')),
           ],
           childAllocationAmounts: const [],
-        ),
-        throwsArgumentError,
+        );
+
+        expect(result.directTotal.amount, Decimal.parse('50'));
+        expect(result.directTotal.isOutgoing, isTrue);
+        expect(result.directSignedValue, Decimal.parse('-50'));
+      },
+    );
+
+    test('child activity can reduce and reverse the aggregate total', () {
+      final result = calculator.calculate(
+        categoryId: categoryId,
+        kind: CategoryKind.expense,
+        valuationCurrencyId: chf,
+        directAllocationAmounts: [
+          AssetAmount.outgoing(assetId: chf, amount: Decimal.parse('100')),
+        ],
+        childAllocationAmounts: [
+          AssetAmount.incoming(assetId: chf, amount: Decimal.parse('150')),
+        ],
       );
+
+      expect(result.directTotal.amount, Decimal.parse('100'));
+      expect(result.directTotal.isOutgoing, isTrue);
+      expect(result.directSignedValue, Decimal.parse('100'));
+
+      expect(result.aggregateTotal.amount, Decimal.parse('50'));
+      expect(result.aggregateTotal.isIncoming, isTrue);
+      expect(result.aggregateSignedValue, Decimal.parse('-50'));
     });
+
+    test(
+      'mixed allocations produce deterministic zero regardless of order',
+      () {
+        final outgoing = AssetAmount.outgoing(
+          assetId: chf,
+          amount: Decimal.parse('100'),
+        );
+        final incoming = AssetAmount.incoming(
+          assetId: chf,
+          amount: Decimal.parse('100'),
+        );
+
+        final forward = calculator.calculate(
+          categoryId: categoryId,
+          kind: CategoryKind.expense,
+          valuationCurrencyId: chf,
+          directAllocationAmounts: [outgoing, incoming],
+          childAllocationAmounts: const [],
+        );
+
+        final reversed = calculator.calculate(
+          categoryId: categoryId,
+          kind: CategoryKind.expense,
+          valuationCurrencyId: chf,
+          directAllocationAmounts: [incoming, outgoing],
+          childAllocationAmounts: const [],
+        );
+
+        expect(forward.directTotal.amount, Decimal.zero);
+        expect(forward.directTotal.isOutgoing, isTrue);
+        expect(forward.directSignedValue, Decimal.zero);
+
+        expect(reversed.directTotal.amount, Decimal.zero);
+        expect(reversed.directTotal.isOutgoing, isTrue);
+        expect(reversed.directSignedValue, Decimal.zero);
+      },
+    );
   });
 }

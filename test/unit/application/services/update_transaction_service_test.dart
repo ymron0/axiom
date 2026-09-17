@@ -1,7 +1,6 @@
 @Tags(['application'])
 library;
 
-import 'package:axiom/src/application/failures/allocation_category_kind_mismatch_failure.dart';
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
 import 'package:axiom/src/application/services/update_transaction_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
@@ -90,29 +89,32 @@ void main() {
     });
 
     test(
-      'does not update when an allocated category has the wrong kind',
+      'updates when an expense transaction targets an income category',
       () async {
         // Given
         final category = categoryFixture(
           id: 'income',
           kind: CategoryKind.income,
         );
+
         final transaction = transactionWithCategoryAllocationFixture(
           categoryId: category.id,
         );
+
         when(
-          () => getCategoryById(any()),
+          () => getCategoryById(category.id),
         ).thenAnswer((_) async => Success<Category?>(category));
+
+        when(
+          () => repository.update(transaction),
+        ).thenAnswer((_) async => const Success(null));
 
         // When
         final result = await service(transaction);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<AllocationCategoryKindMismatchFailure>(),
-        );
-        verifyNever(() => repository.update(any()));
+        expect(result.isSuccess, isTrue);
+        verify(() => repository.update(transaction)).called(1);
       },
     );
 
