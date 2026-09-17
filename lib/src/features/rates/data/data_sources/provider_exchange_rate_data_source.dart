@@ -1,7 +1,7 @@
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/rates/data/clients/exchange_rate_provider_client.dart';
 import 'package:axiom/src/features/rates/data/data_sources/exchange_rate_data_source.dart';
-import 'package:axiom/src/features/rates/data/failures/exchange_rate_data_source_exception.dart';
+import 'package:axiom/src/features/rates/data/exceptions/exchange_rate_data_source_exception.dart';
 import 'package:axiom/src/features/rates/data/models/exchange_rate_data_point.dart';
 import 'package:axiom/src/features/rates/data/models/exchange_rate_provider_snapshot.dart';
 import 'package:decimal/decimal.dart';

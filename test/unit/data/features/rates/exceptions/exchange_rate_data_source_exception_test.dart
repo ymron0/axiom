@@ -1,4 +1,4 @@
-import 'package:axiom/src/features/rates/data/failures/exchange_rate_data_source_exception.dart';
+import 'package:axiom/src/features/rates/data/exceptions/exchange_rate_data_source_exception.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
