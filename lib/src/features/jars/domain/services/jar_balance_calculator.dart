@@ -15,7 +15,15 @@ import 'package:decimal/decimal.dart';
 ///
 /// Outgoing allocations decrease the balance.
 ///
-/// An empty collection produces a zero-valued incoming amount.
+/// A positive net balance is represented as an incoming [AssetAmount].
+///
+/// A negative net balance is represented as an outgoing [AssetAmount] whose
+/// [AssetAmount.amount] contains the positive magnitude.
+///
+/// An exact zero balance is canonically represented as an incoming zero amount.
+///
+/// Consequently, calculation is independent of allocation iteration order,
+/// including when opposing allocations cancel exactly.
 ///
 /// ## Invariants
 ///
@@ -23,6 +31,11 @@ import 'package:decimal/decimal.dart';
 ///
 /// - must use [valuationCurrencyId];
 /// - must contain a known amount.
+///
+/// ## Precision
+///
+/// All arithmetic uses [Decimal]. No conversion through binary floating point,
+/// implicit rounding, or presentation formatting occurs here.
 ///
 /// ## Contract
 ///
@@ -33,35 +46,59 @@ final class JarBalanceCalculator {
   const JarBalanceCalculator();
 
   /// Calculates the signed net balance of [allocationAmounts].
+  ///
+  /// Throws an [ArgumentError] when an allocation:
+  ///
+  /// - uses an asset other than [valuationCurrencyId]; or
+  /// - contains an unknown amount.
   AssetAmount calculate({
     required AssetId valuationCurrencyId,
     required Iterable<AssetAmount> allocationAmounts,
   }) {
-    var balance = AssetAmount.incoming(
-      assetId: valuationCurrencyId,
-      amount: Decimal.zero,
-    );
+    var signedBalance = Decimal.zero;
 
     for (final allocationAmount in allocationAmounts) {
-      if (allocationAmount.assetId != valuationCurrencyId) {
-        throw ArgumentError.value(
-          allocationAmount.assetId,
-          'allocationAmounts',
-          'Every jar allocation must use the valuation currency.',
-        );
-      }
+      _validateAllocation(
+        valuationCurrencyId: valuationCurrencyId,
+        allocationAmount: allocationAmount,
+      );
 
-      if (allocationAmount.isUnknownAmount) {
-        throw ArgumentError.value(
-          allocationAmount,
-          'allocationAmounts',
-          'Jar allocations cannot contain unknown valuation amounts.',
-        );
-      }
-
-      balance = balance.add(allocationAmount);
+      signedBalance += allocationAmount.isIncoming
+          ? allocationAmount.amount
+          : -allocationAmount.amount;
     }
 
-    return balance;
+    if (signedBalance < Decimal.zero) {
+      return AssetAmount.outgoing(
+        assetId: valuationCurrencyId,
+        amount: signedBalance.abs(),
+      );
+    }
+
+    return AssetAmount.incoming(
+      assetId: valuationCurrencyId,
+      amount: signedBalance,
+    );
+  }
+
+  void _validateAllocation({
+    required AssetId valuationCurrencyId,
+    required AssetAmount allocationAmount,
+  }) {
+    if (allocationAmount.assetId != valuationCurrencyId) {
+      throw ArgumentError.value(
+        allocationAmount.assetId,
+        'allocationAmounts',
+        'Every jar allocation must use the valuation currency.',
+      );
+    }
+
+    if (allocationAmount.isUnknownAmount) {
+      throw ArgumentError.value(
+        allocationAmount,
+        'allocationAmounts',
+        'Jar allocations cannot contain unknown valuation amounts.',
+      );
+    }
   }
 }
