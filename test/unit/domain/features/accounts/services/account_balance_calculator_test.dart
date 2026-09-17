@@ -27,6 +27,7 @@ void main() {
       String transactionAmount = '1',
       String valuationAmount = '1',
       bool incoming = true,
+      LedgerEntryRole role = LedgerEntryRole.primary,
     }) {
       final createAssetAmount = incoming
           ? AssetAmount.incoming
@@ -46,7 +47,7 @@ void main() {
           assetId: valuationAssetId,
           amount: Decimal.parse(valuationAmount),
         ),
-        role: LedgerEntryRole.primary,
+        role: role,
       );
     }
 
@@ -200,6 +201,141 @@ void main() {
 
       // Then
       expect(balance, Decimal.parse('-50.25'));
+    });
+
+    test('rejects an unknown incoming account amount', () {
+      // Given
+      final entry = LedgerEntry(
+        accountId: accountId,
+        transactionAmount: AssetAmount.incoming(
+          assetId: otherAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        accountAmount: AssetAmount.incoming(
+          assetId: denominationAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        valuationAmount: AssetAmount.incoming(
+          assetId: valuationAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        role: LedgerEntryRole.primary,
+      );
+
+      // When / Then
+      expect(() => calculate([entry]), throwsArgumentError);
+    });
+
+    test('rejects an unknown outgoing account amount', () {
+      // Given
+      final entry = LedgerEntry(
+        accountId: accountId,
+        transactionAmount: AssetAmount.outgoing(
+          assetId: otherAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        accountAmount: AssetAmount.outgoing(
+          assetId: denominationAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        valuationAmount: AssetAmount.outgoing(
+          assetId: valuationAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        role: LedgerEntryRole.primary,
+      );
+
+      // When / Then
+      expect(() => calculate([entry]), throwsArgumentError);
+    });
+
+    test('ignores an unknown amount belonging to another account', () {
+      // Given
+      final entry = LedgerEntry(
+        accountId: otherAccountId,
+        transactionAmount: AssetAmount.incoming(
+          assetId: otherAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        accountAmount: AssetAmount.incoming(
+          assetId: otherAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        valuationAmount: AssetAmount.incoming(
+          assetId: valuationAssetId,
+          amount: Decimal.fromInt(-1),
+        ),
+        role: LedgerEntryRole.primary,
+      );
+
+      // When
+      final balance = calculate([entry]);
+
+      // Then
+      expect(balance, Decimal.zero);
+    });
+
+    test('accepts a known zero account amount', () {
+      // Given
+      final entries = [
+        createEntry(accountAmount: '10'),
+        createEntry(accountAmount: '0'),
+        createEntry(accountAmount: '4', incoming: false),
+      ];
+
+      // When
+      final balance = calculate(entries);
+
+      // Then
+      expect(balance, Decimal.parse('6'));
+    });
+
+    test('includes fee ledger entries in the account balance', () {
+      // Given
+      final entries = [
+        createEntry(accountAmount: '100'),
+        createEntry(
+          accountAmount: '2.50',
+          incoming: false,
+          role: LedgerEntryRole.fee,
+        ),
+      ];
+
+      // When
+      final balance = calculate(entries);
+
+      // Then
+      expect(balance, Decimal.parse('97.50'));
+    });
+
+    test('uses only account amount for balance calculation', () {
+      // Given
+      final entry = createEntry(
+        accountAmount: '85.32',
+        transactionAmount: '10000',
+        valuationAmount: '0.01',
+      );
+
+      // When
+      final balance = calculate([entry]);
+
+      // Then
+      expect(balance, Decimal.parse('85.32'));
+    });
+
+    test('produces the same balance regardless of entry order', () {
+      // Given
+      final first = createEntry(accountAmount: '100.25');
+      final second = createEntry(accountAmount: '20.10', incoming: false);
+      final third = createEntry(accountAmount: '5.35');
+
+      // When
+      final forward = calculate([first, second, third]);
+      final reversed = calculate([third, second, first]);
+
+      // Then
+      expect(forward, Decimal.parse('85.50'));
+      expect(reversed, forward);
     });
   });
 }

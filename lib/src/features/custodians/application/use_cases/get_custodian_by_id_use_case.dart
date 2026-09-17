@@ -5,7 +5,7 @@ import 'package:axiom/src/features/custodians/domain/failures/custodian_failure.
 import 'package:axiom/src/features/custodians/domain/repositories/custodian_repository.dart';
 
 /// Retrieves an active persisted custodian by identifier.
-final class GetCustodianByIdUseCase {
+class GetCustodianByIdUseCase {
   /// Creates a use case backed by [repository].
   GetCustodianByIdUseCase(this._repository);
 

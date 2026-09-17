@@ -20,7 +20,7 @@ import 'package:decimal/decimal.dart';
 /// - the signed account balance on success;
 /// - [AccountNotFoundFailure] when the account does not exist; or
 /// - a failure returned by either feature use case.
-final class GetAccountBalanceService {
+class GetAccountBalanceService {
   /// Creates an account balance service with its required dependencies.
   const GetAccountBalanceService({
     required GetAccountByIdUseCase getAccountById,

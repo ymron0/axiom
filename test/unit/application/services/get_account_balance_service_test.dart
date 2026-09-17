@@ -2,6 +2,7 @@
 library;
 
 import 'package:axiom/src/application/services/get_account_balance_service.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/accounts/domain/entities/account.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
@@ -114,9 +115,7 @@ void main() {
     test('propagates account lookup failures', () async {
       // Given
       const failure = AccountNotFoundFailure(message: 'account read failed');
-      when(
-        () => getAccountById(account.id),
-      ).thenAnswer((_) async => failure);
+      when(() => getAccountById(account.id)).thenAnswer((_) async => failure);
 
       // When
       final result = await service(account.id);
@@ -143,6 +142,95 @@ void main() {
 
       // Then
       expect(result.failureOrNull, same(failure));
+    });
+
+    test('calculates using the persisted account denomination', () async {
+      // Given
+      final accountAmount = AssetAmount.incoming(
+        assetId: account.denominationAssetId,
+        amount: Decimal.parse('42.75'),
+      );
+
+      final entry = LedgerEntry(
+        accountId: account.id,
+        transactionAmount: accountAmount,
+        accountAmount: accountAmount,
+        valuationAmount: accountAmount,
+        role: LedgerEntryRole.primary,
+      );
+
+      when(
+        () => getAccountById(account.id),
+      ).thenAnswer((_) async => Success<Account?>(account));
+
+      when(
+        () => getLedgerEntriesByAccountId(account.id),
+      ).thenAnswer((_) async => Success<List<LedgerEntry>>([entry]));
+
+      // When
+      final result = await service(account.id);
+
+      // Then
+      expect(result.valueOrNull, Decimal.parse('42.75'));
+
+      verify(() => getAccountById(account.id)).called(1);
+      verify(() => getLedgerEntriesByAccountId(account.id)).called(1);
+    });
+
+    test('rejects a ledger entry using another account denomination', () async {
+      // Given
+      final otherAssetId = AssetId.fromString('asset-other');
+
+      final transactionAmount = AssetAmount.incoming(
+        assetId: otherAssetId,
+        amount: Decimal.parse('10'),
+      );
+
+      final entry = LedgerEntry(
+        accountId: account.id,
+        transactionAmount: transactionAmount,
+        accountAmount: transactionAmount,
+        valuationAmount: transactionAmount,
+        role: LedgerEntryRole.primary,
+      );
+
+      when(
+        () => getAccountById(account.id),
+      ).thenAnswer((_) async => Success<Account?>(account));
+
+      when(
+        () => getLedgerEntriesByAccountId(account.id),
+      ).thenAnswer((_) async => Success<List<LedgerEntry>>([entry]));
+
+      // When / Then
+      expect(() => service(account.id), throwsArgumentError);
+    });
+
+    test('rejects an unknown account amount', () async {
+      // Given
+      final unknownAmount = AssetAmount.incoming(
+        assetId: account.denominationAssetId,
+        amount: Decimal.fromInt(-1),
+      );
+
+      final entry = LedgerEntry(
+        accountId: account.id,
+        transactionAmount: unknownAmount,
+        accountAmount: unknownAmount,
+        valuationAmount: unknownAmount,
+        role: LedgerEntryRole.primary,
+      );
+
+      when(
+        () => getAccountById(account.id),
+      ).thenAnswer((_) async => Success<Account?>(account));
+
+      when(
+        () => getLedgerEntriesByAccountId(account.id),
+      ).thenAnswer((_) async => Success<List<LedgerEntry>>([entry]));
+
+      // When / Then
+      expect(() => service(account.id), throwsArgumentError);
     });
   });
 }
