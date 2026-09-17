@@ -113,5 +113,37 @@ void main() {
         throwsA(isA<ArgumentError>()),
       );
     });
+
+    test('produces the same balance regardless of allocation order', () {
+      // Given
+      final first = AssetAmount.incoming(
+        assetId: chf,
+        amount: Decimal.parse('100.25'),
+      );
+      final second = AssetAmount.outgoing(
+        assetId: chf,
+        amount: Decimal.parse('20.10'),
+      );
+      final third = AssetAmount.incoming(
+        assetId: chf,
+        amount: Decimal.parse('5.35'),
+      );
+
+      // When
+      final forward = calculator.calculate(
+        valuationCurrencyId: chf,
+        allocationAmounts: [first, second, third],
+      );
+
+      final reversed = calculator.calculate(
+        valuationCurrencyId: chf,
+        allocationAmounts: [third, second, first],
+      );
+
+      // Then
+      expect(forward.amount, Decimal.parse('85.50'));
+      expect(forward.direction, reversed.direction);
+      expect(reversed.amount, forward.amount);
+    });
   });
 }

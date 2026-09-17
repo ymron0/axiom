@@ -5,7 +5,7 @@ import 'package:axiom/src/features/transactions/domain/repositories/transaction_
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_repository.dart';
 
 /// Retrieves active persisted transactions matching query criteria.
-final class QueryTransactionsUseCase {
+class QueryTransactionsUseCase {
   /// Creates a use case backed by [repository].
   QueryTransactionsUseCase(this._repository);
 
