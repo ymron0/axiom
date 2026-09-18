@@ -1,3 +1,4 @@
+import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_reader.dart';
@@ -51,6 +52,77 @@ DateTime readPersistenceDateTime(PersistenceRecordReader reader, String field) {
     throw PersistenceRecordException(
       field: field,
       reason: 'Expected a UTC ISO-8601 timestamp.',
+    );
+  }
+}
+
+/// Reads an optional UTC ISO-8601 timestamp.
+DateTime? readOptionalUtcDateTime(
+  PersistenceRecordReader reader,
+  String field,
+) {
+  final value = reader.optionalString(field);
+
+  if (value == null) {
+    return null;
+  }
+
+  try {
+    final parsed = DateTime.parse(value);
+
+    if (!parsed.isUtc) {
+      throw const FormatException();
+    }
+
+    return parsed.toUtc();
+  } on FormatException {
+    throw PersistenceRecordException(
+      field: field,
+      reason: 'Expected a UTC ISO-8601 timestamp.',
+    );
+  }
+}
+
+/// Reads an optional `YYYY-MM-DD` calendar date.
+CalendarDate? readOptionalCalendarDate(
+  PersistenceRecordReader reader,
+  String field,
+) {
+  final value = reader.optionalString(field);
+
+  if (value == null) {
+    return null;
+  }
+
+  return readCalendarDate(value, field: field);
+}
+
+/// Parses a `YYYY-MM-DD` calendar date.
+CalendarDate readCalendarDate(String value, {required String field}) {
+  final match = RegExp(r'^(-?\d+)-(\d{2})-(\d{2})$').firstMatch(value);
+
+  if (match == null) {
+    throw PersistenceRecordException(
+      field: field,
+      reason: 'Expected a calendar date in YYYY-MM-DD format.',
+    );
+  }
+
+  try {
+    final year = int.parse(match.group(1)!);
+    final month = int.parse(match.group(2)!);
+    final day = int.parse(match.group(3)!);
+
+    return CalendarDate(year, month, day);
+  } on FormatException {
+    throw PersistenceRecordException(
+      field: field,
+      reason: 'Expected a valid calendar date.',
+    );
+  } on ArgumentError {
+    throw PersistenceRecordException(
+      field: field,
+      reason: 'Expected a valid calendar date.',
     );
   }
 }

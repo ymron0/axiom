@@ -16,6 +16,7 @@ abstract final class SembastStores {
   static const String ratesName = 'rates';
   static const String merchantsName = 'merchants';
   static const String transactionsName = 'transactions';
+  static const String transactionSeriesName = 'transactionSeries';
   static const String accountsName = 'accounts';
   static const String custodiansName = 'custodians';
   static const String categoriesName = 'categories';
@@ -30,6 +31,7 @@ abstract final class SembastStores {
     ratesName,
     merchantsName,
     transactionsName,
+    transactionSeriesName,
     accountsName,
     custodiansName,
     categoriesName,
@@ -50,6 +52,9 @@ abstract final class SembastStores {
 
   static final StoreRef<String, Map<String, Object?>> transactions =
       stringMapStoreFactory.store(transactionsName);
+
+  static final StoreRef<String, Map<String, Object?>> transactionSeries =
+      stringMapStoreFactory.store(transactionSeriesName);
 
   static final StoreRef<String, Map<String, Object?>> accounts =
       stringMapStoreFactory.store(accountsName);
@@ -76,6 +81,7 @@ abstract final class SembastStores {
           rates,
           merchants,
           transactions,
+          transactionSeries,
           accounts,
           custodians,
           categories,

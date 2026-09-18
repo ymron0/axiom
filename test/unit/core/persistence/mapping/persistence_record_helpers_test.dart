@@ -1,6 +1,7 @@
 @Tags(['core', 'persistence'])
 library;
 
+import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_helpers.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_reader.dart';
@@ -182,6 +183,128 @@ void main() {
             _persistenceRecordException(
               field: 'createdAt',
               reason: 'Required field cannot be null.',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('readOptionalUtcDateTime', () {
+      test('returns null for an absent timestamp', () {
+        const reader = PersistenceRecordReader({});
+
+        expect(readOptionalUtcDateTime(reader, 'archivedAt'), isNull);
+      });
+
+      test('returns a parsed UTC timestamp', () {
+        const reader = PersistenceRecordReader({
+          'archivedAt': '2026-09-16T10:20:30.000Z',
+        });
+
+        final result = readOptionalUtcDateTime(reader, 'archivedAt');
+
+        expect(result, DateTime.utc(2026, 9, 16, 10, 20, 30));
+        expect(result!.isUtc, isTrue);
+      });
+
+      test('throws for a timestamp without an explicit UTC designator', () {
+        const reader = PersistenceRecordReader({
+          'archivedAt': '2026-09-16T10:20:30',
+        });
+
+        expect(
+          () => readOptionalUtcDateTime(reader, 'archivedAt'),
+          throwsA(
+            _persistenceRecordException(
+              field: 'archivedAt',
+              reason: 'Expected a UTC ISO-8601 timestamp.',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('readOptionalCalendarDate', () {
+      test('returns null for a null date', () {
+        const reader = PersistenceRecordReader({'effectiveUntil': null});
+
+        expect(readOptionalCalendarDate(reader, 'effectiveUntil'), isNull);
+      });
+
+      test('returns a parsed calendar date', () {
+        const reader = PersistenceRecordReader({
+          'effectiveUntil': '2026-09-16',
+        });
+
+        expect(
+          readOptionalCalendarDate(reader, 'effectiveUntil'),
+          CalendarDate(2026, 9, 16),
+        );
+      });
+
+      test('throws for a malformed calendar date', () {
+        const reader = PersistenceRecordReader({
+          'effectiveUntil': '2026-9-16',
+        });
+
+        expect(
+          () => readOptionalCalendarDate(reader, 'effectiveUntil'),
+          throwsA(
+            _persistenceRecordException(
+              field: 'effectiveUntil',
+              reason: 'Expected a calendar date in YYYY-MM-DD format.',
+            ),
+          ),
+        );
+      });
+
+      test('throws for invalid calendar components', () {
+        const reader = PersistenceRecordReader({
+          'effectiveUntil': '2026-02-30',
+        });
+
+        expect(
+          () => readOptionalCalendarDate(reader, 'effectiveUntil'),
+          throwsA(
+            _persistenceRecordException(
+              field: 'effectiveUntil',
+              reason: 'Expected a valid calendar date.',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('readCalendarDate', () {
+      test('returns a parsed calendar date', () {
+        expect(
+          readCalendarDate('2026-09-16', field: 'startsOn'),
+          CalendarDate(2026, 9, 16),
+        );
+      });
+
+      test('throws for a timestamp representation', () {
+        expect(
+          () => readCalendarDate(
+            '2026-09-16T00:00:00.000Z',
+            field: 'startsOn',
+          ),
+          throwsA(
+            _persistenceRecordException(
+              field: 'startsOn',
+              reason: 'Expected a calendar date in YYYY-MM-DD format.',
+            ),
+          ),
+        );
+      });
+
+      test('throws for invalid calendar components', () {
+        expect(
+          () => readCalendarDate('2026-13-01', field: 'startsOn'),
+          throwsA(
+            _persistenceRecordException(
+              field: 'startsOn',
+              reason: 'Expected a valid calendar date.',
             ),
           ),
         );

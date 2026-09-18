@@ -12,6 +12,7 @@ void main() {
       expect(SembastStores.ratesName, 'rates');
       expect(SembastStores.merchantsName, 'merchants');
       expect(SembastStores.transactionsName, 'transactions');
+      expect(SembastStores.transactionSeriesName, 'transactionSeries');
       expect(SembastStores.accountsName, 'accounts');
       expect(SembastStores.custodiansName, 'custodians');
       expect(SembastStores.categoriesName, 'categories');
@@ -19,29 +20,24 @@ void main() {
     });
 
     test('registers every current application store', () {
-      expect(
-        SembastStores.allNames,
-        <String>[
-          'assets',
-          'settings',
-          'rates',
-          'merchants',
-          'transactions',
-          'accounts',
-          'custodians',
-          'categories',
-          'jars',
-        ],
-      );
+      expect(SembastStores.allNames, <String>[
+        'assets',
+        'settings',
+        'rates',
+        'merchants',
+        'transactions',
+        'transactionSeries',
+        'accounts',
+        'custodians',
+        'categories',
+        'jars',
+      ]);
     });
 
     test('store names are unique', () {
       final uniqueNames = SembastStores.allNames.toSet();
 
-      expect(
-        uniqueNames.length,
-        SembastStores.allNames.length,
-      );
+      expect(uniqueNames.length, SembastStores.allNames.length);
     });
 
     test('store references use their declared names', () {
@@ -49,9 +45,10 @@ void main() {
       expect(SembastStores.settings.name, SembastStores.settingsName);
       expect(SembastStores.rates.name, SembastStores.ratesName);
       expect(SembastStores.merchants.name, SembastStores.merchantsName);
+      expect(SembastStores.transactions.name, SembastStores.transactionsName);
       expect(
-        SembastStores.transactions.name,
-        SembastStores.transactionsName,
+        SembastStores.transactionSeries.name,
+        SembastStores.transactionSeriesName,
       );
       expect(SembastStores.accounts.name, SembastStores.accountsName);
       expect(SembastStores.custodians.name, SembastStores.custodiansName);
@@ -64,10 +61,7 @@ void main() {
           .map((store) => store.name)
           .toList(growable: false);
 
-      expect(
-        registeredNames,
-        SembastStores.allNames,
-      );
+      expect(registeredNames, SembastStores.allNames);
     });
 
     test('all store registry cannot be modified', () {
