@@ -28,7 +28,7 @@ import 'package:axiom/src/features/transactions/domain/value_objects/recurrence_
 import 'package:axiom/src/features/transactions/domain/value_objects/recurrence_rule.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_template.dart';
-import 'package:axiom/src/src/features/transactions/data/repositories/sembast_transaction_series_repository_impl.dart';
+import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_series_repository_impl.dart';
 import 'package:decimal/decimal.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';

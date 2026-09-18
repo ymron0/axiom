@@ -3,7 +3,7 @@ library;
 
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/src/features/transactions/application/use_cases/transaction_series_exist_by_category_id_use_case.dart';
+import 'package:axiom/src/features/transactions/application/use_cases/transaction_series_exist_by_category_id_use_case.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
