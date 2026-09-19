@@ -1,4 +1,5 @@
 import 'package:axiom/src/application/di/services/validate_transaction_allocations_service_provider.dart';
+import 'package:axiom/src/application/di/services/validate_transaction_tags_service_provider.dart';
 import 'package:axiom/src/application/services/create_transaction_service.dart';
 import 'package:axiom/src/core/di/clock_provider.dart';
 import 'package:axiom/src/features/transactions/di/create_transaction_use_case_provider.dart';
@@ -15,5 +16,6 @@ CreateTransactionService createTransactionService(Ref ref) {
     validateAllocations: ref.watch(
       validateTransactionAllocationsServiceProvider,
     ),
+    validateTags: ref.watch(validateTransactionTagsServiceProvider),
   );
 }

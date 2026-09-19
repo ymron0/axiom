@@ -361,6 +361,17 @@ void main() {
 
         expect(notArchived.failureOrNull, isA<TagNotArchivedFailure>());
       });
+
+      test('returns not-found when unarchiving a missing tag', () async {
+        // Given
+        final missing = TagId.fromString('unarchive-missing');
+
+        // When
+        final result = await repository.unarchive(missing, unarchivedAt);
+
+        // Then
+        expect(result.failureOrNull, isA<TagNotFoundFailure>());
+      });
     });
 
     group('delete and restore', () {

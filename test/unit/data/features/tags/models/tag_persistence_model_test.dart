@@ -5,15 +5,14 @@ import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
 import 'package:axiom/src/features/tags/data/models/tag_persistence_model.dart';
 import 'package:axiom/src/features/tags/domain/entities/tag.dart';
+import 'package:axiom/src/features/tags/domain/validation/tag_name_normalization.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('TagPersistenceModel', () {
-    test('round-trips an active tag', () {
-      // Given
-      final tag = _tag(id: 'tag-business', name: 'Business');
+    test('round-trips active tag', () {
+      final tag = _tag(id: 'business', name: 'Business');
 
-      // When
       final model = TagPersistenceModel.fromEntity(tag);
       final record = model.toRecord();
 
@@ -22,107 +21,165 @@ void main() {
         record: record,
       ).toEntity();
 
-      // Then
       expect(restored, tag);
     });
 
-    test('round-trips archival and deletion metadata', () {
-      // Given
+    test('persists canonical normalized name key', () {
+      final tag = _tag(id: 'business', name: 'Business Trip');
+
+      final model = TagPersistenceModel.fromEntity(tag);
+      final record = model.toRecord();
+
+      expect(model.nameKey, 'business trip');
+
+      expect(record[TagPersistenceModel.nameKeyField], 'business trip');
+    });
+
+    test('accepts legacy record without nameKey', () {
+      final tag = _tag(id: 'legacy', name: 'Business Trip');
+
+      final record = TagPersistenceModel.fromEntity(tag).toRecord()
+        ..remove(TagPersistenceModel.nameKeyField);
+
+      final model = TagPersistenceModel.fromRecord(
+        recordKey: tag.id.value,
+        record: record,
+      );
+
+      expect(model.nameKey, tagNameKey(tag.name));
+      expect(model.toEntity(), tag);
+    });
+
+    test('rejects persisted nameKey inconsistent with name', () {
+      final tag = _tag(id: 'corrupt', name: 'Business');
+
+      final record = TagPersistenceModel.fromEntity(tag).toRecord();
+
+      record[TagPersistenceModel.nameKeyField] = 'personal';
+
+      expect(
+        () => TagPersistenceModel.fromRecord(
+          recordKey: tag.id.value,
+          record: record,
+        ),
+        throwsA(
+          isA<PersistenceRecordException>().having(
+            (error) => error.field,
+            'field',
+            TagPersistenceModel.nameKeyField,
+          ),
+        ),
+      );
+    });
+
+    test('rejects invalid persisted name before index derivation', () {
+      final tag = _tag(id: 'blank');
+
+      final record = TagPersistenceModel.fromEntity(tag).toRecord();
+
+      record[TagPersistenceModel.nameField] = '   ';
+      record.remove(TagPersistenceModel.nameKeyField);
+
+      expect(
+        () => TagPersistenceModel.fromRecord(
+          recordKey: tag.id.value,
+          record: record,
+        ),
+        throwsA(isA<PersistenceRecordException>()),
+      );
+    });
+
+    test('round-trips lifecycle metadata', () {
       final archivedAt = DateTime.utc(2026, 1, 2);
       final deletedAt = DateTime.utc(2026, 1, 3);
 
       final tag = _tag(
-        id: 'tag-lifecycle',
+        id: 'lifecycle',
         archivedAt: archivedAt,
         deletedAt: deletedAt,
         modifiedAt: archivedAt,
       );
 
-      // When
       final restored = TagPersistenceModel.fromRecord(
         recordKey: tag.id.value,
         record: TagPersistenceModel.fromEntity(tag).toRecord(),
       ).toEntity();
 
-      // Then
       expect(restored.archivedAt, archivedAt);
       expect(restored.deletedAt, deletedAt);
     });
 
-    test('canonicalizes persisted timestamps to UTC', () {
-      // Given
+    test('writes timestamps in UTC', () {
       final tag = Tag(
-        id: TagId.fromString('tag-time'),
+        id: TagId.fromString('time'),
         name: 'Time',
         createdAt: DateTime.parse('2026-01-01T10:00:00+01:00'),
         modifiedAt: DateTime.parse('2026-01-01T11:00:00+01:00'),
         entityVersion: 1,
       );
 
-      // When
       final record = TagPersistenceModel.fromEntity(tag).toRecord();
 
-      // Then
       expect(record['createdAt'], '2026-01-01T09:00:00.000Z');
       expect(record['modifiedAt'], '2026-01-01T10:00:00.000Z');
     });
 
-    test('rejects malformed persisted timestamps', () {
-      // Given
-      final record = TagPersistenceModel.fromEntity(
-        _tag(id: 'tag-invalid'),
-      ).toRecord();
+    test('rejects malformed timestamp', () {
+      final tag = _tag(id: 'invalid-date');
 
-      // When / Then
+      final record = TagPersistenceModel.fromEntity(tag).toRecord();
+
+      record['createdAt'] = 'not-a-date';
+
       expect(
         () => TagPersistenceModel.fromRecord(
-          recordKey: 'tag-invalid',
-          record: <String, Object?>{...record, 'createdAt': 'not-a-date'},
+          recordKey: tag.id.value,
+          record: record,
         ),
         throwsA(isA<PersistenceRecordException>()),
       );
     });
 
     test('rejects non-positive entity version', () {
-      // Given
-      final record = TagPersistenceModel.fromEntity(
-        _tag(id: 'tag-version'),
-      ).toRecord();
+      final tag = _tag(id: 'invalid-version');
 
-      // When / Then
+      final record = TagPersistenceModel.fromEntity(tag).toRecord();
+
+      record['entityVersion'] = 0;
+
       expect(
         () => TagPersistenceModel.fromRecord(
-          recordKey: 'tag-version',
-          record: <String, Object?>{...record, 'entityVersion': 0},
+          recordKey: tag.id.value,
+          record: record,
         ),
         throwsA(isA<PersistenceRecordException>()),
       );
     });
 
-    test('translates an invalid persisted identity', () {
-      // Given
+    test('translates invalid persisted identity during toEntity', () {
+      final tag = _tag(id: 'valid');
+
       final model = TagPersistenceModel.fromRecord(
         recordKey: '',
-        record: TagPersistenceModel.fromEntity(_tag(id: 'valid')).toRecord(),
+        record: TagPersistenceModel.fromEntity(tag).toRecord(),
       );
 
-      // When / Then
       expect(model.toEntity, throwsA(isA<PersistenceRecordException>()));
     });
 
-    test('re-applies tag name normalization during reconstruction', () {
-      // Given
-      final record = TagPersistenceModel.fromEntity(
-        _tag(id: 'tag-normalized'),
-      ).toRecord();
+    test('normalizes persisted display name during reconstruction', () {
+      final tag = _tag(id: 'normalize');
 
-      // When
+      final record = TagPersistenceModel.fromEntity(tag).toRecord();
+
+      record[TagPersistenceModel.nameField] = '  Business   Trip ';
+      record.remove(TagPersistenceModel.nameKeyField);
+
       final restored = TagPersistenceModel.fromRecord(
-        recordKey: 'tag-normalized',
-        record: <String, Object?>{...record, 'name': '  Business   Trip  '},
+        recordKey: tag.id.value,
+        record: record,
       ).toEntity();
 
-      // Then
       expect(restored.name, 'Business Trip');
     });
   });

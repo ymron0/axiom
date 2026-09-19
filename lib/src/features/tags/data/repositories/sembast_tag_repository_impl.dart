@@ -23,41 +23,28 @@ import 'package:sembast/sembast.dart';
 
 /// Persists tags in [SembastStores.tags].
 ///
-/// ## Identity
+/// Tag identity is represented by the Sembast record key.
 ///
-/// [Tag.id] is used directly as the Sembast record key.
+/// Names are indexed through the persisted canonical
+/// [TagPersistenceModel.nameKeyField]. Current records can therefore be located
+/// directly by canonical name.
 ///
-/// ## Name uniqueness
+/// Records created before the name key was introduced remain readable. Name
+/// lookup performs a fallback scan over legacy records lacking that field.
 ///
-/// Tag names are unique according to [tagNameKey]. Archived tags remain
-/// persisted and therefore continue reserving their normalized name.
+/// A conflicting or inconsistent persisted name key is treated as corruption
+/// and translated to [TagPersistenceFailure].
 ///
-/// Name checks and writes occur inside the same Sembast transaction so the
-/// repository cannot observe one state and write against another state within
-/// this store.
-///
-/// ## Deletion
-///
-/// Tag deletion is physical. Deleted snapshots are returned to the caller but
-/// are not retained in persistence.
-///
-/// Cross-feature transaction reference checks deliberately do not belong here.
-/// The coordinating application operation must establish that a tag is unused
-/// before calling [delete].
-///
-/// ## Failure translation
-///
-/// Persistence infrastructure failures and malformed persisted records are
-/// translated to [TagPersistenceFailure].
+/// Tag deletion is physical. Cross-feature transaction usage validation occurs
+/// before [delete], outside this repository.
 final class SembastTagRepositoryImpl implements TagRepository {
   static final StoreRef<String, PersistenceRecord> _store = SembastStores.tags;
 
   final Database _database;
 
-  /// Creates a tag repository backed by an already-open [database].
+  /// Creates a repository backed by an already validated database.
   SembastTagRepositoryImpl({required Database database})
-    : _database = // ignore: prefer_initializing_formals
-          database;
+    : _database = database; // ignore: prefer_initializing_formals
 
   @override
   Future<Result<Tag, TagFailure>> archive(TagId id, DateTime archivedAt) {
@@ -84,7 +71,7 @@ final class SembastTagRepositoryImpl implements TagRepository {
             );
           }
 
-          final archivedTag = _withArchivedAt(
+          final archived = _withArchivedAt(
             tag,
             archivedAt: archivedAt,
             modifiedAt: archivedAt,
@@ -92,10 +79,10 @@ final class SembastTagRepositoryImpl implements TagRepository {
 
           await record.put(
             transaction,
-            TagPersistenceModel.fromEntity(archivedTag).toRecord(),
+            TagPersistenceModel.fromEntity(archived).toRecord(),
           );
 
-          return Success(archivedTag);
+          return Success(archived);
         });
       },
       persistenceFailure: _persistenceFailure,
@@ -130,16 +117,14 @@ final class SembastTagRepositoryImpl implements TagRepository {
             );
           }
 
-          final conflictingTag = await _findByNameKey(
+          final conflict = await _findByNameKey(
             transaction,
             tagNameKey(tag.name),
           );
 
-          if (conflictingTag != null) {
+          if (conflict != null) {
             return TagNameAlreadyExistsFailure(
-              message:
-                  'Tag name already exists: '
-                  '${tag.name}',
+              message: 'Tag name already exists: ${tag.name}',
             );
           }
 
@@ -175,11 +160,11 @@ final class SembastTagRepositoryImpl implements TagRepository {
             record: persistedRecord,
           );
 
-          final deletedTag = _withDeletedAt(tag, createClock().nowUtc);
+          final deleted = _withDeletedAt(tag, createClock().nowUtc);
 
           await record.delete(transaction);
 
-          return Success(deletedTag);
+          return Success(deleted);
         });
       },
       persistenceFailure: _persistenceFailure,
@@ -221,7 +206,9 @@ final class SembastTagRepositoryImpl implements TagRepository {
           return const Success(null);
         }
 
-        return Success(_tagFromRecord(recordKey: id.value, record: record));
+        return Success<Tag?>(
+          _tagFromRecord(recordKey: id.value, record: record),
+        );
       },
       persistenceFailure: _persistenceFailure,
       failureMessage: 'Failed to read tag.',
@@ -283,37 +270,35 @@ final class SembastTagRepositoryImpl implements TagRepository {
       );
     }
 
-    final restoredTag = _withDeletedAt(tag, null);
+    final restored = _withDeletedAt(tag, null);
 
     return guardPersistenceOperation<void, TagFailure>(
       operation: () {
         return _database.transaction<Result<void, TagFailure>>((
           transaction,
         ) async {
-          final record = _store.record(tag.id.value);
+          final record = _store.record(restored.id.value);
 
           if (await record.exists(transaction)) {
             return TagAlreadyExistsFailure(
-              message: 'Tag ID already exists: ${tag.id.value}',
+              message: 'Tag ID already exists: ${restored.id.value}',
             );
           }
 
-          final conflictingTag = await _findByNameKey(
+          final conflict = await _findByNameKey(
             transaction,
-            tagNameKey(restoredTag.name),
+            tagNameKey(restored.name),
           );
 
-          if (conflictingTag != null) {
+          if (conflict != null) {
             return TagNameAlreadyExistsFailure(
-              message:
-                  'Tag name already exists: '
-                  '${restoredTag.name}',
+              message: 'Tag name already exists: ${restored.name}',
             );
           }
 
           await record.put(
             transaction,
-            TagPersistenceModel.fromEntity(restoredTag).toRecord(),
+            TagPersistenceModel.fromEntity(restored).toRecord(),
           );
 
           return const Success(null);
@@ -359,7 +344,7 @@ final class SembastTagRepositoryImpl implements TagRepository {
             );
           }
 
-          final unarchivedTag = _withArchivedAt(
+          final unarchived = _withArchivedAt(
             tag,
             archivedAt: null,
             modifiedAt: modifiedAt,
@@ -367,10 +352,10 @@ final class SembastTagRepositoryImpl implements TagRepository {
 
           await record.put(
             transaction,
-            TagPersistenceModel.fromEntity(unarchivedTag).toRecord(),
+            TagPersistenceModel.fromEntity(unarchived).toRecord(),
           );
 
-          return Success(unarchivedTag);
+          return Success(unarchived);
         });
       },
       persistenceFailure: _persistenceFailure,
@@ -397,17 +382,15 @@ final class SembastTagRepositoryImpl implements TagRepository {
             return _notFound(tag.id);
           }
 
-          final conflictingTag = await _findByNameKey(
+          final conflict = await _findByNameKey(
             transaction,
             tagNameKey(tag.name),
             excludingId: tag.id,
           );
 
-          if (conflictingTag != null) {
+          if (conflict != null) {
             return TagNameAlreadyExistsFailure(
-              message:
-                  'Tag name already exists: '
-                  '${tag.name}',
+              message: 'Tag name already exists: ${tag.name}',
             );
           }
 
@@ -424,7 +407,6 @@ final class SembastTagRepositoryImpl implements TagRepository {
     );
   }
 
-  /// Reads all persisted tags satisfying [matches].
   Future<Result<List<Tag>, TagFailure>> _readMatching({
     required bool Function(Tag tag) matches,
     required String failureMessage,
@@ -440,57 +422,82 @@ final class SembastTagRepositoryImpl implements TagRepository {
     );
   }
 
-  /// Finds the tag owning [nameKey].
+  /// Locates the owner of [nameKey].
   ///
-  /// [excludingId] is ignored while checking uniqueness during an update.
+  /// Current records use a direct persisted-field filter.
+  ///
+  /// Legacy records lacking the field are scanned separately. This preserves
+  /// compatibility with records created before the index field existed while
+  /// still detecting cross-version uniqueness conflicts.
   static Future<Tag?> _findByNameKey(
     DatabaseClient databaseClient,
     String nameKey, {
     TagId? excludingId,
   }) async {
-    final tags = await _loadAllTags(databaseClient);
+    Tag? found;
 
-    for (final tag in tags) {
-      if (excludingId != null && tag.id == excludingId) {
+    void consider(Tag candidate) {
+      if (excludingId != null && candidate.id == excludingId) {
+        return;
+      }
+
+      if (found != null && found!.id != candidate.id) {
+        throw const PersistenceRecordException(
+          field: TagPersistenceModel.nameKeyField,
+          reason: 'More than one persisted tag owns the same name index key.',
+        );
+      }
+
+      found = candidate;
+    }
+
+    final indexedSnapshots = await _store.find(
+      databaseClient,
+      finder: Finder(
+        filter: Filter.equals(TagPersistenceModel.nameKeyField, nameKey),
+      ),
+    );
+
+    for (final snapshot in indexedSnapshots) {
+      consider(_tagFromSnapshot(snapshot));
+    }
+
+    // Compatibility path for records persisted before `nameKey` existed.
+    final allSnapshots = await _store.find(databaseClient);
+
+    for (final snapshot in allSnapshots) {
+      if (snapshot.value.containsKey(TagPersistenceModel.nameKeyField)) {
         continue;
       }
 
+      final tag = _tagFromSnapshot(snapshot);
+
       if (tagNameKey(tag.name) == nameKey) {
-        return tag;
+        consider(tag);
       }
     }
 
-    return null;
+    return found;
   }
 
-  /// Loads all persisted tag entities.
   static Future<List<Tag>> _loadAllTags(DatabaseClient databaseClient) async {
     final snapshots = await _store.find(databaseClient);
 
     return snapshots.map(_tagFromSnapshot).toList(growable: false);
   }
 
-  /// Creates a typed missing-tag failure.
   static TagNotFoundFailure _notFound(TagId id) {
     return TagNotFoundFailure(message: 'Tag ID was not found: ${id.value}');
   }
 
-  /// Creates the typed infrastructure failure exposed through [TagRepository].
   static TagPersistenceFailure _persistenceFailure(String message) {
     return TagPersistenceFailure(message: message);
   }
 
-  /// Normalizes free-form search text.
-  ///
-  /// Unlike [tagNameKey], an empty search string is valid and therefore
-  /// matches every tag.
   static String _searchKey(String query) {
     return query.trim().replaceAll(RegExp(r'\s+'), ' ').toLowerCase();
   }
 
-  /// Converts persisted data into a valid active or archived tag.
-  ///
-  /// Deleted tags must never remain in the store because deletion is physical.
   static Tag _tagFromRecord({
     required String recordKey,
     required PersistenceRecord record,
@@ -510,14 +517,12 @@ final class SembastTagRepositoryImpl implements TagRepository {
     return tag;
   }
 
-  /// Converts one Sembast snapshot into a tag.
   static Tag _tagFromSnapshot(
     RecordSnapshot<String, PersistenceRecord> snapshot,
   ) {
     return _tagFromRecord(recordKey: snapshot.key, record: snapshot.value);
   }
 
-  /// Creates a tag snapshot with a changed archival state.
   static Tag _withArchivedAt(
     Tag tag, {
     required DateTime? archivedAt,
@@ -534,7 +539,6 @@ final class SembastTagRepositoryImpl implements TagRepository {
     );
   }
 
-  /// Creates a tag snapshot with a changed deletion state.
   static Tag _withDeletedAt(Tag tag, DateTime? deletedAt) {
     return Tag(
       id: tag.id,

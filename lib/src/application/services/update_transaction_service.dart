@@ -1,30 +1,67 @@
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
+import 'package:axiom/src/application/services/validate_transaction_tags_service.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/transactions/application/use_cases/get_transaction_by_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_failure.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_not_found_failure.dart';
 
-/// Updates a transaction after validating its cross-feature allocations.
+/// Updates a transaction after validating cross-feature references.
+///
+/// The persisted transaction is loaded first so archived tags can remain
+/// attached without allowing them to be introduced as new assignments.
 final class UpdateTransactionService {
-  /// Creates a transaction update workflow using the supplied dependencies.
-  const UpdateTransactionService({
-    required UpdateTransactionUseCase updateTransaction,
-    required ValidateTransactionAllocationsService validateAllocations,
-  }) : _updateTransaction = // ignore: prefer_initializing_formals
-           updateTransaction,
-       _validateAllocations = // ignore: prefer_initializing_formals
-           validateAllocations;
-
+  final GetTransactionByIdUseCase _getTransactionById;
   final UpdateTransactionUseCase _updateTransaction;
   final ValidateTransactionAllocationsService _validateAllocations;
+  final ValidateTransactionTagsService _validateTags;
+
+  /// Creates a transaction update workflow.
+  const UpdateTransactionService({
+    required GetTransactionByIdUseCase getTransactionById,
+    required UpdateTransactionUseCase updateTransaction,
+    required ValidateTransactionAllocationsService validateAllocations,
+    required ValidateTransactionTagsService validateTags,
+  }) : _getTransactionById = // ignore: prefer_initializing_formals
+           getTransactionById,
+       _updateTransaction = // ignore: prefer_initializing_formals
+           updateTransaction,
+       _validateAllocations = // ignore: prefer_initializing_formals
+           validateAllocations,
+       _validateTags = validateTags; // ignore: prefer_initializing_formals
 
   /// Validates and persists [transaction].
-  ///
-  /// Returns failures from allocation validation or transaction persistence.
   Future<Result<void, BaseFailure>> call(Transaction transaction) async {
-    final validationResult = await _validateAllocations(transaction);
+    final existingResult = await _getTransactionById(transaction.id);
 
-    if (validationResult case final Failure<BaseFailure> failure) {
+    if (existingResult case final Failure<TransactionFailure> failure) {
+      return failure;
+    }
+
+    final existing = existingResult.valueOrNull;
+
+    if (existing == null) {
+      return TransactionNotFoundFailure(
+        message:
+            'Transaction ID was not found: '
+            '${transaction.id.value}',
+      );
+    }
+
+    final allocationResult = await _validateAllocations(transaction);
+
+    if (allocationResult case final Failure<BaseFailure> failure) {
+      return failure;
+    }
+
+    final tagResult = await _validateTags.validateForUpdate(
+      previousTagIds: existing.tagIds,
+      nextTagIds: transaction.tagIds,
+    );
+
+    if (tagResult case final Failure<BaseFailure> failure) {
       return failure;
     }
 

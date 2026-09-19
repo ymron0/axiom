@@ -3,10 +3,12 @@ library;
 
 import 'package:axiom/src/application/services/create_transaction_offset_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
+import 'package:axiom/src/application/services/validate_transaction_tags_service.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/tags/application/use_cases/get_tags_by_ids_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_offset_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_transaction_by_id_use_case.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
@@ -22,23 +24,28 @@ import 'package:test/test.dart';
 import '../../../fixtures/features/transactions/transaction_offset_fixtures.dart';
 import '../../../mocks/get_category_by_id_use_case_mock.dart';
 import '../../../mocks/get_jar_by_id_use_case_mock.dart';
+import '../../../mocks/tag_repository_mock.dart';
 import '../../../mocks/transaction_repository_mock.dart';
 
 void main() {
   group('CreateTransactionOffsetService', () {
     late MockTransactionRepository repository;
+    late MockTagRepository tagRepository;
     late MockGetCategoryByIdUseCase getCategoryById;
     late MockGetJarByIdUseCase getJarById;
     late CreateTransactionOffsetService service;
 
     setUpAll(() {
       registerFallbackValue(CategoryId.fromString('fallback-category'));
+
       registerFallbackValue(JarId.fromString('fallback-jar'));
+
       registerFallbackValue(offsetTransactionFixture());
     });
 
     setUp(() {
       repository = MockTransactionRepository();
+      tagRepository = MockTagRepository();
       getCategoryById = MockGetCategoryByIdUseCase();
       getJarById = MockGetJarByIdUseCase();
 
@@ -52,6 +59,9 @@ void main() {
           getCategoryById: getCategoryById,
           getJarById: getJarById,
         ),
+        validateTags: ValidateTransactionTagsService(
+          getTagsByIds: GetTagsByIdsUseCase(tagRepository),
+        ),
         offsetPolicy: const TransactionOffsetPolicy(),
       );
     });
@@ -60,6 +70,7 @@ void main() {
       'creates reimbursement as actual income linked to original expense',
       () async {
         final original = offsetOriginalTransactionFixture();
+
         final command = transactionOffsetCommandFixture(
           originalTransactionId: original.id,
         );
@@ -92,6 +103,7 @@ void main() {
         final original = offsetOriginalTransactionFixture(
           kind: TransactionKind.income,
         );
+
         final command = transactionOffsetCommandFixture(
           originalTransactionId: original.id,
           transactionKind: TransactionKind.expense,
@@ -157,9 +169,11 @@ void main() {
 
     test('returns the persistence failure', () async {
       final original = offsetOriginalTransactionFixture();
+
       final command = transactionOffsetCommandFixture(
         originalTransactionId: original.id,
       );
+
       const failure = TransactionOffsetValidationFailure(
         message: 'persistence rejected offset',
       );
@@ -175,6 +189,7 @@ void main() {
       final result = await service(command);
 
       expect(result.failureOrNull, same(failure));
+
       verify(() => repository.createOffset(any())).called(1);
     });
   });

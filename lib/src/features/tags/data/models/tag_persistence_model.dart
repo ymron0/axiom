@@ -4,30 +4,30 @@ import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.
 import 'package:axiom/src/core/persistence/mapping/persistence_record_helpers.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_reader.dart';
 import 'package:axiom/src/features/tags/domain/entities/tag.dart';
+import 'package:axiom/src/features/tags/domain/validation/tag_name_normalization.dart';
 
 /// Persistence representation of one [Tag].
 ///
-/// The Sembast record key contains the tag identifier and is therefore not
-/// duplicated inside [toRecord].
+/// The tag ID is represented by the Sembast record key.
 ///
-/// Tag lifecycle state is represented explicitly so deleted caller-owned
-/// snapshots can be converted through this model even though deleted tags are
-/// never retained by [SembastTagRepositoryImpl].
+/// [nameKey] is a normalized, case-insensitive lookup key derived from [name].
+/// It is persisted separately so name equality queries do not need to
+/// repeatedly normalize every current record.
 ///
-/// Persisted data is treated as untrusted. Structural persistence validation is
-/// performed while reading the record, and current domain invariants are
-/// re-applied by [toEntity].
+/// Records written before [nameKey] was introduced remain readable. When the
+/// field is absent it is reconstructed from [name]. A present but inconsistent
+/// value is treated as persistence corruption.
 final class TagPersistenceModel {
-  /// Persisted field containing the normalized tag display name.
+  /// Persisted normalized display name.
   static const String nameField = 'name';
 
-  /// Persisted field containing the archive timestamp.
+  /// Persisted normalized comparison key used by name lookup.
+  static const String nameKeyField = 'nameKey';
+
+  /// Persisted archive timestamp.
   static const String archivedAtField = 'archivedAt';
 
-  /// Persisted field containing the deletion timestamp.
-  ///
-  /// Normal repository records contain `null` because tag deletion is
-  /// physical.
+  /// Persisted deletion timestamp.
   static const String deletedAtField = 'deletedAt';
 
   static const String _createdAtField = 'createdAt';
@@ -37,28 +37,32 @@ final class TagPersistenceModel {
   /// Serialized tag identity.
   final String id;
 
-  /// Normalized tag display name.
+  /// Normalized display name.
   final String name;
+
+  /// Canonical case-insensitive name comparison key.
+  final String nameKey;
 
   /// UTC creation timestamp.
   final DateTime createdAt;
 
-  /// UTC last-modification timestamp.
+  /// UTC modification timestamp.
   final DateTime modifiedAt;
 
-  /// UTC archive timestamp, when archived.
+  /// UTC archive timestamp.
   final DateTime? archivedAt;
 
-  /// UTC deletion timestamp, when represented by a deleted snapshot.
+  /// UTC deletion timestamp.
   final DateTime? deletedAt;
 
-  /// Aggregate class version.
+  /// Domain entity version.
   final int entityVersion;
 
   /// Creates a tag persistence model.
   const TagPersistenceModel({
     required this.id,
     required this.name,
+    required this.nameKey,
     required this.createdAt,
     required this.modifiedAt,
     required this.archivedAt,
@@ -71,6 +75,7 @@ final class TagPersistenceModel {
     return TagPersistenceModel(
       id: tag.id.value,
       name: tag.name,
+      nameKey: tagNameKey(tag.name),
       createdAt: tag.createdAt.toUtc(),
       modifiedAt: tag.modifiedAt.toUtc(),
       archivedAt: tag.archivedAt?.toUtc(),
@@ -81,16 +86,45 @@ final class TagPersistenceModel {
 
   /// Reconstructs a persistence model from [record].
   ///
-  /// [recordKey] contains the serialized [TagId].
+  /// Legacy records without [nameKeyField] are accepted and have the key
+  /// derived from [nameField].
+  ///
+  /// A stored [nameKeyField] that disagrees with the derived key is rejected as
+  /// corrupted persisted data.
   factory TagPersistenceModel.fromRecord({
     required String recordKey,
     required PersistenceRecord record,
   }) {
     final reader = PersistenceRecordReader(record);
+    final name = reader.requiredString(nameField);
+
+    final String derivedNameKey;
+
+    try {
+      derivedNameKey = tagNameKey(name);
+    } on ArgumentError {
+      throw const PersistenceRecordException(
+        field: nameField,
+        reason: 'Persisted tag name is invalid.',
+      );
+    }
+
+    if (reader.contains(nameKeyField)) {
+      final persistedNameKey = reader.requiredString(nameKeyField);
+
+      if (persistedNameKey != derivedNameKey) {
+        throw const PersistenceRecordException(
+          field: nameKeyField,
+          reason:
+              'Persisted tag name index does not match the canonical tag name.',
+        );
+      }
+    }
 
     return TagPersistenceModel(
       id: recordKey,
-      name: reader.requiredString(nameField),
+      name: name,
+      nameKey: derivedNameKey,
       createdAt: readPersistenceDateTime(reader, _createdAtField),
       modifiedAt: readPersistenceDateTime(reader, _modifiedAtField),
       archivedAt: readOptionalUtcDateTime(reader, archivedAtField),
@@ -99,9 +133,7 @@ final class TagPersistenceModel {
     );
   }
 
-  /// Reconstructs the domain tag represented by this model.
-  ///
-  /// Current tag invariants are deliberately re-applied during reconstruction.
+  /// Reconstructs the domain tag.
   Tag toEntity() {
     try {
       return Tag(
@@ -120,10 +152,11 @@ final class TagPersistenceModel {
     }
   }
 
-  /// Converts this model to the primitive Sembast representation.
+  /// Converts this model into a Sembast-compatible record.
   PersistenceRecord toRecord() {
     return <String, Object?>{
       nameField: name,
+      nameKeyField: nameKey,
       _createdAtField: createdAt.toUtc().toIso8601String(),
       _modifiedAtField: modifiedAt.toUtc().toIso8601String(),
       archivedAtField: archivedAt?.toUtc().toIso8601String(),

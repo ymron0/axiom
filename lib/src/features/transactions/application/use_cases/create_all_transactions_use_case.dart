@@ -36,12 +36,14 @@ final class CreateAllTransactionsUseCase {
             description: transaction.description,
             note: transaction.note,
             state: transaction.state,
+            tagIds: transaction.tagIds,
             splits: transaction.splits,
             ledgerEntries: transaction.ledgerEntries,
             clock: _clock,
           ),
         )
         .toList(growable: false);
+
     final createResult = await _repository.createAll(transactions);
 
     return createResult.when<Result<List<Transaction>, TransactionFailure>>(

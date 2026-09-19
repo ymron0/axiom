@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:axiom/src/core/ports/clock/clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
@@ -57,8 +58,8 @@ part 'transaction_template.mapper.dart';
 ///
 /// ## Immutability
 ///
-/// [splits] and [ledgerEntries] are defensively copied and exposed as immutable
-/// collections.
+/// [tagIds], [splits], and [ledgerEntries] are defensively copied and exposed
+/// as immutable collections.
 @MappableClass()
 final class TransactionTemplate with TransactionTemplateMappable {
   /// Financial meaning of generated transactions.
@@ -72,6 +73,9 @@ final class TransactionTemplate with TransactionTemplateMappable {
 
   /// Optional free-form note copied to generated transactions.
   final String? note;
+
+  /// Reusable metadata copied to generated transactions.
+  final List<TagId> tagIds;
 
   /// Allocation values copied to generated transactions.
   final List<TransactionSplit> splits;
@@ -91,10 +95,12 @@ final class TransactionTemplate with TransactionTemplateMappable {
     required this.merchantId,
     String? description,
     String? note,
+    List<TagId> tagIds = const [],
     required List<TransactionSplit> splits,
     required List<LedgerEntry> ledgerEntries,
   }) : description = normalizeOptionalText(description, 'description'),
        note = normalizeOptionalText(note, 'note'),
+       tagIds = List.unmodifiable(tagIds),
        splits = List.unmodifiable(splits),
        ledgerEntries = List.unmodifiable(ledgerEntries);
 
@@ -125,6 +131,7 @@ final class TransactionTemplate with TransactionTemplateMappable {
         description: description,
         note: note,
         state: state,
+        tagIds: tagIds,
         splits: splits,
         ledgerEntries: ledgerEntries,
         clock: clock,

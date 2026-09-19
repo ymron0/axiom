@@ -1,4 +1,5 @@
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
+import 'package:axiom/src/application/services/validate_transaction_tags_service.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/ports/clock/clock.dart';
 import 'package:axiom/src/core/result/result.dart';
@@ -30,6 +31,14 @@ import 'package:axiom/src/features/transactions/domain/value_objects/transaction
 /// repository transaction so concurrent offset creation cannot overrun the
 /// original transaction amount.
 final class CreateTransactionOffsetService {
+  final Clock _clock;
+
+  final GetTransactionByIdUseCase _getTransactionById;
+  final CreateTransactionOffsetUseCase _createTransactionOffset;
+  final ValidateTransactionAllocationsService _validateAllocations;
+  final TransactionOffsetPolicy _offsetPolicy;
+  final ValidateTransactionTagsService _validateTags;
+
   /// Creates the transaction-offset workflow.
   const CreateTransactionOffsetService({
     required Clock clock,
@@ -37,6 +46,7 @@ final class CreateTransactionOffsetService {
     required CreateTransactionOffsetUseCase createTransactionOffset,
     required ValidateTransactionAllocationsService validateAllocations,
     required TransactionOffsetPolicy offsetPolicy,
+    required ValidateTransactionTagsService validateTags,
   }) : _clock = clock, // ignore: prefer_initializing_formals
        _getTransactionById = // ignore: prefer_initializing_formals
            getTransactionById,
@@ -45,13 +55,8 @@ final class CreateTransactionOffsetService {
        _validateAllocations = // ignore: prefer_initializing_formals
            validateAllocations,
        _offsetPolicy = // ignore: prefer_initializing_formals
-           offsetPolicy;
-
-  final Clock _clock;
-  final GetTransactionByIdUseCase _getTransactionById;
-  final CreateTransactionOffsetUseCase _createTransactionOffset;
-  final ValidateTransactionAllocationsService _validateAllocations;
-  final TransactionOffsetPolicy _offsetPolicy;
+           offsetPolicy,
+       _validateTags = validateTags; // ignore: prefer_initializing_formals
 
   /// Creates one offset transaction from [command].
   Future<Result<Transaction, BaseFailure>> call(
@@ -96,6 +101,7 @@ final class CreateTransactionOffsetService {
         originalTransactionId: original.id,
         kind: command.offsetKind,
       ),
+      tagIds: command.tagIds,
       splits: command.splits,
       ledgerEntries: command.ledgerEntries,
       clock: _clock,
@@ -114,6 +120,14 @@ final class CreateTransactionOffsetService {
     final allocationValidation = await _validateAllocations(transaction);
 
     if (allocationValidation case final Failure<BaseFailure> failure) {
+      return failure;
+    }
+
+    final tagValidation = await _validateTags.validateForCreate(
+      transaction.tagIds,
+    );
+
+    if (tagValidation case final Failure<BaseFailure> failure) {
       return failure;
     }
 

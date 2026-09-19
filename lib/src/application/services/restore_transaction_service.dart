@@ -1,30 +1,40 @@
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
+import 'package:axiom/src/application/services/validate_transaction_tags_service.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/restore_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 
-/// Restores a transaction after validating its cross-feature allocations.
+/// Restores a transaction after validating all cross-feature references.
 final class RestoreTransactionService {
-  /// Creates a transaction restoration workflow using the supplied dependencies.
+  final RestoreTransactionUseCase _restoreTransaction;
+  final ValidateTransactionAllocationsService _validateAllocations;
+  final ValidateTransactionTagsService _validateTags;
+
+  /// Creates a transaction restoration workflow.
   const RestoreTransactionService({
     required RestoreTransactionUseCase restoreTransaction,
     required ValidateTransactionAllocationsService validateAllocations,
+    required ValidateTransactionTagsService validateTags,
   }) : _restoreTransaction = // ignore: prefer_initializing_formals
            restoreTransaction,
        _validateAllocations = // ignore: prefer_initializing_formals
-           validateAllocations;
-
-  final RestoreTransactionUseCase _restoreTransaction;
-  final ValidateTransactionAllocationsService _validateAllocations;
+           validateAllocations,
+       _validateTags = validateTags; // ignore: prefer_initializing_formals
 
   /// Validates and restores [transaction].
-  ///
-  /// Returns failures from allocation validation or transaction persistence.
   Future<Result<void, BaseFailure>> call(Transaction transaction) async {
-    final validationResult = await _validateAllocations(transaction);
+    final allocationResult = await _validateAllocations(transaction);
 
-    if (validationResult case final Failure<BaseFailure> failure) {
+    if (allocationResult case final Failure<BaseFailure> failure) {
+      return failure;
+    }
+
+    final tagResult = await _validateTags.validateForRestore(
+      transaction.tagIds,
+    );
+
+    if (tagResult case final Failure<BaseFailure> failure) {
       return failure;
     }
 
