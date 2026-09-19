@@ -5,25 +5,34 @@ import 'dart:io';
 
 import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
 import 'package:axiom/src/core/di/database_root_path_provider.dart';
+import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_all_transactions_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_all_transactions_use_case.dart';
+import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_offset_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/delete_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_all_transactions_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_ledger_entries_by_account_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_transaction_by_id_use_case.dart';
+import 'package:axiom/src/features/transactions/application/use_cases/get_transaction_offset_summary_use_case.dart';
+import 'package:axiom/src/features/transactions/application/use_cases/get_transaction_offsets_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/query_transactions_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/restore_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/transactions_exist_by_account_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/transactions_exist_by_merchant_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/di/create_all_transactions_use_case_provider.dart';
+import 'package:axiom/src/features/transactions/di/create_transaction_offset_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/create_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/delete_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/get_all_transactions_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/get_ledger_entries_by_account_id_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/get_transaction_by_id_use_case_provider.dart';
+import 'package:axiom/src/features/transactions/di/get_transaction_offset_summary_use_case_provider.dart';
+import 'package:axiom/src/features/transactions/di/get_transaction_offsets_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/query_transactions_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/restore_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/transaction_repository_provider.dart';
@@ -31,8 +40,14 @@ import 'package:axiom/src/features/transactions/di/transactions_exist_by_account
 import 'package:axiom/src/features/transactions/di/transactions_exist_by_merchant_id_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/update_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
+import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
+import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
+import 'package:axiom/src/features/transactions/domain/enums/transaction_offset_kind.dart';
+import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
+import 'package:decimal/decimal.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -53,18 +68,30 @@ void main() {
       // Given
       final rootPath = _uniqueRootPath();
       final rootDirectory = Directory(rootPath);
+
       final container = ProviderContainer(
-        overrides: [databaseRootPathProvider.overrideWithValue(rootPath)],
+        overrides: [
+          databaseRootPathProvider.overrideWithValue(rootPath),
+        ],
       );
-      final lifecycleService = container.read(databaseLifecycleServiceProvider);
+
+      final lifecycleService = container.read(
+        databaseLifecycleServiceProvider,
+      );
+
       addTearDown(() async {
         await lifecycleService.close();
         container.dispose();
+
         if (await rootDirectory.exists()) {
           await rootDirectory.delete(recursive: true);
         }
       });
-      expect((await lifecycleService.open()).isSuccess, isTrue);
+
+      expect(
+        (await lifecycleService.open()).isSuccess,
+        isTrue,
+      );
 
       // When
       final useCases = [
@@ -79,134 +106,428 @@ void main() {
         container.read(updateTransactionUseCaseProvider),
         container.read(deleteTransactionUseCaseProvider),
         container.read(restoreTransactionUseCaseProvider),
+        container.read(createTransactionOffsetUseCaseProvider),
+        container.read(getTransactionOffsetsUseCaseProvider),
+        container.read(getTransactionOffsetSummaryUseCaseProvider),
       ];
 
       // Then
-      expect(useCases, hasLength(11));
-      expect(useCases[0], isA<CreateTransactionUseCase>());
-      expect(useCases[1], isA<CreateAllTransactionsUseCase>());
-      expect(useCases[2], isA<GetAllTransactionsUseCase>());
-      expect(useCases[3], isA<GetLedgerEntriesByAccountIdUseCase>());
-      expect(useCases[4], isA<GetTransactionByIdUseCase>());
-      expect(useCases[5], isA<QueryTransactionsUseCase>());
-      expect(useCases[6], isA<TransactionsExistByAccountIdUseCase>());
-      expect(useCases[7], isA<TransactionsExistByMerchantIdUseCase>());
-      expect(useCases[8], isA<UpdateTransactionUseCase>());
-      expect(useCases[9], isA<DeleteTransactionUseCase>());
-      expect(useCases[10], isA<RestoreTransactionUseCase>());
+      expect(useCases, hasLength(14));
+
+      expect(
+        useCases[0],
+        isA<CreateTransactionUseCase>(),
+      );
+
+      expect(
+        useCases[1],
+        isA<CreateAllTransactionsUseCase>(),
+      );
+
+      expect(
+        useCases[2],
+        isA<GetAllTransactionsUseCase>(),
+      );
+
+      expect(
+        useCases[3],
+        isA<GetLedgerEntriesByAccountIdUseCase>(),
+      );
+
+      expect(
+        useCases[4],
+        isA<GetTransactionByIdUseCase>(),
+      );
+
+      expect(
+        useCases[5],
+        isA<QueryTransactionsUseCase>(),
+      );
+
+      expect(
+        useCases[6],
+        isA<TransactionsExistByAccountIdUseCase>(),
+      );
+
+      expect(
+        useCases[7],
+        isA<TransactionsExistByMerchantIdUseCase>(),
+      );
+
+      expect(
+        useCases[8],
+        isA<UpdateTransactionUseCase>(),
+      );
+
+      expect(
+        useCases[9],
+        isA<DeleteTransactionUseCase>(),
+      );
+
+      expect(
+        useCases[10],
+        isA<RestoreTransactionUseCase>(),
+      );
+
+      expect(
+        useCases[11],
+        isA<CreateTransactionOffsetUseCase>(),
+      );
+
+      expect(
+        useCases[12],
+        isA<GetTransactionOffsetsUseCase>(),
+      );
+
+      expect(
+        useCases[13],
+        isA<GetTransactionOffsetSummaryUseCase>(),
+      );
     });
 
     test('injects an overridden repository into every use case', () async {
       // Given
       final repository = MockTransactionRepository();
-      final transaction = transactionFixture(id: 'provider-transaction');
+
+      final transaction = transactionFixture(
+        id: 'provider-transaction',
+      );
+
+      final offset = _offsetFor(transaction);
+
       final deleted = transactionFixture(
         id: 'provider-deleted',
         deletedAt: DateTime.utc(2026, 1, 2),
       );
+
       final transactions = [transaction];
+
       final createdTransaction = newTransactionFixture();
+
       final createAllCommand = CreateAllTransactionsCommand(
-        commands: [createTransactionCommandFixture()],
+        commands: [
+          createTransactionCommandFixture(),
+        ],
       );
+
       final query = TransactionQuery();
+
       when(
         () => repository.create(any()),
-      ).thenAnswer((_) async => const Success(null));
+      ).thenAnswer(
+        (_) async => const Success(null),
+      );
+
       when(
         () => repository.createAll(any()),
-      ).thenAnswer((_) async => const Success(null));
+      ).thenAnswer(
+        (_) async => const Success(null),
+      );
+
+      when(
+        () => repository.createOffset(offset),
+      ).thenAnswer(
+        (_) async => const Success(null),
+      );
+
       when(
         () => repository.getAll(),
-      ).thenAnswer((_) async => Success<List<Transaction>>(transactions));
+      ).thenAnswer(
+        (_) async => Success<List<Transaction>>(
+          transactions,
+        ),
+      );
+
       when(
         () => repository.getLedgerEntriesByAccountId(
           transaction.ledgerEntries.first.accountId,
         ),
       ).thenAnswer(
-        (_) async => Success<List<LedgerEntry>>(transaction.ledgerEntries),
+        (_) async => Success<List<LedgerEntry>>(
+          transaction.ledgerEntries,
+        ),
       );
+
       when(
         () => repository.getById(transaction.id),
-      ).thenAnswer((_) async => Success<Transaction?>(transaction));
+      ).thenAnswer(
+        (_) async => Success<Transaction?>(
+          transaction,
+        ),
+      );
+
+      when(
+        () => repository.getOffsetsForTransaction(
+          transaction.id,
+        ),
+      ).thenAnswer(
+        (_) async => Success<List<Transaction>>(
+          [offset],
+        ),
+      );
+
       when(
         () => repository.query(query),
-      ).thenAnswer((_) async => Success<List<Transaction>>(transactions));
+      ).thenAnswer(
+        (_) async => Success<List<Transaction>>(
+          transactions,
+        ),
+      );
+
       when(
         () => repository.existsByAccountId(
           transaction.ledgerEntries.first.accountId,
         ),
-      ).thenAnswer((_) async => const Success(true));
+      ).thenAnswer(
+        (_) async => const Success(true),
+      );
+
       when(
-        () => repository.existsByMerchantId(transaction.merchantId),
-      ).thenAnswer((_) async => const Success(true));
+        () => repository.existsByMerchantId(
+          transaction.merchantId,
+        ),
+      ).thenAnswer(
+        (_) async => const Success(true),
+      );
+
       when(
         () => repository.update(transaction),
-      ).thenAnswer((_) async => const Success(null));
+      ).thenAnswer(
+        (_) async => const Success(null),
+      );
+
       when(
         () => repository.delete(transaction.id),
-      ).thenAnswer((_) async => const Success(null));
+      ).thenAnswer(
+        (_) async => const Success(null),
+      );
+
       when(
         () => repository.restore(deleted),
-      ).thenAnswer((_) async => const Success(null));
+      ).thenAnswer(
+        (_) async => const Success(null),
+      );
+
       final container = ProviderContainer(
         overrides: [
-          transactionRepositoryProvider.overrideWithValue(repository),
+          transactionRepositoryProvider.overrideWithValue(
+            repository,
+          ),
         ],
       );
+
       addTearDown(container.dispose);
 
       // When
-      final created = await container.read(createTransactionUseCaseProvider)(
-        createdTransaction,
-      );
+      final created = await container.read(
+        createTransactionUseCaseProvider,
+      )(createdTransaction);
+
       final createdAll = await container.read(
         createAllTransactionsUseCaseProvider,
       )(createAllCommand);
-      await container.read(getAllTransactionsUseCaseProvider)();
-      await container.read(getLedgerEntriesByAccountIdUseCaseProvider)(
+
+      await container.read(
+        getAllTransactionsUseCaseProvider,
+      )();
+
+      await container.read(
+        getLedgerEntriesByAccountIdUseCaseProvider,
+      )(
         transaction.ledgerEntries.first.accountId,
       );
-      await container.read(getTransactionByIdUseCaseProvider)(transaction.id);
-      await container.read(queryTransactionsUseCaseProvider)(query);
-      await container.read(transactionsExistByAccountIdUseCaseProvider)(
+
+      await container.read(
+        getTransactionByIdUseCaseProvider,
+      )(
+        transaction.id,
+      );
+
+      await container.read(
+        queryTransactionsUseCaseProvider,
+      )(query);
+
+      await container.read(
+        transactionsExistByAccountIdUseCaseProvider,
+      )(
         transaction.ledgerEntries.first.accountId,
       );
-      await container.read(transactionsExistByMerchantIdUseCaseProvider)(
+
+      await container.read(
+        transactionsExistByMerchantIdUseCaseProvider,
+      )(
         transaction.merchantId,
       );
-      await container.read(updateTransactionUseCaseProvider)(transaction);
-      await container.read(deleteTransactionUseCaseProvider)(
+
+      await container.read(
+        updateTransactionUseCaseProvider,
+      )(transaction);
+
+      await container.read(
+        deleteTransactionUseCaseProvider,
+      )(
         transaction.id,
         DateTime.utc(2026, 1, 2),
       );
-      await container.read(restoreTransactionUseCaseProvider)(deleted);
+
+      await container.read(
+        restoreTransactionUseCaseProvider,
+      )(deleted);
+
+      final createdOffset = await container.read(
+        createTransactionOffsetUseCaseProvider,
+      )(offset);
+
+      final offsets = await container.read(
+        getTransactionOffsetsUseCaseProvider,
+      )(transaction.id);
+
+      final summary = await container.read(
+        getTransactionOffsetSummaryUseCaseProvider,
+      )(transaction.id);
 
       // Then
       expect(created.isSuccess, isTrue);
-      verify(() => repository.create(createdTransaction)).called(1);
-      verify(() => repository.createAll(createdAll.valueOrNull!)).called(1);
-      verify(() => repository.getAll()).called(1);
+      expect(createdOffset.isSuccess, isTrue);
+
+      expect(
+        offsets.valueOrNull,
+        [offset],
+      );
+
+      expect(summary.isSuccess, isTrue);
+      expect(
+        summary.valueOrNull?.transactionId,
+        transaction.id,
+      );
+
+      expect(
+        summary.valueOrNull?.grossAmount,
+        Decimal.fromInt(10),
+      );
+
+      expect(
+        summary.valueOrNull?.reimbursementAmount,
+        Decimal.fromInt(5),
+      );
+
+      expect(
+        summary.valueOrNull?.totalOffsetAmount,
+        Decimal.fromInt(5),
+      );
+
+      expect(
+        summary.valueOrNull?.netAmount,
+        Decimal.fromInt(5),
+      );
+
+      verify(
+        () => repository.create(createdTransaction),
+      ).called(1);
+
+      verify(
+        () => repository.createAll(
+          createdAll.valueOrNull!,
+        ),
+      ).called(1);
+
+      verify(
+        () => repository.getAll(),
+      ).called(1);
+
       verify(
         () => repository.getLedgerEntriesByAccountId(
           transaction.ledgerEntries.first.accountId,
         ),
       ).called(1);
-      verify(() => repository.getById(transaction.id)).called(2);
-      verify(() => repository.query(query)).called(1);
+
+      // Direct lookup + DeleteTransactionUseCase lookup
+      // + GetTransactionOffsetSummaryUseCase lookup.
+      verify(
+        () => repository.getById(transaction.id),
+      ).called(3);
+
+      verify(
+        () => repository.query(query),
+      ).called(1);
+
       verify(
         () => repository.existsByAccountId(
           transaction.ledgerEntries.first.accountId,
         ),
       ).called(1);
+
       verify(
-        () => repository.existsByMerchantId(transaction.merchantId),
+        () => repository.existsByMerchantId(
+          transaction.merchantId,
+        ),
       ).called(1);
-      verify(() => repository.update(transaction)).called(1);
-      verify(() => repository.delete(transaction.id)).called(1);
-      verify(() => repository.restore(deleted)).called(1);
+
+      verify(
+        () => repository.update(transaction),
+      ).called(1);
+
+      verify(
+        () => repository.delete(transaction.id),
+      ).called(1);
+
+      verify(
+        () => repository.restore(deleted),
+      ).called(1);
+
+      verify(
+        () => repository.createOffset(offset),
+      ).called(1);
+
+      // Direct offset query + summary derivation.
+      verify(
+        () => repository.getOffsetsForTransaction(
+          transaction.id,
+        ),
+      ).called(2);
     });
   });
+}
+
+Transaction _offsetFor(Transaction original) {
+  final originalPrimaryEntry = original.ledgerEntries.singleWhere(
+    (entry) => entry.role == LedgerEntryRole.primary,
+  );
+
+  final amount = AssetAmount.incoming(
+    assetId: originalPrimaryEntry.transactionAmount.assetId,
+    amount: Decimal.fromInt(5),
+  );
+
+  final timestamp = DateTime.utc(2026, 1, 2);
+
+  return Transaction(
+    id: TransactionId.fromString('provider-offset'),
+    kind: TransactionKind.income,
+    merchantId: MerchantId.fromString('partner'),
+    effectiveAt: timestamp,
+    description: 'Reimbursement',
+    note: null,
+    state: TransactionState.actual,
+    offset: TransactionOffset(
+      originalTransactionId: original.id,
+      kind: TransactionOffsetKind.reimbursement,
+    ),
+    deletedAt: null,
+    splits: const [],
+    ledgerEntries: [
+      LedgerEntry(
+        accountId: originalPrimaryEntry.accountId,
+        transactionAmount: amount,
+        accountAmount: amount,
+        valuationAmount: amount,
+        role: LedgerEntryRole.primary,
+      ),
+    ],
+    createdAt: timestamp,
+    modifiedAt: timestamp,
+    entityVersion: 1,
+  );
 }
 
 String _uniqueRootPath() {

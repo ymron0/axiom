@@ -16,38 +16,35 @@ import 'package:axiom/src/features/transactions/domain/failures/transaction_alre
 import 'package:axiom/src/features/transactions/domain/failures/transaction_failure.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_not_deleted_failure.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_not_found_failure.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_offset_validation_failure.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_version_conflict_failure.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_repository.dart';
+import 'package:axiom/src/features/transactions/domain/services/transaction_offset_policy.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
 import 'package:sembast/sembast.dart' hide Transaction;
 
 /// Persists transaction aggregates in the configured Sembast database.
 ///
-/// This implementation preserves the complete [TransactionRepository] contract:
+/// Offset creation is validated atomically against the original transaction and
+/// every previously persisted offset.
 ///
-/// - only active transactions are stored;
-/// - transaction identifiers are Sembast record keys;
-/// - batch creation is atomic;
-/// - deletion physically removes records;
-/// - restoration inserts an active copy of a caller-retained deleted snapshot;
-/// - entity versions are preserved rather than incremented by updates;
-/// - returned collections are immutable; and
-/// - transaction iteration preserves persistence insertion order.
-///
-/// Persisted maps are always reconstructed through
-/// [TransactionPersistenceModel]. Corrupt records therefore fail through the
-/// typed persistence boundary rather than leaking storage representation errors
-/// into the domain or application layers.
+/// Ordinary transaction creation deliberately rejects offset transactions so
+/// callers cannot bypass the atomic over-offset protection.
 final class SembastTransactionRepositoryImpl implements TransactionRepository {
   /// Creates a transaction repository using an already-open [database].
-  const SembastTransactionRepositoryImpl({required Database database})
-    : _database = database; // ignore: prefer_initializing_formals
+  const SembastTransactionRepositoryImpl({
+    required Database database,
+    TransactionOffsetPolicy offsetPolicy = const TransactionOffsetPolicy(),
+  }) : _database = database, // ignore: prefer_initializing_formals
+       _offsetPolicy = offsetPolicy; // ignore: prefer_initializing_formals
 
   static final StoreRef<String, PersistenceRecord> _store =
       SembastStores.transactions;
 
   final Database _database;
+  final TransactionOffsetPolicy _offsetPolicy;
 
   @override
   Future<Result<void, TransactionFailure>> create(
@@ -58,6 +55,12 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
         message:
             'Deleted transaction cannot be created: '
             '${transaction.id.value}',
+      );
+    }
+
+    if (transaction.isOffset) {
+      return const TransactionOffsetValidationFailure(
+        message: 'Offset transactions must be created through createOffset().',
       );
     }
 
@@ -103,6 +106,12 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
               '${transaction.id.value}',
         );
       }
+
+      if (transaction.isOffset) {
+        return const TransactionOffsetValidationFailure(
+          message: 'Offset transactions cannot be created through createAll().',
+        );
+      }
     }
 
     final requestedIds = <TransactionId>{};
@@ -125,7 +134,6 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
       return _database.transaction<Result<void, TransactionFailure>>((
         databaseTransaction,
       ) async {
-        // Validate the entire batch before writing anything.
         for (final transaction in transactions) {
           final exists = await _store
               .record(transaction.id.value)
@@ -142,8 +150,6 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
 
         var persistenceOrder = await _nextPersistenceOrder(databaseTransaction);
 
-        // All validation has completed. Writes now occur atomically inside the
-        // same Sembast transaction.
         for (final transaction in transactions) {
           final model = TransactionPersistenceModel.fromEntity(
             transaction,
@@ -163,10 +169,70 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<Result<void, TransactionFailure>> createOffset(
+    Transaction transaction,
+  ) async {
+    if (transaction.isDeleted) {
+      return TransactionAlreadyDeletedFailure(
+        message:
+            'Deleted offset transaction cannot be created: '
+            '${transaction.id.value}',
+      );
+    }
+
+    if (!transaction.isOffset) {
+      return const TransactionOffsetValidationFailure(
+        message:
+            'createOffset() requires a transaction containing an offset '
+            'relationship.',
+      );
+    }
+
+    return guardPersistenceOperation(() async {
+      return _database.transaction<Result<void, TransactionFailure>>((
+        databaseTransaction,
+      ) async {
+        final record = _store.record(transaction.id.value);
+
+        if (await record.exists(databaseTransaction)) {
+          return TransactionAlreadyExistsFailure(
+            message:
+                'Transaction ID already exists: '
+                '${transaction.id.value}',
+          );
+        }
+
+        final transactions = await _readAll(databaseTransaction);
+
+        final validation = _validateRelationshipGraph(
+          candidate: transaction,
+          persistedTransactions: transactions,
+        );
+
+        if (validation case final Failure<TransactionFailure> failure) {
+          return failure;
+        }
+
+        final persistenceOrder = await _nextPersistenceOrder(
+          databaseTransaction,
+        );
+
+        final model = TransactionPersistenceModel.fromEntity(
+          transaction,
+          persistenceOrder: persistenceOrder,
+        );
+
+        await record.put(databaseTransaction, model.toRecord());
+
+        return const Success(null);
+      });
+    });
+  }
+
+  @override
   Future<Result<List<Transaction>, TransactionFailure>> getAll() {
     return guardPersistenceOperation(() async {
       final transactions = await _readAll(_database);
-
       return Success(transactions);
     });
   }
@@ -187,6 +253,15 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
 
       return Success<Transaction?>(transaction);
     });
+  }
+
+  @override
+  Future<Result<List<Transaction>, TransactionFailure>>
+  getOffsetsForTransaction(TransactionId transactionId) {
+    return _findWhere(
+      (transaction) =>
+          transaction.offset?.originalTransactionId == transactionId,
+    );
   }
 
   @override
@@ -319,8 +394,6 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
           storedRecord,
         );
 
-        // Reconstruct the complete aggregate before replacement so structurally
-        // valid but domain-invalid persisted state is still treated as corrupt.
         final storedTransaction = storedModel.toEntity();
 
         if (transaction.entityVersion != storedTransaction.entityVersion) {
@@ -329,6 +402,25 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
                 'Transaction version conflicts with the stored version: '
                 '${transaction.id.value}',
           );
+        }
+
+        if (!_sameOffset(storedTransaction.offset, transaction.offset)) {
+          return const TransactionOffsetValidationFailure(
+            message:
+                'A transaction offset relationship cannot be added, removed, '
+                'or changed through update().',
+          );
+        }
+
+        final transactions = await _readAll(databaseTransaction);
+
+        final validation = _validateRelationshipGraph(
+          candidate: transaction,
+          persistedTransactions: transactions,
+        );
+
+        if (validation case final Failure<TransactionFailure> failure) {
+          return failure;
         }
 
         final replacement = TransactionPersistenceModel.fromEntity(
@@ -353,6 +445,20 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
 
         if (!await record.exists(databaseTransaction)) {
           return _notFound(id);
+        }
+
+        final transactions = await _readAll(databaseTransaction);
+
+        final hasOffsets = transactions.any(
+          (transaction) => transaction.offset?.originalTransactionId == id,
+        );
+
+        if (hasOffsets) {
+          return TransactionOffsetValidationFailure(
+            message:
+                'Transaction ${id.value} cannot be deleted while active '
+                'offset transactions reference it.',
+          );
         }
 
         await record.delete(databaseTransaction);
@@ -390,6 +496,17 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
           );
         }
 
+        final transactions = await _readAll(databaseTransaction);
+
+        final validation = _validateRelationshipGraph(
+          candidate: restored,
+          persistedTransactions: transactions,
+        );
+
+        if (validation case final Failure<TransactionFailure> failure) {
+          return failure;
+        }
+
         final persistenceOrder = await _nextPersistenceOrder(
           databaseTransaction,
         );
@@ -406,11 +523,67 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     });
   }
 
+  Result<void, TransactionFailure> _validateRelationshipGraph({
+    required Transaction candidate,
+    required List<Transaction> persistedTransactions,
+  }) {
+    if (candidate.isOffset) {
+      final relationship = candidate.offset!;
+
+      final original = _findTransaction(
+        persistedTransactions,
+        relationship.originalTransactionId,
+      );
+
+      if (original == null) {
+        return _notFound(relationship.originalTransactionId);
+      }
+
+      final existingOffsets = persistedTransactions.where(
+        (transaction) =>
+            transaction.id != candidate.id &&
+            transaction.offset?.originalTransactionId == original.id,
+      );
+
+      return _offsetPolicy.validateNewOffset(
+        original: original,
+        offset: candidate,
+        existingOffsets: existingOffsets,
+      );
+    }
+
+    final offsets = persistedTransactions
+        .where(
+          (transaction) =>
+              transaction.id != candidate.id &&
+              transaction.offset?.originalTransactionId == candidate.id,
+        )
+        .toList(growable: false);
+
+    if (offsets.isEmpty) {
+      return const Success(null);
+    }
+
+    final acceptedOffsets = <Transaction>[];
+
+    for (final offset in offsets) {
+      final validation = _offsetPolicy.validateNewOffset(
+        original: candidate,
+        offset: offset,
+        existingOffsets: acceptedOffsets,
+      );
+
+      if (validation case final Failure<TransactionFailure> failure) {
+        return failure;
+      }
+
+      acceptedOffsets.add(offset);
+    }
+
+    return const Success(null);
+  }
+
   /// Reads every transaction in persistence insertion order.
-  ///
-  /// Every record is reconstructed through the persistence model before being
-  /// returned. Consequently, malformed or domain-invalid records cannot be
-  /// silently skipped by higher-level queries.
   Future<List<Transaction>> _readAll(DatabaseClient databaseClient) async {
     final snapshots = await _store.find(
       databaseClient,
@@ -431,14 +604,6 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     );
   }
 
-  /// Allocates the next persistence insertion position.
-  ///
-  /// The value is allocated inside the same Sembast transaction as the
-  /// corresponding write, so concurrent repository operations cannot allocate
-  /// the same position.
-  ///
-  /// Only persistence-order metadata is read here. Complete aggregate decoding
-  /// is unnecessary for sequence allocation.
   Future<int> _nextPersistenceOrder(DatabaseClient databaseClient) async {
     final snapshots = await _store.find(databaseClient);
 
@@ -457,7 +622,6 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     return maximum + 1;
   }
 
-  /// Returns immutable transactions satisfying [matches].
   Future<Result<List<Transaction>, TransactionFailure>> _findWhere(
     bool Function(Transaction transaction) matches,
   ) {
@@ -470,23 +634,41 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     });
   }
 
-  /// Determines whether at least one persisted transaction satisfies [matches].
-  ///
-  /// The complete persisted aggregate is decoded before matching. This is
-  /// intentional for deletion-safety queries: corrupt transaction data should
-  /// produce a persistence failure rather than accidentally allowing a
-  /// referenced account, merchant, category, or jar to be deleted.
   Future<Result<bool, TransactionFailure>> _existsWhere(
     bool Function(Transaction transaction) matches,
   ) {
     return guardPersistenceOperation(() async {
       final transactions = await _readAll(_database);
-
       return Success(transactions.any(matches));
     });
   }
 
-  /// Applies the semantics defined by [TransactionQuery].
+  static Transaction? _findTransaction(
+    Iterable<Transaction> transactions,
+    TransactionId id,
+  ) {
+    for (final transaction in transactions) {
+      if (transaction.id == id) {
+        return transaction;
+      }
+    }
+
+    return null;
+  }
+
+  static bool _sameOffset(TransactionOffset? first, TransactionOffset? second) {
+    if (first == null && second == null) {
+      return true;
+    }
+
+    if (first == null || second == null) {
+      return false;
+    }
+
+    return first.originalTransactionId == second.originalTransactionId &&
+        first.kind == second.kind;
+  }
+
   static bool _matchesQuery(Transaction transaction, TransactionQuery query) {
     return (query.kinds.isEmpty || query.kinds.contains(transaction.kind)) &&
         (query.states.isEmpty || query.states.contains(transaction.state)) &&

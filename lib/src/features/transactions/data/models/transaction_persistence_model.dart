@@ -8,24 +8,24 @@ import 'package:axiom/src/features/transactions/data/models/ledger_entry_persist
 import 'package:axiom/src/features/transactions/data/models/transaction_split_persistence_model.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
+import 'package:axiom/src/features/transactions/domain/enums/transaction_offset_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
 
 /// Persistence representation of one [Transaction] aggregate.
 ///
 /// The Sembast record key contains the transaction identifier and is therefore
 /// intentionally not duplicated in [toRecord].
 ///
-/// Nested domain value objects are flattened into primitive maps and lists.
-/// Domain-generated `dart_mappable` representations are deliberately not used
-/// as the persisted format. This keeps the persistent schema independent from
-/// generated domain serialization details.
+/// Offset relationships are stored using two nullable primitive fields:
 ///
-/// [persistenceOrder] is storage metadata rather than domain state. It
-/// preserves the insertion-order semantics required by [TransactionRepository].
+/// - the referenced original transaction identifier; and
+/// - the offset kind.
 ///
-/// Deleted transactions are never represented by this model. Transaction
-/// deletion is physical, so every persisted record represents an active
-/// transaction.
+/// Both fields must either be present together or absent together.
+///
+/// Older transaction records that contain neither field remain valid and are
+/// reconstructed as transactions without an offset relationship.
 final class TransactionPersistenceModel {
   TransactionPersistenceModel._({
     required this.id,
@@ -36,6 +36,8 @@ final class TransactionPersistenceModel {
     required this.description,
     required this.note,
     required this.state,
+    required this.offsetOfTransactionId,
+    required this.offsetKind,
     required List<TransactionSplitPersistenceModel> splits,
     required List<LedgerEntryPersistenceModel> ledgerEntries,
     required this.createdAt,
@@ -45,9 +47,6 @@ final class TransactionPersistenceModel {
        ledgerEntries = List.unmodifiable(ledgerEntries);
 
   /// Persistence field containing transaction insertion order.
-  ///
-  /// This is public because the concrete repository must sort Sembast records
-  /// using this field.
   static const String persistenceOrderField = 'persistenceOrder';
 
   static const String _kindField = 'kind';
@@ -56,6 +55,8 @@ final class TransactionPersistenceModel {
   static const String _descriptionField = 'description';
   static const String _noteField = 'note';
   static const String _stateField = 'state';
+  static const String _offsetOfTransactionIdField = 'offsetOfTransactionId';
+  static const String _offsetKindField = 'offsetKind';
   static const String _splitsField = 'splits';
   static const String _ledgerEntriesField = 'ledgerEntries';
   static const String _createdAtField = 'createdAt';
@@ -86,6 +87,12 @@ final class TransactionPersistenceModel {
   /// Lifecycle state of the transaction.
   final TransactionState state;
 
+  /// Referenced original transaction identifier for an offset.
+  final String? offsetOfTransactionId;
+
+  /// Economic meaning of the offset relationship.
+  final TransactionOffsetKind? offsetKind;
+
   /// Persisted transaction allocations.
   final List<TransactionSplitPersistenceModel> splits;
 
@@ -102,11 +109,6 @@ final class TransactionPersistenceModel {
   final int entityVersion;
 
   /// Creates a persistence model from an active domain transaction.
-  ///
-  /// [persistenceOrder] must already have been allocated by the repository.
-  ///
-  /// Deleted entities are rejected because transaction deletion is physical
-  /// and a deleted snapshot must never be written directly to the store.
   factory TransactionPersistenceModel.fromEntity(
     Transaction transaction, {
     required int persistenceOrder,
@@ -136,6 +138,8 @@ final class TransactionPersistenceModel {
       description: transaction.description,
       note: transaction.note,
       state: transaction.state,
+      offsetOfTransactionId: transaction.offset?.originalTransactionId.value,
+      offsetKind: transaction.offset?.kind,
       splits: transaction.splits
           .map(TransactionSplitPersistenceModel.fromEntity)
           .toList(growable: false),
@@ -149,12 +153,6 @@ final class TransactionPersistenceModel {
   }
 
   /// Reconstructs a persistence model from a Sembast record.
-  ///
-  /// [recordKey] is the authoritative transaction identifier.
-  ///
-  /// Stored data is treated as untrusted. Structural problems, invalid enums,
-  /// malformed decimals, malformed dates, and invalid persistence metadata are
-  /// translated into [PersistenceRecordException].
   factory TransactionPersistenceModel.fromRecord(
     String recordKey,
     PersistenceRecord record,
@@ -163,6 +161,32 @@ final class TransactionPersistenceModel {
 
     final rawSplits = reader.requiredList(_splitsField);
     final rawLedgerEntries = reader.requiredList(_ledgerEntriesField);
+
+    final offsetOfTransactionId = reader.optionalString(
+      _offsetOfTransactionIdField,
+    );
+    final rawOffsetKind = reader.optionalString(_offsetKindField);
+
+    if ((offsetOfTransactionId == null) != (rawOffsetKind == null)) {
+      throw const PersistenceRecordException(
+        reason:
+            'Persisted transaction offset identifier and kind must either '
+            'both be present or both be absent.',
+      );
+    }
+
+    TransactionOffsetKind? offsetKind;
+
+    if (rawOffsetKind != null) {
+      try {
+        offsetKind = TransactionOffsetKind.values.byName(rawOffsetKind);
+      } on ArgumentError {
+        throw PersistenceRecordException(
+          field: _offsetKindField,
+          reason: 'Stored enum value is not supported.',
+        );
+      }
+    }
 
     return TransactionPersistenceModel._(
       id: recordKey,
@@ -181,6 +205,8 @@ final class TransactionPersistenceModel {
         field: _stateField,
         values: TransactionState.values,
       ),
+      offsetOfTransactionId: offsetOfTransactionId,
+      offsetKind: offsetKind,
       splits: <TransactionSplitPersistenceModel>[
         for (var index = 0; index < rawSplits.length; index++)
           TransactionSplitPersistenceModel.fromRecord(
@@ -208,18 +234,12 @@ final class TransactionPersistenceModel {
   }
 
   /// Reads and validates persistence insertion order from a raw record.
-  ///
-  /// This smaller operation exists so the repository can allocate the next
-  /// insertion position without reconstructing every complete transaction.
   static int readPersistenceOrder(PersistenceRecord record) {
     final reader = PersistenceRecordReader(record);
     return readPositivePersistenceInt(reader, persistenceOrderField);
   }
 
   /// Converts this model to the primitive representation stored by Sembast.
-  ///
-  /// The transaction ID is omitted because it is represented by the Sembast
-  /// record key.
   PersistenceRecord toRecord() {
     return <String, Object?>{
       persistenceOrderField: persistenceOrder,
@@ -229,6 +249,8 @@ final class TransactionPersistenceModel {
       _descriptionField: description,
       _noteField: note,
       _stateField: state.name,
+      _offsetOfTransactionIdField: offsetOfTransactionId,
+      _offsetKindField: offsetKind?.name,
       _splitsField: splits
           .map((split) => split.toRecord())
           .toList(growable: false),
@@ -242,12 +264,17 @@ final class TransactionPersistenceModel {
   }
 
   /// Reconstructs the active domain aggregate represented by this model.
-  ///
-  /// Domain constructors are intentionally used rather than bypassed. If the
-  /// persisted values violate current domain invariants, the record is corrupt
-  /// and [PersistenceRecordException] is thrown.
   Transaction toEntity() {
     try {
+      final offset = offsetOfTransactionId == null
+          ? null
+          : TransactionOffset(
+              originalTransactionId: TransactionId.fromString(
+                offsetOfTransactionId!,
+              ),
+              kind: offsetKind!,
+            );
+
       return Transaction(
         id: TransactionId.fromString(id),
         kind: kind,
@@ -256,6 +283,7 @@ final class TransactionPersistenceModel {
         description: description,
         note: note,
         state: state,
+        offset: offset,
         deletedAt: null,
         splits: splits.map((split) => split.toEntity()).toList(growable: false),
         ledgerEntries: ledgerEntries

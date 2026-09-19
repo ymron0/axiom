@@ -9,6 +9,8 @@ import 'package:axiom/src/features/transactions/domain/entities/transaction.dart
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_offset_validation_failure.dart';
+import 'package:axiom/src/features/transactions/domain/services/transaction_offset_policy.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
@@ -17,58 +19,66 @@ import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
+import '../../../../../fixtures/features/transactions/refund_fixtures.dart';
+
 void main() {
   group('Transaction', () {
-    test('creates a new transaction with generated identity and audit metadata', () {
-      // Given
-      final effectiveAt = DateTime.parse('2024-01-02T03:04:05+01:00');
-      final createdAt = DateTime.utc(2026, 9, 12, 10, 11, 12);
+    test(
+      'creates a new transaction with generated identity and audit metadata',
+      () {
+        // Given
+        final effectiveAt = DateTime.parse('2024-01-02T03:04:05+01:00');
+        final createdAt = DateTime.utc(2026, 9, 12, 10, 11, 12);
 
-      // When
-      final transaction = Transaction.create(
-        kind: TransactionKind.expense,
-        merchantId: MerchantId.self,
-        effectiveAt: effectiveAt,
-        description: '  groceries  ',
-        note: '  weekly shop  ',
-        state: TransactionState.actual,
-        splits: const [],
-        ledgerEntries: [_createLedgerEntry()],
-        clock: FixedClock(createdAt),
-      );
+        // When
+        final transaction = Transaction.create(
+          kind: TransactionKind.expense,
+          merchantId: MerchantId.self,
+          effectiveAt: effectiveAt,
+          description: '  groceries  ',
+          note: '  weekly shop  ',
+          state: TransactionState.actual,
+          splits: const [],
+          ledgerEntries: [_createLedgerEntry()],
+          clock: FixedClock(createdAt),
+        );
 
-      // Then
-      expect(transaction.id, isA<TransactionId>());
-      expect(transaction.id.value, isNotEmpty);
-      expect(transaction.kind, TransactionKind.expense);
-      expect(transaction.merchantId, same(MerchantId.self));
-      expect(transaction.effectiveAt, effectiveAt.toUtc());
-      expect(transaction.description, 'groceries');
-      expect(transaction.note, 'weekly shop');
-      expect(transaction.state, TransactionState.actual);
-      expect(transaction.splits, isEmpty);
-      expect(transaction.ledgerEntries, hasLength(1));
-      expect(transaction.createdAt, createdAt);
-      expect(transaction.modifiedAt, createdAt);
-      expect(transaction.entityVersion, 1);
-      expect(transaction.deletedAt, isNull);
-    });
+        // Then
+        expect(transaction.id, isA<TransactionId>());
+        expect(transaction.id.value, isNotEmpty);
+        expect(transaction.kind, TransactionKind.expense);
+        expect(transaction.merchantId, same(MerchantId.self));
+        expect(transaction.effectiveAt, effectiveAt.toUtc());
+        expect(transaction.description, 'groceries');
+        expect(transaction.note, 'weekly shop');
+        expect(transaction.state, TransactionState.actual);
+        expect(transaction.splits, isEmpty);
+        expect(transaction.ledgerEntries, hasLength(1));
+        expect(transaction.createdAt, createdAt);
+        expect(transaction.modifiedAt, createdAt);
+        expect(transaction.entityVersion, 1);
+        expect(transaction.deletedAt, isNull);
+      },
+    );
 
-    test('creates a transaction with the default clock when none is supplied', () {
-      // When
-      final transaction = Transaction.create(
-        kind: TransactionKind.expense,
-        merchantId: MerchantId.self,
-        effectiveAt: DateTime.utc(2024),
-        state: TransactionState.actual,
-        splits: const [],
-        ledgerEntries: [_createLedgerEntry()],
-      );
+    test(
+      'creates a transaction with the default clock when none is supplied',
+      () {
+        // When
+        final transaction = Transaction.create(
+          kind: TransactionKind.expense,
+          merchantId: MerchantId.self,
+          effectiveAt: DateTime.utc(2024),
+          state: TransactionState.actual,
+          splits: const [],
+          ledgerEntries: [_createLedgerEntry()],
+        );
 
-      // Then
-      expect(transaction.createdAt.isUtc, isTrue);
-      expect(transaction.modifiedAt, transaction.createdAt);
-    });
+        // Then
+        expect(transaction.createdAt.isUtc, isTrue);
+        expect(transaction.modifiedAt, transaction.createdAt);
+      },
+    );
 
     test('constructs a valid immutable aggregate', () {
       // Given / When
@@ -417,8 +427,53 @@ void main() {
       expect(first, isNot(equals(different)));
       expect(first, isNot(equals(deleted)));
     });
+    test('identifies a transaction with an offset relationship as an offset', () {
+      // Given
+      final transaction = refundTransactionFixture();
+
+      // Then
+      expect(transaction.isOffset, isTrue);
+      expect(
+        transaction.offset?.originalTransactionId,
+        TransactionId.fromString('refund-original'),
+      );
+    });
+
+    test('rejects a self-referencing offset relationship', () {
+      // Given
+      final original = refundableExpenseTransactionFixture(
+        id: 'self-referencing',
+      );
+      final offset = refundTransactionFixture(
+        id: 'self-referencing',
+        originalTransactionId: 'self-referencing',
+      );
+
+      // When
+      final result = const TransactionOffsetPolicy().validateNewOffset(
+        original: original,
+        offset: offset,
+        existingOffsets: const [],
+      );
+
+      // Then
+      expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
+    });
+
+    test(
+      'identifies a transaction without an offset relationship as standalone',
+      () {
+        // Given
+        final transaction = _createTransaction();
+
+        // Then
+        expect(transaction.offset, isNull);
+        expect(transaction.isOffset, isFalse);
+      },
+    );
   });
 }
+
 
 Transaction _createTransaction({
   String? description,

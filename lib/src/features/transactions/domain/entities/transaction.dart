@@ -11,6 +11,7 @@ import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.da
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
@@ -127,6 +128,16 @@ final class Transaction extends AuditedEntity<TransactionId>
   /// The lifecycle state of the transaction.
   final TransactionState state;
 
+  /// The optional relationship that identifies this transaction as an offset.
+  ///
+  /// When present, the relationship identifies the original transaction whose
+  /// economic value this transaction reduces. Offset transactions remain
+  /// ordinary transactions with their own ledger entries and effective time.
+  final TransactionOffset? offset;
+
+  /// Whether this transaction represents an offset of another transaction.
+  bool get isOffset => offset != null;
+
   /// {@macro deletable.deleted_at}
   @override
   final DateTime? deletedAt;
@@ -172,6 +183,7 @@ final class Transaction extends AuditedEntity<TransactionId>
     String? description,
     String? note,
     required this.state,
+    this.offset,
     this.deletedAt,
     required List<TransactionSplit> splits,
     required List<LedgerEntry> ledgerEntries,
@@ -179,7 +191,7 @@ final class Transaction extends AuditedEntity<TransactionId>
     required super.modifiedAt,
     required super.entityVersion,
   }) : effectiveAt = effectiveAt.toUtc(),
-      description = normalizeOptionalText(description, 'description'),
+       description = normalizeOptionalText(description, 'description'),
        note = normalizeOptionalText(note, 'note'),
        splits = List.unmodifiable(splits),
        ledgerEntries = List.unmodifiable(ledgerEntries) {
@@ -190,6 +202,7 @@ final class Transaction extends AuditedEntity<TransactionId>
         'Deletion time cannot precede creation time.',
       );
     }
+
     _validateLedgerEntries();
     _validateSplits();
     _validateSplitReconciliation();
@@ -203,6 +216,7 @@ final class Transaction extends AuditedEntity<TransactionId>
     String? description,
     String? note,
     required TransactionState state,
+    TransactionOffset? offset,
     required List<TransactionSplit> splits,
     required List<LedgerEntry> ledgerEntries,
     Clock? clock,
@@ -218,6 +232,7 @@ final class Transaction extends AuditedEntity<TransactionId>
       description: description,
       note: note,
       state: state,
+      offset: offset,
       splits: splits,
       ledgerEntries: ledgerEntries,
       createdAt: now,
