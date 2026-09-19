@@ -1,4 +1,5 @@
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
@@ -24,32 +25,22 @@ import 'package:axiom/src/features/transactions/domain/value_objects/transaction
 ///
 /// Both fields must either be present together or absent together.
 ///
-/// Older transaction records that contain neither field remain valid and are
-/// reconstructed as transactions without an offset relationship.
+/// Tag references are stored as serialized [TagId] values in [tagIdsField].
+///
+/// Older transaction records created before tag support may omit
+/// [tagIdsField]. Such records are reconstructed with no tags.
+///
+/// Older transaction records that contain neither offset field also remain
+/// valid and are reconstructed as transactions without an offset relationship.
 final class TransactionPersistenceModel {
-  TransactionPersistenceModel._({
-    required this.id,
-    required this.persistenceOrder,
-    required this.kind,
-    required this.merchantId,
-    required this.effectiveAt,
-    required this.description,
-    required this.note,
-    required this.state,
-    required this.offsetOfTransactionId,
-    required this.offsetKind,
-    required List<TransactionSplitPersistenceModel> splits,
-    required List<LedgerEntryPersistenceModel> ledgerEntries,
-    required this.createdAt,
-    required this.modifiedAt,
-    required this.entityVersion,
-  }) : splits = List.unmodifiable(splits),
-       ledgerEntries = List.unmodifiable(ledgerEntries);
-
   /// Persistence field containing transaction insertion order.
   static const String persistenceOrderField = 'persistenceOrder';
 
+  /// Persistence field containing serialized tag identities.
+  static const String tagIdsField = 'tagIds';
+
   static const String _kindField = 'kind';
+
   static const String _merchantIdField = 'merchantId';
   static const String _effectiveAtField = 'effectiveAt';
   static const String _descriptionField = 'description';
@@ -62,7 +53,6 @@ final class TransactionPersistenceModel {
   static const String _createdAtField = 'createdAt';
   static const String _modifiedAtField = 'modifiedAt';
   static const String _entityVersionField = 'entityVersion';
-
   /// Identifier represented by the Sembast record key.
   final String id;
 
@@ -92,6 +82,9 @@ final class TransactionPersistenceModel {
 
   /// Economic meaning of the offset relationship.
   final TransactionOffsetKind? offsetKind;
+
+  /// Serialized reusable metadata tag identities.
+  final List<String> tagIds;
 
   /// Persisted transaction allocations.
   final List<TransactionSplitPersistenceModel> splits;
@@ -140,6 +133,9 @@ final class TransactionPersistenceModel {
       state: transaction.state,
       offsetOfTransactionId: transaction.offset?.originalTransactionId.value,
       offsetKind: transaction.offset?.kind,
+      tagIds: transaction.tagIds
+          .map((tagId) => tagId.value)
+          .toList(growable: false),
       splits: transaction.splits
           .map(TransactionSplitPersistenceModel.fromEntity)
           .toList(growable: false),
@@ -158,6 +154,10 @@ final class TransactionPersistenceModel {
     PersistenceRecord record,
   ) {
     final reader = PersistenceRecordReader(record);
+
+    final rawTagIds = reader.contains(tagIdsField)
+        ? reader.requiredList(tagIdsField)
+        : const <Object?>[];
 
     final rawSplits = reader.requiredList(_splitsField);
     final rawLedgerEntries = reader.requiredList(_ledgerEntriesField);
@@ -188,6 +188,11 @@ final class TransactionPersistenceModel {
       }
     }
 
+    final tagIds = <String>[
+      for (var index = 0; index < rawTagIds.length; index++)
+        _readTagId(rawTagIds[index], index: index),
+    ];
+
     return TransactionPersistenceModel._(
       id: recordKey,
       persistenceOrder: readPersistenceOrder(record),
@@ -207,6 +212,7 @@ final class TransactionPersistenceModel {
       ),
       offsetOfTransactionId: offsetOfTransactionId,
       offsetKind: offsetKind,
+      tagIds: tagIds,
       splits: <TransactionSplitPersistenceModel>[
         for (var index = 0; index < rawSplits.length; index++)
           TransactionSplitPersistenceModel.fromRecord(
@@ -233,35 +239,26 @@ final class TransactionPersistenceModel {
     );
   }
 
-  /// Reads and validates persistence insertion order from a raw record.
-  static int readPersistenceOrder(PersistenceRecord record) {
-    final reader = PersistenceRecordReader(record);
-    return readPositivePersistenceInt(reader, persistenceOrderField);
-  }
-
-  /// Converts this model to the primitive representation stored by Sembast.
-  PersistenceRecord toRecord() {
-    return <String, Object?>{
-      persistenceOrderField: persistenceOrder,
-      _kindField: kind.name,
-      _merchantIdField: merchantId,
-      _effectiveAtField: effectiveAt.toUtc().toIso8601String(),
-      _descriptionField: description,
-      _noteField: note,
-      _stateField: state.name,
-      _offsetOfTransactionIdField: offsetOfTransactionId,
-      _offsetKindField: offsetKind?.name,
-      _splitsField: splits
-          .map((split) => split.toRecord())
-          .toList(growable: false),
-      _ledgerEntriesField: ledgerEntries
-          .map((entry) => entry.toRecord())
-          .toList(growable: false),
-      _createdAtField: createdAt.toUtc().toIso8601String(),
-      _modifiedAtField: modifiedAt.toUtc().toIso8601String(),
-      _entityVersionField: entityVersion,
-    };
-  }
+  TransactionPersistenceModel._({
+    required this.id,
+    required this.persistenceOrder,
+    required this.kind,
+    required this.merchantId,
+    required this.effectiveAt,
+    required this.description,
+    required this.note,
+    required this.state,
+    required this.offsetOfTransactionId,
+    required this.offsetKind,
+    required List<String> tagIds,
+    required List<TransactionSplitPersistenceModel> splits,
+    required List<LedgerEntryPersistenceModel> ledgerEntries,
+    required this.createdAt,
+    required this.modifiedAt,
+    required this.entityVersion,
+  }) : tagIds = List.unmodifiable(tagIds),
+       splits = List.unmodifiable(splits),
+       ledgerEntries = List.unmodifiable(ledgerEntries);
 
   /// Reconstructs the active domain aggregate represented by this model.
   Transaction toEntity() {
@@ -285,6 +282,7 @@ final class TransactionPersistenceModel {
         state: state,
         offset: offset,
         deletedAt: null,
+        tagIds: tagIds.map(TagId.fromString).toList(growable: false),
         splits: splits.map((split) => split.toEntity()).toList(growable: false),
         ledgerEntries: ledgerEntries
             .map((entry) => entry.toEntity())
@@ -306,5 +304,49 @@ final class TransactionPersistenceModel {
       );
     }
     // coverage:ignore-end
+  }
+
+  /// Converts this model to the primitive representation stored by Sembast.
+  PersistenceRecord toRecord() {
+    return <String, Object?>{
+      persistenceOrderField: persistenceOrder,
+      _kindField: kind.name,
+      _merchantIdField: merchantId,
+      _effectiveAtField: effectiveAt.toUtc().toIso8601String(),
+      _descriptionField: description,
+      _noteField: note,
+      _stateField: state.name,
+      _offsetOfTransactionIdField: offsetOfTransactionId,
+      _offsetKindField: offsetKind?.name,
+      tagIdsField: List<String>.unmodifiable(tagIds),
+      _splitsField: splits
+          .map((split) => split.toRecord())
+          .toList(growable: false),
+      _ledgerEntriesField: ledgerEntries
+          .map((entry) => entry.toRecord())
+          .toList(growable: false),
+      _createdAtField: createdAt.toUtc().toIso8601String(),
+      _modifiedAtField: modifiedAt.toUtc().toIso8601String(),
+      _entityVersionField: entityVersion,
+    };
+  }
+
+  /// Reads and validates persistence insertion order from a raw record.
+  static int readPersistenceOrder(PersistenceRecord record) {
+    final reader = PersistenceRecordReader(record);
+
+    return readPositivePersistenceInt(reader, persistenceOrderField);
+  }
+
+  /// Reads one serialized tag identity from [value].
+  static String _readTagId(Object? value, {required int index}) {
+    if (value is! String) {
+      throw PersistenceRecordException(
+        field: '$tagIdsField[$index]',
+        reason: 'Expected String.',
+      );
+    }
+
+    return value;
   }
 }

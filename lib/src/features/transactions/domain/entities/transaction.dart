@@ -1,16 +1,17 @@
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
-import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/core/domain/mixins/deletable.dart';
-import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
+import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/ports/clock/clock.dart';
 import 'package:axiom/src/core/ports/clock/clock_factory.dart';
+import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
-import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:dart_mappable/dart_mappable.dart';
@@ -20,19 +21,24 @@ part 'transaction.mapper.dart';
 
 /// A recorded or planned financial event.
 ///
-/// A transaction is the aggregate root for the financial effects and
-/// allocations belonging to a single financial event.
+/// A transaction is the aggregate root for the financial effects, metadata,
+/// and allocations belonging to a single financial event.
 ///
-/// The aggregate distinguishes three separate concepts:
+/// The aggregate distinguishes four separate concepts:
 ///
 /// - transaction metadata describes the financial event itself;
+/// - [tagIds] attach reusable metadata to the transaction;
 /// - [ledgerEntries] describe account and asset impact;
 /// - [splits] describe allocation of transaction value to domain concepts such
-///   as categories, or jars.
+///   as categories or jars.
 ///
 /// A [LedgerEntry] therefore changes or describes an account position, while a
 /// [TransactionSplit] does not. A split only assigns part of the transaction
 /// value to one or more allocation targets.
+///
+/// Tags are also not allocation targets. They classify or annotate the
+/// transaction as a whole and are therefore independent of categories and
+/// jars.
 ///
 /// Individual [LedgerEntry] and [TransactionSplit] instances enforce their own
 /// local invariants. This aggregate enforces invariants involving collections
@@ -46,6 +52,7 @@ part 'transaction.mapper.dart';
 ///   merchant identifier rather than a nullable merchant.
 /// - [effectiveAt] is normalized to UTC and represents the financial event
 ///   time, independently of the audit timestamps.
+/// - [tagIds] contains no duplicate tag identities.
 /// - At least one ledger entry exists.
 /// - Ledger entries satisfy the structural rules associated with [kind].
 /// - Expense transactions contain exactly one outgoing primary ledger entry.
@@ -65,14 +72,31 @@ part 'transaction.mapper.dart';
 /// - [modifiedAt] cannot precede [createdAt], as enforced by [AuditedEntity].
 /// - [entityVersion] is greater than zero, as enforced by [AuditedEntity].
 ///
+/// ## Tag semantics
+///
+/// Tags are reusable metadata attached to the entire transaction.
+///
+/// Tags are deliberately independent from transaction allocations:
+///
+/// - categories and jars are represented through [TransactionSplit];
+/// - tags are represented by [tagIds] directly on the transaction.
+///
+/// The aggregate guarantees uniqueness of tag identities but cannot determine
+/// whether the referenced tags exist or are eligible for new assignment.
+/// Those checks require access to the Tags feature and therefore belong to the
+/// coordinating application operation.
+///
+/// Existing transactions may continue referencing tags that are subsequently
+/// archived.
+///
 /// ## State semantics
 ///
 /// [state] describes the lifecycle state of the financial event, such as
 /// whether it is planned or actual. State does not change the semantic
-/// boundary between ledger entries and splits.
+/// boundary between ledger entries, splits, and tags.
 ///
-/// Ledger entries remain responsible for account and asset impact, while splits
-/// remain responsible for allocation.
+/// Ledger entries remain responsible for account and asset impact, splits
+/// remain responsible for allocation, and tags remain reusable metadata.
 ///
 /// ## Transfer semantics
 ///
@@ -135,12 +159,21 @@ final class Transaction extends AuditedEntity<TransactionId>
   /// ordinary transactions with their own ledger entries and effective time.
   final TransactionOffset? offset;
 
-  /// Whether this transaction represents an offset of another transaction.
-  bool get isOffset => offset != null;
-
   /// {@macro deletable.deleted_at}
   @override
   final DateTime? deletedAt;
+
+  /// Reusable metadata tags attached to this transaction.
+  ///
+  /// Tags describe the transaction as a whole and do not participate in
+  /// allocation or account-balance calculations.
+  ///
+  /// The collection contains unique [TagId] values, is defensively copied
+  /// during construction, and is exposed as immutable.
+  ///
+  /// Existence and assignment eligibility of the referenced tags are
+  /// cross-feature invariants and must be checked before persistence.
+  final List<TagId> tagIds;
 
   /// Allocations of transaction value to domain allocation targets.
   ///
@@ -160,15 +193,19 @@ final class Transaction extends AuditedEntity<TransactionId>
 
   /// Creates a transaction.
   ///
-  /// The supplied [splits] and [ledgerEntries] are defensively copied and
-  /// exposed as immutable collections.
+  /// The supplied [tagIds], [splits], and [ledgerEntries] are defensively
+  /// copied and exposed as immutable collections.
   ///
-  /// Aggregate validation is performed in three stages:
+  /// Aggregate validation is performed in four stages:
   ///
-  /// 1. ledger-entry structure is validated against [kind];
-  /// 2. split availability is validated against [kind];
-  /// 3. the complete split collection is reconciled against the applicable
+  /// 1. transaction-level tag uniqueness is validated;
+  /// 2. ledger-entry structure is validated against [kind];
+  /// 3. split availability is validated against [kind];
+  /// 4. the complete split collection is reconciled against the applicable
   ///    primary ledger transaction and valuation amounts.
+  ///
+  /// Tag existence is deliberately not validated by the aggregate because it
+  /// requires access to another aggregate and repository.
   ///
   /// Throws an [ArgumentError] when any transaction invariant is violated.
   ///
@@ -185,6 +222,7 @@ final class Transaction extends AuditedEntity<TransactionId>
     required this.state,
     this.offset,
     this.deletedAt,
+    List<TagId> tagIds = const [],
     required List<TransactionSplit> splits,
     required List<LedgerEntry> ledgerEntries,
     required super.createdAt,
@@ -193,6 +231,7 @@ final class Transaction extends AuditedEntity<TransactionId>
   }) : effectiveAt = effectiveAt.toUtc(),
        description = normalizeOptionalText(description, 'description'),
        note = normalizeOptionalText(note, 'note'),
+       tagIds = List.unmodifiable(tagIds),
        splits = List.unmodifiable(splits),
        ledgerEntries = List.unmodifiable(ledgerEntries) {
     if (deletedAt?.isBefore(createdAt) ?? false) {
@@ -203,6 +242,7 @@ final class Transaction extends AuditedEntity<TransactionId>
       );
     }
 
+    _validateTagIds();
     _validateLedgerEntries();
     _validateSplits();
     _validateSplitReconciliation();
@@ -217,6 +257,7 @@ final class Transaction extends AuditedEntity<TransactionId>
     String? note,
     required TransactionState state,
     TransactionOffset? offset,
+    List<TagId> tagIds = const [],
     required List<TransactionSplit> splits,
     required List<LedgerEntry> ledgerEntries,
     Clock? clock,
@@ -233,12 +274,72 @@ final class Transaction extends AuditedEntity<TransactionId>
       note: note,
       state: state,
       offset: offset,
+      tagIds: tagIds,
       splits: splits,
       ledgerEntries: ledgerEntries,
       createdAt: now,
       modifiedAt: now,
       entityVersion: 1,
     );
+  }
+
+  /// Whether this transaction represents an offset of another transaction.
+  bool get isOffset => offset != null;
+
+  /// Requires exactly two primary entries with opposing directions.
+  void _requireOpposingPrimaryEntries(List<LedgerEntry> primaryEntries) {
+    _requirePrimaryEntryCount(primaryEntries, 2);
+
+    final hasIncoming = primaryEntries.any(
+      (entry) => entry.transactionAmount.isIncoming,
+    );
+
+    final hasOutgoing = primaryEntries.any(
+      (entry) => entry.transactionAmount.isOutgoing,
+    );
+
+    if (!hasIncoming || !hasOutgoing) {
+      throw ArgumentError.value(
+        ledgerEntries,
+        'ledgerEntries',
+        'Transaction kind $kind requires one incoming and one outgoing '
+            'primary ledger entry.',
+      );
+    }
+  }
+
+  /// Requires exactly [expectedCount] primary ledger entries.
+  void _requirePrimaryEntryCount(
+    List<LedgerEntry> primaryEntries,
+    int expectedCount,
+  ) {
+    if (primaryEntries.length != expectedCount) {
+      throw ArgumentError.value(
+        ledgerEntries,
+        'ledgerEntries',
+        'Transaction kind $kind requires exactly $expectedCount primary '
+            '${expectedCount == 1 ? 'ledger entry' : 'ledger entries'}.',
+      );
+    }
+  }
+
+  /// Requires exactly one primary ledger entry with [direction].
+  void _requireSinglePrimaryEntry(
+    List<LedgerEntry> primaryEntries, {
+    required AssetAmountDirection direction,
+  }) {
+    _requirePrimaryEntryCount(primaryEntries, 1);
+
+    final primaryEntry = primaryEntries.single;
+
+    if (primaryEntry.transactionAmount.direction != direction) {
+      throw ArgumentError.value(
+        ledgerEntries,
+        'ledgerEntries',
+        'Transaction kind $kind requires its primary ledger entry to be '
+            '${direction.name}.',
+      );
+    }
   }
 
   /// Validates ledger-entry structure against the transaction kind.
@@ -279,21 +380,36 @@ final class Transaction extends AuditedEntity<TransactionId>
     }
   }
 
-  /// Validates whether the transaction kind permits allocation splits.
-  ///
-  /// The validity of an individual [TransactionSplit] is owned by that value
-  /// object. This method only validates whether splits are meaningful for the
-  /// transaction as a whole.
-  void _validateSplits() {
-    if (splits.isEmpty) {
-      return;
+  void _validateSplitAmount({
+    required TransactionSplit split,
+    required AssetAmount splitAmount,
+    required AssetAmount primaryAmount,
+    required String representation,
+  }) {
+    if (splitAmount.isUnknownAmount) {
+      throw ArgumentError.value(
+        split,
+        'splits',
+        'A transaction split cannot have an unknown $representation amount '
+            'when reconciliation is required.',
+      );
     }
 
-    if (!kind.supportsSplits) {
+    if (splitAmount.assetId != primaryAmount.assetId) {
       throw ArgumentError.value(
-        splits,
+        split,
         'splits',
-        'Transaction kind $kind does not support allocation splits.',
+        'Every transaction split must use the same $representation asset as '
+            'the applicable primary ledger amount.',
+      );
+    }
+
+    if (splitAmount.direction != primaryAmount.direction) {
+      throw ArgumentError.value(
+        split,
+        'splits',
+        'Every transaction split must use the same $representation direction '
+            'as the applicable primary ledger amount.',
       );
     }
   }
@@ -377,92 +493,38 @@ final class Transaction extends AuditedEntity<TransactionId>
     }
   }
 
-  void _validateSplitAmount({
-    required TransactionSplit split,
-    required AssetAmount splitAmount,
-    required AssetAmount primaryAmount,
-    required String representation,
-  }) {
-    if (splitAmount.isUnknownAmount) {
-      throw ArgumentError.value(
-        split,
-        'splits',
-        'A transaction split cannot have an unknown $representation amount '
-            'when reconciliation is required.',
-      );
+  /// Validates whether the transaction kind permits allocation splits.
+  ///
+  /// The validity of an individual [TransactionSplit] is owned by that value
+  /// object. This method only validates whether splits are meaningful for the
+  /// transaction as a whole.
+  void _validateSplits() {
+    if (splits.isEmpty) {
+      return;
     }
 
-    if (splitAmount.assetId != primaryAmount.assetId) {
+    if (!kind.supportsSplits) {
       throw ArgumentError.value(
-        split,
+        splits,
         'splits',
-        'Every transaction split must use the same $representation asset as '
-            'the applicable primary ledger amount.',
-      );
-    }
-
-    if (splitAmount.direction != primaryAmount.direction) {
-      throw ArgumentError.value(
-        split,
-        'splits',
-        'Every transaction split must use the same $representation direction '
-            'as the applicable primary ledger amount.',
+        'Transaction kind $kind does not support allocation splits.',
       );
     }
   }
 
-  /// Requires exactly one primary ledger entry with [direction].
-  void _requireSinglePrimaryEntry(
-    List<LedgerEntry> primaryEntries, {
-    required AssetAmountDirection direction,
-  }) {
-    _requirePrimaryEntryCount(primaryEntries, 1);
-
-    final primaryEntry = primaryEntries.single;
-
-    if (primaryEntry.transactionAmount.direction != direction) {
+  /// Validates transaction-level tag references.
+  ///
+  /// A tag may occur at most once on a transaction.
+  ///
+  /// Existence and assignment eligibility are deliberately not checked here
+  /// because those rules require resolving separate [TagId] references through
+  /// the Tags feature.
+  void _validateTagIds() {
+    if (tagIds.toSet().length != tagIds.length) {
       throw ArgumentError.value(
-        ledgerEntries,
-        'ledgerEntries',
-        'Transaction kind $kind requires its primary ledger entry to be '
-            '${direction.name}.',
-      );
-    }
-  }
-
-  /// Requires exactly [expectedCount] primary ledger entries.
-  void _requirePrimaryEntryCount(
-    List<LedgerEntry> primaryEntries,
-    int expectedCount,
-  ) {
-    if (primaryEntries.length != expectedCount) {
-      throw ArgumentError.value(
-        ledgerEntries,
-        'ledgerEntries',
-        'Transaction kind $kind requires exactly $expectedCount primary '
-            '${expectedCount == 1 ? 'ledger entry' : 'ledger entries'}.',
-      );
-    }
-  }
-
-  /// Requires exactly two primary entries with opposing directions.
-  void _requireOpposingPrimaryEntries(List<LedgerEntry> primaryEntries) {
-    _requirePrimaryEntryCount(primaryEntries, 2);
-
-    final hasIncoming = primaryEntries.any(
-      (entry) => entry.transactionAmount.isIncoming,
-    );
-
-    final hasOutgoing = primaryEntries.any(
-      (entry) => entry.transactionAmount.isOutgoing,
-    );
-
-    if (!hasIncoming || !hasOutgoing) {
-      throw ArgumentError.value(
-        ledgerEntries,
-        'ledgerEntries',
-        'Transaction kind $kind requires one incoming and one outgoing '
-            'primary ledger entry.',
+        tagIds,
+        'tagIds',
+        'A transaction cannot contain duplicate tag identities.',
       );
     }
   }

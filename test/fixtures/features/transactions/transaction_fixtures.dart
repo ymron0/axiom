@@ -1,11 +1,12 @@
-import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
-import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
+import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
@@ -19,6 +20,7 @@ Transaction transactionFixture({
   required String id,
   DateTime? deletedAt,
   DateTime? effectiveAt,
+  List<TagId> tagIds = const [],
 }) {
   final amount = AssetAmount(
     assetId: AssetId.fromString('asset-eur'),
@@ -36,6 +38,7 @@ Transaction transactionFixture({
     note: null,
     state: TransactionState.actual,
     deletedAt: deletedAt,
+    tagIds: tagIds,
     splits: const [],
     ledgerEntries: [
       LedgerEntry(
@@ -53,8 +56,12 @@ Transaction transactionFixture({
 }
 
 /// Creates a valid new expense transaction through [Transaction.create].
-Transaction newTransactionFixture({DateTime? effectiveAt}) {
+Transaction newTransactionFixture({
+  DateTime? effectiveAt,
+  List<TagId> tagIds = const [],
+}) {
   final createdAt = DateTime.utc(2026, 1, 1);
+
   final amount = AssetAmount(
     assetId: AssetId.fromString('asset-eur'),
     amount: Decimal.fromInt(10),
@@ -67,6 +74,7 @@ Transaction newTransactionFixture({DateTime? effectiveAt}) {
     effectiveAt: effectiveAt ?? createdAt,
     description: 'Test transaction',
     state: TransactionState.actual,
+    tagIds: tagIds,
     splits: const [],
     ledgerEntries: [
       LedgerEntry(
@@ -86,6 +94,7 @@ Transaction transactionWithCategoryAllocationFixture({
   required CategoryId categoryId,
   String id = 'transaction-with-allocation',
   DateTime? deletedAt,
+  List<TagId> tagIds = const [],
 }) {
   final amount = AssetAmount(
     assetId: AssetId.fromString('asset-eur'),
@@ -103,6 +112,7 @@ Transaction transactionWithCategoryAllocationFixture({
     note: null,
     state: TransactionState.actual,
     deletedAt: deletedAt,
+    tagIds: tagIds,
     splits: [
       TransactionSplit(
         transactionAmount: amount,

@@ -2,6 +2,7 @@ import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record.dart';
 import 'package:axiom/src/core/persistence/persistence_operation_guard.dart'
@@ -32,6 +33,13 @@ import 'package:sembast/sembast.dart' hide Transaction;
 ///
 /// Ordinary transaction creation deliberately rejects offset transactions so
 /// callers cannot bypass the atomic over-offset protection.
+///
+/// Tag references are persisted as part of the transaction aggregate. This
+/// repository does not resolve or validate tag entities themselves because
+/// cross-feature referential integrity is coordinated by the application
+/// layer.
+///
+/// Tag-related queries operate exclusively on [Transaction.tagIds].
 final class SembastTransactionRepositoryImpl implements TransactionRepository {
   /// Creates a transaction repository using an already-open [database].
   const SembastTransactionRepositoryImpl({
@@ -233,6 +241,7 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
   Future<Result<List<Transaction>, TransactionFailure>> getAll() {
     return guardPersistenceOperation(() async {
       final transactions = await _readAll(_database);
+
       return Success(transactions);
     });
   }
@@ -313,6 +322,13 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
   }
 
   @override
+  Future<Result<List<Transaction>, TransactionFailure>> getTransactionsByTagId(
+    TagId tagId,
+  ) {
+    return _findWhere((transaction) => transaction.tagIds.contains(tagId));
+  }
+
+  @override
   Future<Result<bool, TransactionFailure>> existsByAccountId(
     AccountId accountId,
   ) {
@@ -345,6 +361,11 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     return _existsWhere(
       (transaction) => transaction.splits.any((split) => split.jarId == jarId),
     );
+  }
+
+  @override
+  Future<Result<bool, TransactionFailure>> existsByTagId(TagId tagId) {
+    return _existsWhere((transaction) => transaction.tagIds.contains(tagId));
   }
 
   @override
@@ -604,6 +625,7 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     );
   }
 
+  /// Returns the next monotonic persistence insertion order.
   Future<int> _nextPersistenceOrder(DatabaseClient databaseClient) async {
     final snapshots = await _store.find(databaseClient);
 
@@ -622,6 +644,7 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     return maximum + 1;
   }
 
+  /// Returns transactions satisfying [matches] in persistence insertion order.
   Future<Result<List<Transaction>, TransactionFailure>> _findWhere(
     bool Function(Transaction transaction) matches,
   ) {
@@ -634,15 +657,18 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     });
   }
 
+  /// Returns whether at least one persisted transaction satisfies [matches].
   Future<Result<bool, TransactionFailure>> _existsWhere(
     bool Function(Transaction transaction) matches,
   ) {
     return guardPersistenceOperation(() async {
       final transactions = await _readAll(_database);
+
       return Success(transactions.any(matches));
     });
   }
 
+  /// Finds one transaction by identity from [transactions].
   static Transaction? _findTransaction(
     Iterable<Transaction> transactions,
     TransactionId id,
@@ -656,6 +682,7 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     return null;
   }
 
+  /// Whether two optional offset relationships represent the same relationship.
   static bool _sameOffset(TransactionOffset? first, TransactionOffset? second) {
     if (first == null && second == null) {
       return true;
@@ -669,6 +696,13 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
         first.kind == second.kind;
   }
 
+  /// Whether [transaction] satisfies every non-empty criterion in [query].
+  ///
+  /// Criteria belonging to different fields use AND semantics.
+  ///
+  /// Multiple values within one field use OR semantics. For tags this means
+  /// that a transaction matches when it references at least one tag contained
+  /// in [TransactionQuery.tagIds].
   static bool _matchesQuery(Transaction transaction, TransactionQuery query) {
     return (query.kinds.isEmpty || query.kinds.contains(transaction.kind)) &&
         (query.states.isEmpty || query.states.contains(transaction.state)) &&
@@ -678,17 +712,21 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
             transaction.ledgerEntries.any(
               (entry) => query.accountIds.contains(entry.accountId),
             )) &&
+        (query.tagIds.isEmpty ||
+            transaction.tagIds.any((tagId) => query.tagIds.contains(tagId))) &&
         (query.effectiveFrom == null ||
             !transaction.effectiveAt.isBefore(query.effectiveFrom!)) &&
         (query.effectiveUntil == null ||
             transaction.effectiveAt.isBefore(query.effectiveUntil!));
   }
 
+  /// Executes a persistence operation and translates persistence exceptions.
   Future<Result<T, TransactionFailure>>
   guardPersistenceOperation<T extends Object?>(
     Future<Result<T, TransactionFailure>> Function() operation,
   ) => persistenceGuard<T>(operation);
 
+  /// Executes [operation] through the shared persistence guard.
   Future<Result<T, TransactionFailure>> persistenceGuard<T extends Object?>(
     Future<Result<T, TransactionFailure>> Function() operation,
   ) {
@@ -700,6 +738,7 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     );
   }
 
+  /// Creates the standard transaction-not-found failure for [id].
   static TransactionNotFoundFailure _notFound(TransactionId id) {
     return TransactionNotFoundFailure(
       message:

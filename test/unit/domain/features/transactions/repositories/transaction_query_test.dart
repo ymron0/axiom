@@ -6,6 +6,7 @@ import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -20,6 +21,7 @@ void main() {
       expect(query.states, isEmpty);
       expect(query.merchantIds, isEmpty);
       expect(query.accountIds, isEmpty);
+      expect(query.tagIds, isEmpty);
       expect(query.effectiveFrom, isNull);
       expect(query.effectiveUntil, isNull);
     });
@@ -97,10 +99,13 @@ void main() {
       // Given
       final merchantId = MerchantId.fromString('merchant-1');
       final accountId = AccountId.fromString('account-1');
+      final tagId = TagId.fromString('tag-business');
+
       final kinds = {TransactionKind.expense};
       final states = {TransactionState.actual};
       final merchantIds = {merchantId};
       final accountIds = {accountId};
+      final tagIds = {tagId};
 
       // When
       final query = TransactionQuery(
@@ -108,33 +113,58 @@ void main() {
         states: states,
         merchantIds: merchantIds,
         accountIds: accountIds,
+        tagIds: tagIds,
       );
+
       kinds.add(TransactionKind.income);
       states.add(TransactionState.planned);
       merchantIds.add(MerchantId.fromString('merchant-2'));
       accountIds.add(AccountId.fromString('account-2'));
+      tagIds.add(TagId.fromString('tag-personal'));
 
       // Then
       expect(query.kinds, {TransactionKind.expense});
       expect(query.states, {TransactionState.actual});
       expect(query.merchantIds, {merchantId});
       expect(query.accountIds, {accountId});
+      expect(query.tagIds, {tagId});
+
       expect(
         () => query.kinds.add(TransactionKind.income),
         throwsUnsupportedError,
       );
+
       expect(
         () => query.states.add(TransactionState.planned),
         throwsUnsupportedError,
       );
+
       expect(
         () => query.merchantIds.add(MerchantId.fromString('merchant-2')),
         throwsUnsupportedError,
       );
+
       expect(
         () => query.accountIds.add(AccountId.fromString('account-2')),
         throwsUnsupportedError,
       );
+
+      expect(
+        () => query.tagIds.add(TagId.fromString('tag-personal')),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('is not empty when tagIds contains a criterion', () {
+      // Given
+      final tagId = TagId.fromString('tag-business');
+
+      // When
+      final query = TransactionQuery(tagIds: {tagId});
+
+      // Then
+      expect(query.isEmpty, isFalse);
+      expect(query.tagIds, {tagId});
     });
   });
 }

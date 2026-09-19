@@ -17,6 +17,7 @@ void main() {
       expect(SembastStores.custodiansName, 'custodians');
       expect(SembastStores.categoriesName, 'categories');
       expect(SembastStores.jarsName, 'jars');
+      expect(SembastStores.tagsName, 'tags');
     });
 
     test('registers every current application store', () {
@@ -31,6 +32,7 @@ void main() {
         'custodians',
         'categories',
         'jars',
+        'tags',
       ]);
     });
 
@@ -54,6 +56,7 @@ void main() {
       expect(SembastStores.custodians.name, SembastStores.custodiansName);
       expect(SembastStores.categories.name, SembastStores.categoriesName);
       expect(SembastStores.jars.name, SembastStores.jarsName);
+      expect(SembastStores.tags.name, SembastStores.tagsName);
     });
 
     test('all store references correspond to all declared names', () {

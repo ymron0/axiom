@@ -29,6 +29,7 @@ import 'package:axiom/src/features/transactions/domain/repositories/transaction_
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:decimal/decimal.dart';
 import 'package:sembast/sembast.dart' hide Transaction;
 import 'package:test/test.dart';
@@ -52,10 +53,7 @@ void main() {
     group('create', () {
       test('persists a transaction and preserves entityVersion', () async {
         // Given
-        final transaction = _transaction(
-          id: 'create',
-          entityVersion: 7,
-        );
+        final transaction = _transaction(id: 'create', entityVersion: 7);
 
         // When
         final result = await repository.create(transaction);
@@ -63,9 +61,7 @@ void main() {
         // Then
         expect(result.isSuccess, isTrue);
 
-        final stored = (await repository.getById(
-          transaction.id,
-        )).valueOrNull!;
+        final stored = (await repository.getById(transaction.id)).valueOrNull!;
 
         expect(stored.id, transaction.id);
         expect(stored.entityVersion, 7);
@@ -74,10 +70,7 @@ void main() {
 
       test('rejects duplicate identity without replacement', () async {
         // Given
-        final original = _transaction(
-          id: 'duplicate',
-          description: 'Original',
-        );
+        final original = _transaction(id: 'duplicate', description: 'Original');
 
         final duplicate = _transaction(
           id: original.id.value,
@@ -90,10 +83,7 @@ void main() {
         final result = await repository.create(duplicate);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionAlreadyExistsFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
 
         expect(
           (await repository.getById(original.id)).valueOrNull?.description,
@@ -112,15 +102,9 @@ void main() {
         final result = await repository.create(deleted);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionAlreadyDeletedFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionAlreadyDeletedFailure>());
 
-        expect(
-          (await repository.getById(deleted.id)).valueOrNull,
-          isNull,
-        );
+        expect((await repository.getById(deleted.id)).valueOrNull, isNull);
       });
 
       test('rejects an offset transaction', () async {
@@ -135,15 +119,30 @@ void main() {
         final result = await repository.create(offset);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionOffsetValidationFailure>(),
+        expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
+
+        expect((await repository.getById(offset.id)).valueOrNull, isNull);
+      });
+
+      test('persists transaction tag references', () async {
+        // Given
+        final business = TagId.fromString('tag-business');
+        final reimbursable = TagId.fromString('tag-reimbursable');
+
+        final transaction = _transaction(
+          id: 'create-tagged',
+          tagIds: [business, reimbursable],
         );
 
-        expect(
-          (await repository.getById(offset.id)).valueOrNull,
-          isNull,
-        );
+        // When
+        final result = await repository.create(transaction);
+
+        // Then
+        expect(result.isSuccess, isTrue);
+
+        final stored = (await repository.getById(transaction.id)).valueOrNull!;
+
+        expect(stored.tagIds, [business, reimbursable]);
       });
     });
 
@@ -161,10 +160,10 @@ void main() {
 
         final stored = (await repository.getAll()).valueOrNull!;
 
-        expect(
-          stored.map((transaction) => transaction.id),
-          [first.id, second.id],
-        );
+        expect(stored.map((transaction) => transaction.id), [
+          first.id,
+          second.id,
+        ]);
       });
 
       test('succeeds for an empty batch', () async {
@@ -180,29 +179,20 @@ void main() {
         // Given
         final active = _transaction(id: 'batch-active');
 
-        final deleted = _transaction(
-          id: 'batch-deleted',
-          deletedAt: deletedAt,
-        );
+        final deleted = _transaction(id: 'batch-deleted', deletedAt: deletedAt);
 
         // When
         final result = await repository.createAll([active, deleted]);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionAlreadyDeletedFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionAlreadyDeletedFailure>());
 
         expect((await repository.getAll()).valueOrNull, isEmpty);
       });
 
       test('is atomic for duplicate request IDs', () async {
         // Given
-        final first = _transaction(
-          id: 'batch-duplicate',
-          description: 'First',
-        );
+        final first = _transaction(id: 'batch-duplicate', description: 'First');
 
         final duplicate = _transaction(
           id: first.id.value,
@@ -213,10 +203,7 @@ void main() {
         final result = await repository.createAll([first, duplicate]);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionAlreadyExistsFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
 
         expect((await repository.getAll()).valueOrNull, isEmpty);
       });
@@ -232,15 +219,9 @@ void main() {
         final result = await repository.createAll([fresh, existing]);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionAlreadyExistsFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
 
-        expect(
-          (await repository.getById(fresh.id)).valueOrNull,
-          isNull,
-        );
+        expect((await repository.getById(fresh.id)).valueOrNull, isNull);
       });
 
       test('rejects a batch containing an offset transaction', () async {
@@ -257,10 +238,7 @@ void main() {
         final result = await repository.createAll([normal, offset]);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionOffsetValidationFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
 
         expect((await repository.getAll()).valueOrNull, isEmpty);
       });
@@ -292,14 +270,8 @@ void main() {
 
         expect(stored.id, offset.id);
         expect(stored.isOffset, isTrue);
-        expect(
-          stored.offset?.originalTransactionId,
-          original.id,
-        );
-        expect(
-          stored.offset?.kind,
-          TransactionOffsetKind.reimbursement,
-        );
+        expect(stored.offset?.originalTransactionId, original.id);
+        expect(stored.offset?.kind, TransactionOffsetKind.reimbursement);
       });
 
       test('rejects a deleted offset transaction', () async {
@@ -315,10 +287,7 @@ void main() {
         final result = await repository.createOffset(offset);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionAlreadyDeletedFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionAlreadyDeletedFailure>());
       });
 
       test('rejects a transaction without an offset relationship', () async {
@@ -332,10 +301,7 @@ void main() {
         final result = await repository.createOffset(transaction);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionOffsetValidationFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
       });
 
       test('returns not-found when original transaction is missing', () async {
@@ -350,15 +316,9 @@ void main() {
         final result = await repository.createOffset(offset);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionNotFoundFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionNotFoundFailure>());
 
-        expect(
-          (await repository.getById(offset.id)).valueOrNull,
-          isNull,
-        );
+        expect((await repository.getById(offset.id)).valueOrNull, isNull);
       });
 
       test('rejects duplicate transaction identity', () async {
@@ -385,10 +345,7 @@ void main() {
         final result = await repository.createOffset(offset);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionAlreadyExistsFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionAlreadyExistsFailure>());
       });
 
       test('allows cumulative offsets equal to original amount', () async {
@@ -466,10 +423,7 @@ void main() {
         expect(offsets, hasLength(1));
         expect(offsets.single.id, first.id);
 
-        expect(
-          (await repository.getById(second.id)).valueOrNull,
-          isNull,
-        );
+        expect((await repository.getById(second.id)).valueOrNull, isNull);
       });
 
       test('supports allocated offsets using original allocation', () async {
@@ -480,10 +434,7 @@ void main() {
           id: 'allocated-original',
           amount: Decimal.fromInt(100),
           splits: [
-            _split(
-              categoryId: categoryId.value,
-              amount: Decimal.fromInt(100),
-            ),
+            _split(categoryId: categoryId.value, amount: Decimal.fromInt(100)),
           ],
         );
 
@@ -517,15 +468,12 @@ void main() {
         final transactions = (await repository.getAll()).valueOrNull!;
 
         // Then
-        expect(
-          transactions.map((transaction) => transaction.id),
-          [second.id, first.id],
-        );
+        expect(transactions.map((transaction) => transaction.id), [
+          second.id,
+          first.id,
+        ]);
 
-        expect(
-          () => transactions.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => transactions.clear(), throwsUnsupportedError);
       });
 
       test('returns successful null for missing ID', () async {
@@ -582,15 +530,12 @@ void main() {
         )).valueOrNull!;
 
         // Then
-        expect(
-          offsets.map((transaction) => transaction.id),
-          [first.id, second.id],
-        );
+        expect(offsets.map((transaction) => transaction.id), [
+          first.id,
+          second.id,
+        ]);
 
-        expect(
-          () => offsets.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => offsets.clear(), throwsUnsupportedError);
       });
 
       test('returns immutable empty list when no offsets exist', () async {
@@ -610,10 +555,7 @@ void main() {
         // Then
         expect(offsets, isEmpty);
 
-        expect(
-          () => offsets.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => offsets.clear(), throwsUnsupportedError);
       });
     });
 
@@ -639,10 +581,7 @@ void main() {
           ledgerEntries: [secondMatching],
         );
 
-        await repository.createAll([
-          firstTransaction,
-          secondTransaction,
-        ]);
+        await repository.createAll([firstTransaction, secondTransaction]);
 
         // When
         final entries = (await repository.getLedgerEntriesByAccountId(
@@ -655,10 +594,7 @@ void main() {
         expect(entries[0].role, firstMatching.role);
         expect(entries[1].accountId, secondMatching.accountId);
 
-        expect(
-          () => entries.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => entries.clear(), throwsUnsupportedError);
       });
 
       test('returns transactions by account in insertion order', () async {
@@ -686,15 +622,12 @@ void main() {
         )).valueOrNull!;
 
         // Then
-        expect(
-          transactions.map((transaction) => transaction.id),
-          [first.id, second.id],
-        );
+        expect(transactions.map((transaction) => transaction.id), [
+          first.id,
+          second.id,
+        ]);
 
-        expect(
-          () => transactions.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => transactions.clear(), throwsUnsupportedError);
       });
 
       test('returns transactions by merchant', () async {
@@ -717,31 +650,23 @@ void main() {
         )).valueOrNull!;
 
         // Then
-        expect(
-          transactions.map((transaction) => transaction.id),
-          [matching.id],
-        );
+        expect(transactions.map((transaction) => transaction.id), [
+          matching.id,
+        ]);
 
-        expect(
-          () => transactions.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => transactions.clear(), throwsUnsupportedError);
       });
 
       test('returns transactions by category allocation', () async {
         // Given
         final matching = _transaction(
           id: 'category-match',
-          splits: [
-            _split(categoryId: 'category-target'),
-          ],
+          splits: [_split(categoryId: 'category-target')],
         );
 
         final unrelated = _transaction(
           id: 'category-other',
-          splits: [
-            _split(categoryId: 'category-other'),
-          ],
+          splits: [_split(categoryId: 'category-other')],
         );
 
         await repository.createAll([matching, unrelated]);
@@ -752,31 +677,23 @@ void main() {
         )).valueOrNull!;
 
         // Then
-        expect(
-          transactions.map((transaction) => transaction.id),
-          [matching.id],
-        );
+        expect(transactions.map((transaction) => transaction.id), [
+          matching.id,
+        ]);
 
-        expect(
-          () => transactions.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => transactions.clear(), throwsUnsupportedError);
       });
 
       test('returns transactions by jar allocation', () async {
         // Given
         final matching = _transaction(
           id: 'jar-match',
-          splits: [
-            _split(jarId: 'jar-target'),
-          ],
+          splits: [_split(jarId: 'jar-target')],
         );
 
         final unrelated = _transaction(
           id: 'jar-other',
-          splits: [
-            _split(jarId: 'jar-other'),
-          ],
+          splits: [_split(jarId: 'jar-other')],
         );
 
         await repository.createAll([matching, unrelated]);
@@ -787,15 +704,11 @@ void main() {
         )).valueOrNull!;
 
         // Then
-        expect(
-          transactions.map((transaction) => transaction.id),
-          [matching.id],
-        );
+        expect(transactions.map((transaction) => transaction.id), [
+          matching.id,
+        ]);
 
-        expect(
-          () => transactions.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => transactions.clear(), throwsUnsupportedError);
       });
 
       test('returns immutable empty relationship results', () async {
@@ -807,26 +720,53 @@ void main() {
         // Then
         expect(transactions, isEmpty);
 
-        expect(
-          () => transactions.clear(),
-          throwsUnsupportedError,
+        expect(() => transactions.clear(), throwsUnsupportedError);
+      });
+
+      test('returns transactions by tag in persistence order', () async {
+        // Given
+        final target = TagId.fromString('tag-target');
+
+        final first = _transaction(id: 'tag-first', tagIds: [target]);
+
+        final unrelated = _transaction(
+          id: 'tag-unrelated',
+          tagIds: [TagId.fromString('tag-other')],
         );
+
+        final second = _transaction(
+          id: 'tag-second',
+          tagIds: [TagId.fromString('tag-additional'), target],
+        );
+
+        await repository.createAll([first, unrelated, second]);
+
+        // When
+        final transactions = (await repository.getTransactionsByTagId(
+          target,
+        )).valueOrNull!;
+
+        // Then
+        expect(transactions.map((transaction) => transaction.id), [
+          first.id,
+          second.id,
+        ]);
+
+        expect(() => transactions.clear(), throwsUnsupportedError);
       });
     });
 
     group('relationship existence checks', () {
       test('returns true for referenced IDs', () async {
         // Given
+        final tagId = TagId.fromString('tag-target');
+
         final transaction = _transaction(
           id: 'exists',
           merchantId: 'merchant-target',
           accountId: 'account-target',
-          splits: [
-            _split(
-              categoryId: 'category-target',
-              jarId: 'jar-target',
-            ),
-          ],
+          tagIds: [tagId],
+          splits: [_split(categoryId: 'category-target', jarId: 'jar-target')],
         );
 
         await repository.create(transaction);
@@ -838,6 +778,8 @@ void main() {
           )).valueOrNull,
           isTrue,
         );
+
+        expect((await repository.existsByTagId(tagId)).valueOrNull, isTrue);
 
         expect(
           (await repository.existsByMerchantId(
@@ -868,7 +810,12 @@ void main() {
           )).valueOrNull,
           isFalse,
         );
-
+        expect(
+          (await repository.existsByTagId(
+            TagId.fromString('missing-tag'),
+          )).valueOrNull,
+          isFalse,
+        );
         expect(
           (await repository.existsByMerchantId(
             MerchantId.fromString('missing-merchant'),
@@ -915,45 +862,27 @@ void main() {
           accountId: 'account-chf',
         );
 
-        await repository.createAll([
-          expense,
-          income,
-          unrelated,
-        ]);
+        await repository.createAll([expense, income, unrelated]);
 
         // When
         final result = await repository.query(
           TransactionQuery(
-            kinds: {
-              TransactionKind.expense,
-              TransactionKind.income,
-            },
-            states: {
-              TransactionState.actual,
-              TransactionState.planned,
-            },
+            kinds: {TransactionKind.expense, TransactionKind.income},
+            states: {TransactionState.actual, TransactionState.planned},
             merchantIds: {
               MerchantId.fromString('merchant-grocery'),
               MerchantId.fromString('merchant-employer'),
             },
-            accountIds: {
-              AccountId.fromString('account-chf'),
-            },
+            accountIds: {AccountId.fromString('account-chf')},
           ),
         );
 
         // Then
         final transactions = result.valueOrNull!;
 
-        expect(
-          transactions.map((transaction) => transaction.id),
-          [income.id],
-        );
+        expect(transactions.map((transaction) => transaction.id), [income.id]);
 
-        expect(
-          () => transactions.clear(),
-          throwsUnsupportedError,
-        );
+        expect(() => transactions.clear(), throwsUnsupportedError);
       });
 
       test('effectiveFrom is inclusive and effectiveUntil exclusive', () async {
@@ -966,35 +895,21 @@ void main() {
           effectiveAt: DateTime.utc(2026, 1, 9, 23, 59),
         );
 
-        final atStart = _transaction(
-          id: 'range-start',
-          effectiveAt: from,
-        );
+        final atStart = _transaction(id: 'range-start', effectiveAt: from);
 
-        final atEnd = _transaction(
-          id: 'range-end',
-          effectiveAt: until,
-        );
+        final atEnd = _transaction(id: 'range-end', effectiveAt: until);
 
-        await repository.createAll([
-          before,
-          atStart,
-          atEnd,
-        ]);
+        await repository.createAll([before, atStart, atEnd]);
 
         // When
         final result = await repository.query(
-          TransactionQuery(
-            effectiveFrom: from,
-            effectiveUntil: until,
-          ),
+          TransactionQuery(effectiveFrom: from, effectiveUntil: until),
         );
 
         // Then
-        expect(
-          result.valueOrNull!.map((transaction) => transaction.id),
-          [atStart.id],
-        );
+        expect(result.valueOrNull!.map((transaction) => transaction.id), [
+          atStart.id,
+        ]);
       });
 
       test(
@@ -1011,20 +926,15 @@ void main() {
           // When
           final result = await repository.query(
             TransactionQuery(
-              effectiveFrom: DateTime.parse(
-                '2026-01-10T14:00:00+02:00',
-              ),
-              effectiveUntil: DateTime.parse(
-                '2026-01-10T15:00:00+02:00',
-              ),
+              effectiveFrom: DateTime.parse('2026-01-10T14:00:00+02:00'),
+              effectiveUntil: DateTime.parse('2026-01-10T15:00:00+02:00'),
             ),
           );
 
           // Then
-          expect(
-            result.valueOrNull!.map((transaction) => transaction.id),
-            [transaction.id],
-          );
+          expect(result.valueOrNull!.map((transaction) => transaction.id), [
+            transaction.id,
+          ]);
         },
       );
 
@@ -1041,16 +951,95 @@ void main() {
         // Then
         final transactions = result.valueOrNull!;
 
-        expect(
-          transactions.map((transaction) => transaction.id),
-          [first.id, second.id],
+        expect(transactions.map((transaction) => transaction.id), [
+          first.id,
+          second.id,
+        ]);
+
+        expect(() => transactions.clear(), throwsUnsupportedError);
+      });
+
+      test('tag criterion uses OR semantics within the field', () async {
+        // Given
+        final business = TagId.fromString('tag-business');
+        final reimbursable = TagId.fromString('tag-reimbursable');
+
+        final businessOnly = _transaction(
+          id: 'query-tag-business',
+          tagIds: [business],
         );
 
-        expect(
-          () => transactions.clear(),
-          throwsUnsupportedError,
+        final reimbursableOnly = _transaction(
+          id: 'query-tag-reimbursable',
+          tagIds: [reimbursable],
         );
+
+        final unrelated = _transaction(
+          id: 'query-tag-unrelated',
+          tagIds: [TagId.fromString('tag-personal')],
+        );
+
+        final untagged = _transaction(id: 'query-tag-untagged');
+
+        await repository.createAll([
+          businessOnly,
+          reimbursableOnly,
+          unrelated,
+          untagged,
+        ]);
+
+        // When
+        final result = await repository.query(
+          TransactionQuery(tagIds: {business, reimbursable}),
+        );
+
+        // Then
+        expect(result.valueOrNull!.map((transaction) => transaction.id), [
+          businessOnly.id,
+          reimbursableOnly.id,
+        ]);
       });
+
+      test(
+        'combines tag criterion with other fields using AND semantics',
+        () async {
+          // Given
+          final business = TagId.fromString('tag-business');
+
+          final matching = _transaction(
+            id: 'query-tag-and-match',
+            merchantId: 'merchant-target',
+            tagIds: [business],
+          );
+
+          final wrongMerchant = _transaction(
+            id: 'query-tag-and-wrong-merchant',
+            merchantId: 'merchant-other',
+            tagIds: [business],
+          );
+
+          final wrongTag = _transaction(
+            id: 'query-tag-and-wrong-tag',
+            merchantId: 'merchant-target',
+            tagIds: [TagId.fromString('tag-personal')],
+          );
+
+          await repository.createAll([matching, wrongMerchant, wrongTag]);
+
+          // When
+          final result = await repository.query(
+            TransactionQuery(
+              merchantIds: {MerchantId.fromString('merchant-target')},
+              tagIds: {business},
+            ),
+          );
+
+          // Then
+          expect(result.valueOrNull!.map((transaction) => transaction.id), [
+            matching.id,
+          ]);
+        },
+      );
     });
 
     group('update', () {
@@ -1077,9 +1066,7 @@ void main() {
         // Then
         expect(result.isSuccess, isTrue);
 
-        final stored = (await repository.getById(
-          original.id,
-        )).valueOrNull!;
+        final stored = (await repository.getById(original.id)).valueOrNull!;
 
         expect(stored.description, 'Updated');
         expect(stored.entityVersion, 4);
@@ -1105,10 +1092,7 @@ void main() {
         final result = await repository.update(conflicting);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionVersionConflictFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionVersionConflictFailure>());
 
         expect(
           (await repository.getById(original.id)).valueOrNull?.description,
@@ -1124,10 +1108,7 @@ void main() {
 
         // When
         final deleted = await repository.update(
-          _transaction(
-            id: original.id.value,
-            deletedAt: deletedAt,
-          ),
+          _transaction(id: original.id.value, deletedAt: deletedAt),
         );
 
         final missing = await repository.update(
@@ -1135,15 +1116,9 @@ void main() {
         );
 
         // Then
-        expect(
-          deleted.failureOrNull,
-          isA<TransactionAlreadyDeletedFailure>(),
-        );
+        expect(deleted.failureOrNull, isA<TransactionAlreadyDeletedFailure>());
 
-        expect(
-          missing.failureOrNull,
-          isA<TransactionNotFoundFailure>(),
-        );
+        expect(missing.failureOrNull, isA<TransactionNotFoundFailure>());
       });
 
       test('prevents changing an existing offset relationship', () async {
@@ -1175,17 +1150,11 @@ void main() {
         final result = await repository.update(replacement);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionOffsetValidationFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
 
         final stored = (await repository.getById(offset.id)).valueOrNull!;
 
-        expect(
-          stored.offset?.kind,
-          TransactionOffsetKind.reimbursement,
-        );
+        expect(stored.offset?.kind, TransactionOffsetKind.reimbursement);
       });
 
       test('updates an offset while relationship remains unchanged', () async {
@@ -1219,10 +1188,7 @@ void main() {
 
         final stored = (await repository.getById(offset.id)).valueOrNull!;
 
-        expect(
-          _primaryAmount(stored),
-          Decimal.fromInt(50),
-        );
+        expect(_primaryAmount(stored), Decimal.fromInt(50));
       });
 
       test(
@@ -1259,54 +1225,50 @@ void main() {
             isA<TransactionOffsetExceedsAvailableAmountFailure>(),
           );
 
-          final stored = (await repository.getById(
-            original.id,
-          )).valueOrNull!;
+          final stored = (await repository.getById(original.id)).valueOrNull!;
 
-          expect(
-            _primaryAmount(stored),
-            Decimal.fromInt(100),
-          );
+          expect(_primaryAmount(stored), Decimal.fromInt(100));
         },
       );
 
-      test('allows original update while existing offsets remain valid', () async {
-        // Given
-        final original = _transaction(
-          id: 'update-original-valid',
-          amount: Decimal.fromInt(100),
-          description: 'Original',
-        );
+      test(
+        'allows original update while existing offsets remain valid',
+        () async {
+          // Given
+          final original = _transaction(
+            id: 'update-original-valid',
+            amount: Decimal.fromInt(100),
+            description: 'Original',
+          );
 
-        final offset = _offsetTransaction(
-          id: 'update-original-valid-offset',
-          originalId: original.id.value,
-          amount: Decimal.fromInt(60),
-        );
+          final offset = _offsetTransaction(
+            id: 'update-original-valid-offset',
+            originalId: original.id.value,
+            amount: Decimal.fromInt(60),
+          );
 
-        await repository.create(original);
-        await repository.createOffset(offset);
+          await repository.create(original);
+          await repository.createOffset(offset);
 
-        final replacement = _transaction(
-          id: original.id.value,
-          amount: Decimal.fromInt(100),
-          description: 'Updated description',
-          modifiedAt: DateTime.utc(2026, 1, 3),
-        );
+          final replacement = _transaction(
+            id: original.id.value,
+            amount: Decimal.fromInt(100),
+            description: 'Updated description',
+            modifiedAt: DateTime.utc(2026, 1, 3),
+          );
 
-        // When
-        final result = await repository.update(replacement);
+          // When
+          final result = await repository.update(replacement);
 
-        // Then
-        expect(result.isSuccess, isTrue);
+          // Then
+          expect(result.isSuccess, isTrue);
 
-        expect(
-          (await repository.getById(
-            original.id,
-          )).valueOrNull?.description,
-          'Updated description',
-        );
-      });
+          expect(
+            (await repository.getById(original.id)).valueOrNull?.description,
+            'Updated description',
+          );
+        },
+      );
     });
 
     group('delete and restore', () {
@@ -1325,10 +1287,7 @@ void main() {
         // Then
         expect(deleteResult.isSuccess, isTrue);
 
-        expect(
-          (await repository.getById(transaction.id)).valueOrNull,
-          isNull,
-        );
+        expect((await repository.getById(transaction.id)).valueOrNull, isNull);
 
         final deletedSnapshot = _transaction(
           id: transaction.id.value,
@@ -1357,10 +1316,7 @@ void main() {
         );
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionNotFoundFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionNotFoundFailure>());
       });
 
       test('rejects active and duplicate restore requests', () async {
@@ -1377,15 +1333,10 @@ void main() {
         // When
         final activeResult = await repository.restore(active);
 
-        final duplicateResult = await repository.restore(
-          deletedDuplicate,
-        );
+        final duplicateResult = await repository.restore(deletedDuplicate);
 
         // Then
-        expect(
-          activeResult.failureOrNull,
-          isA<TransactionNotDeletedFailure>(),
-        );
+        expect(activeResult.failureOrNull, isA<TransactionNotDeletedFailure>());
 
         expect(
           duplicateResult.failureOrNull,
@@ -1413,20 +1364,11 @@ void main() {
         final result = await repository.delete(original.id);
 
         // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionOffsetValidationFailure>(),
-        );
+        expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
 
-        expect(
-          (await repository.getById(original.id)).valueOrNull,
-          isNotNull,
-        );
+        expect((await repository.getById(original.id)).valueOrNull, isNotNull);
 
-        expect(
-          (await repository.getById(offset.id)).valueOrNull,
-          isNotNull,
-        );
+        expect((await repository.getById(offset.id)).valueOrNull, isNotNull);
       });
 
       test('permits deleting an offset transaction', () async {
@@ -1451,56 +1393,52 @@ void main() {
         // Then
         expect(result.isSuccess, isTrue);
 
-        expect(
-          (await repository.getById(offset.id)).valueOrNull,
-          isNull,
-        );
+        expect((await repository.getById(offset.id)).valueOrNull, isNull);
 
         expect(
-          (await repository.getOffsetsForTransaction(
-            original.id,
-          )).valueOrNull,
+          (await repository.getOffsetsForTransaction(original.id)).valueOrNull,
           isEmpty,
         );
       });
 
-      test('restores an offset when remaining capacity is sufficient', () async {
-        // Given
-        final original = _transaction(
-          id: 'restore-offset-original',
-          amount: Decimal.fromInt(100),
-        );
+      test(
+        'restores an offset when remaining capacity is sufficient',
+        () async {
+          // Given
+          final original = _transaction(
+            id: 'restore-offset-original',
+            amount: Decimal.fromInt(100),
+          );
 
-        final offset = _offsetTransaction(
-          id: 'restore-offset',
-          originalId: original.id.value,
-          amount: Decimal.fromInt(40),
-        );
+          final offset = _offsetTransaction(
+            id: 'restore-offset',
+            originalId: original.id.value,
+            amount: Decimal.fromInt(40),
+          );
 
-        await repository.create(original);
-        await repository.createOffset(offset);
-        await repository.delete(offset.id);
+          await repository.create(original);
+          await repository.createOffset(offset);
+          await repository.delete(offset.id);
 
-        final deletedOffset = _offsetTransaction(
-          id: offset.id.value,
-          originalId: original.id.value,
-          amount: Decimal.fromInt(40),
-          deletedAt: deletedAt,
-        );
+          final deletedOffset = _offsetTransaction(
+            id: offset.id.value,
+            originalId: original.id.value,
+            amount: Decimal.fromInt(40),
+            deletedAt: deletedAt,
+          );
 
-        // When
-        final result = await repository.restore(deletedOffset);
+          // When
+          final result = await repository.restore(deletedOffset);
 
-        // Then
-        expect(result.isSuccess, isTrue);
+          // Then
+          expect(result.isSuccess, isTrue);
 
-        final restored = (await repository.getById(
-          offset.id,
-        )).valueOrNull!;
+          final restored = (await repository.getById(offset.id)).valueOrNull!;
 
-        expect(restored.deletedAt, isNull);
-        expect(restored.isOffset, isTrue);
-      });
+          expect(restored.deletedAt, isNull);
+          expect(restored.isOffset, isTrue);
+        },
+      );
 
       test(
         'rejects restoring an offset when remaining capacity was consumed',
@@ -1552,39 +1490,30 @@ void main() {
             isA<TransactionOffsetExceedsAvailableAmountFailure>(),
           );
 
-          expect(
-            (await repository.getById(
-              toDelete.id,
-            )).valueOrNull,
-            isNull,
-          );
+          expect((await repository.getById(toDelete.id)).valueOrNull, isNull);
         },
       );
     });
 
-    test(
-      'translates malformed persisted transaction to typed failure',
-      () async {
-        // Given
-        const id = 'corrupt-transaction';
+    group('persistence failure translation', () {
+      test(
+        'translates malformed persisted transaction to typed failure',
+        () async {
+          // Given
+          const id = 'corrupt-transaction';
 
-        await SembastStores.transactions.record(id).put(
-          database,
-          <String, Object?>{},
-        );
+          await SembastStores.transactions
+              .record(id)
+              .put(database, <String, Object?>{});
 
-        // When
-        final result = await repository.getById(
-          TransactionId.fromString(id),
-        );
+          // When
+          final result = await repository.getById(TransactionId.fromString(id));
 
-        // Then
-        expect(
-          result.failureOrNull,
-          isA<TransactionPersistenceFailure>(),
-        );
-      },
-    );
+          // Then
+          expect(result.failureOrNull, isA<TransactionPersistenceFailure>());
+        },
+      );
+    });
   });
 }
 
@@ -1603,13 +1532,13 @@ Transaction _transaction({
   Decimal? amount,
   AssetId? assetId,
   TransactionOffset? offset,
+  List<TagId> tagIds = const [],
   List<TransactionSplit> splits = const [],
   List<LedgerEntry>? ledgerEntries,
 }) {
   final createdAt = DateTime.utc(2026, 1, 1);
 
-  final resolvedAssetId =
-      assetId ?? AssetId.fromString('asset-eur');
+  final resolvedAssetId = assetId ?? AssetId.fromString('asset-eur');
 
   final resolvedAmount = amount ?? Decimal.zero;
 
@@ -1635,6 +1564,7 @@ Transaction _transaction({
     state: state,
     offset: offset,
     deletedAt: deletedAt,
+    tagIds: tagIds,
     splits: splits,
     ledgerEntries:
         ledgerEntries ??
@@ -1657,8 +1587,7 @@ Transaction _offsetTransaction({
   required String id,
   required String originalId,
   required Decimal amount,
-  TransactionOffsetKind offsetKind =
-      TransactionOffsetKind.reimbursement,
+  TransactionOffsetKind offsetKind = TransactionOffsetKind.reimbursement,
   String merchantId = 'offset-merchant',
   String accountId = 'account-eur',
   String? categoryId,
@@ -1681,9 +1610,7 @@ Transaction _offsetTransaction({
             categoryId: categoryId == null
                 ? null
                 : CategoryId.fromString(categoryId),
-            jarId: jarId == null
-                ? null
-                : JarId.fromString(jarId),
+            jarId: jarId == null ? null : JarId.fromString(jarId),
           ),
         ];
 
@@ -1731,12 +1658,8 @@ TransactionSplit _split({
   return TransactionSplit(
     transactionAmount: assetAmount,
     valuationAmount: assetAmount,
-    categoryId: categoryId == null
-        ? null
-        : CategoryId.fromString(categoryId),
-    jarId: jarId == null
-        ? null
-        : JarId.fromString(jarId),
+    categoryId: categoryId == null ? null : CategoryId.fromString(categoryId),
+    jarId: jarId == null ? null : JarId.fromString(jarId),
   );
 }
 
@@ -1760,9 +1683,7 @@ LedgerEntry _ledgerEntry(
 
 Decimal _primaryAmount(Transaction transaction) {
   return transaction.ledgerEntries
-      .singleWhere(
-        (entry) => entry.role == LedgerEntryRole.primary,
-      )
+      .singleWhere((entry) => entry.role == LedgerEntryRole.primary)
       .transactionAmount
       .amount;
 }

@@ -16,6 +16,7 @@ import 'package:axiom/src/features/transactions/domain/enums/transaction_offset_
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
@@ -266,6 +267,133 @@ void main() {
           ).toRecord(),
           'offsetOfTransactionId': '',
           'offsetKind': TransactionOffsetKind.refund.name,
+        };
+
+        final model = TransactionPersistenceModel.fromRecord(
+          transaction.id.value,
+          record,
+        );
+
+        // When / Then
+        expect(model.toEntity, throwsA(isA<PersistenceRecordException>()));
+      },
+    );
+
+    test('round-trips transaction tag references', () {
+      // Given
+      final business = TagId.fromString('tag-business');
+      final reimbursable = TagId.fromString('tag-reimbursable');
+
+      final transaction = transactionFixture(
+        id: 'tagged-transaction',
+        tagIds: [business, reimbursable],
+      );
+
+      // When
+      final record = TransactionPersistenceModel.fromEntity(
+        transaction,
+        persistenceOrder: 1,
+      ).toRecord();
+
+      final restored = TransactionPersistenceModel.fromRecord(
+        transaction.id.value,
+        record,
+      ).toEntity();
+
+      // Then
+      expect(record[TransactionPersistenceModel.tagIdsField], [
+        'tag-business',
+        'tag-reimbursable',
+      ]);
+
+      expect(restored.tagIds, [business, reimbursable]);
+    });
+
+    test('treats legacy records without tagIds as untagged', () {
+      // Given
+      final transaction = transactionFixture(id: 'legacy-before-tags');
+
+      final record = <String, Object?>{
+        ...TransactionPersistenceModel.fromEntity(
+          transaction,
+          persistenceOrder: 1,
+        ).toRecord(),
+      }..remove(TransactionPersistenceModel.tagIdsField);
+
+      // When
+      final restored = TransactionPersistenceModel.fromRecord(
+        transaction.id.value,
+        record,
+      ).toEntity();
+
+      // Then
+      expect(restored.tagIds, isEmpty);
+    });
+
+    test('rejects malformed persisted tag identity list', () {
+      // Given
+      final transaction = transactionFixture(id: 'malformed-tags');
+
+      final record = <String, Object?>{
+        ...TransactionPersistenceModel.fromEntity(
+          transaction,
+          persistenceOrder: 1,
+        ).toRecord(),
+        TransactionPersistenceModel.tagIdsField: <Object?>['tag-valid', 123],
+      };
+
+      // When / Then
+      expect(
+        () => TransactionPersistenceModel.fromRecord(
+          transaction.id.value,
+          record,
+        ),
+        throwsA(
+          isA<PersistenceRecordException>().having(
+            (exception) => exception.field,
+            'field',
+            'tagIds[1]',
+          ),
+        ),
+      );
+    });
+
+    test('rejects invalid persisted tag identity during reconstruction', () {
+      // Given
+      final transaction = transactionFixture(id: 'invalid-tag-identity');
+
+      final record = <String, Object?>{
+        ...TransactionPersistenceModel.fromEntity(
+          transaction,
+          persistenceOrder: 1,
+        ).toRecord(),
+        TransactionPersistenceModel.tagIdsField: <Object?>[''],
+      };
+
+      final model = TransactionPersistenceModel.fromRecord(
+        transaction.id.value,
+        record,
+      );
+
+      // When / Then
+      expect(model.toEntity, throwsA(isA<PersistenceRecordException>()));
+    });
+
+    test(
+      'rejects duplicate persisted tag identities during reconstruction',
+      () {
+        // Given
+        final transaction = transactionFixture(id: 'duplicate-tag-identities');
+
+        final record = <String, Object?>{
+          ...TransactionPersistenceModel.fromEntity(
+            transaction,
+            persistenceOrder: 1,
+          ).toRecord(),
+          TransactionPersistenceModel.tagIdsField: <Object?>[
+            'tag-duplicate',
+            'tag-duplicate',
+          ],
         };
 
         final model = TransactionPersistenceModel.fromRecord(

@@ -16,6 +16,7 @@ import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
@@ -52,6 +53,8 @@ void main() {
         expect(transaction.description, 'groceries');
         expect(transaction.note, 'weekly shop');
         expect(transaction.state, TransactionState.actual);
+
+        expect(transaction.tagIds, isEmpty);
         expect(transaction.splits, isEmpty);
         expect(transaction.ledgerEntries, hasLength(1));
         expect(transaction.createdAt, createdAt);
@@ -427,17 +430,20 @@ void main() {
       expect(first, isNot(equals(different)));
       expect(first, isNot(equals(deleted)));
     });
-    test('identifies a transaction with an offset relationship as an offset', () {
-      // Given
-      final transaction = refundTransactionFixture();
+    test(
+      'identifies a transaction with an offset relationship as an offset',
+      () {
+        // Given
+        final transaction = refundTransactionFixture();
 
-      // Then
-      expect(transaction.isOffset, isTrue);
-      expect(
-        transaction.offset?.originalTransactionId,
-        TransactionId.fromString('refund-original'),
-      );
-    });
+        // Then
+        expect(transaction.isOffset, isTrue);
+        expect(
+          transaction.offset?.originalTransactionId,
+          TransactionId.fromString('refund-original'),
+        );
+      },
+    );
 
     test('rejects a self-referencing offset relationship', () {
       // Given
@@ -471,15 +477,82 @@ void main() {
         expect(transaction.isOffset, isFalse);
       },
     );
+
+    test('stores immutable transaction-level tag identities', () {
+      // Given
+      final tagIds = [
+        TagId.fromString('tag-business'),
+        TagId.fromString('tag-tax'),
+      ];
+
+      // When
+      final transaction = _createTransaction(tagIds: tagIds);
+      tagIds.clear();
+
+      // Then
+      expect(transaction.tagIds, [
+        TagId.fromString('tag-business'),
+        TagId.fromString('tag-tax'),
+      ]);
+      expect(
+        () => transaction.tagIds.add(TagId.fromString('tag-other')),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('allows a transaction without tags', () {
+      // Given / When
+      final transaction = _createTransaction();
+
+      // Then
+      expect(transaction.tagIds, isEmpty);
+    });
+
+    test('rejects duplicate tag identities', () {
+      // Given
+      final tagId = TagId.fromString('tag-business');
+
+      // When / Then
+      expect(
+        () => _createTransaction(tagIds: [tagId, tagId]),
+        throwsA(
+          isA<ArgumentError>().having((error) => error.name, 'name', 'tagIds'),
+        ),
+      );
+    });
+
+    test('treats tags as transaction metadata independent of splits', () {
+      // Given
+      final tagId = TagId.fromString('tag-business');
+
+      // When
+      final transaction = _createTransaction(
+        tagIds: [tagId],
+        splits: [
+          TransactionSplit(
+            transactionAmount: _createAmount(),
+            valuationAmount: _createAmount(),
+            categoryId: CategoryId.fromString('category-1'),
+          ),
+        ],
+      );
+
+      // Then
+      expect(transaction.tagIds, [tagId]);
+      expect(
+        transaction.splits.single.categoryId,
+        CategoryId.fromString('category-1'),
+      );
+    });
   });
 }
-
 
 Transaction _createTransaction({
   String? description,
   String? note,
   DateTime? deletedAt,
   TransactionKind kind = TransactionKind.expense,
+  List<TagId> tagIds = const [],
   List<TransactionSplit> splits = const [],
   List<LedgerEntry>? ledgerEntries,
 }) {
@@ -492,6 +565,7 @@ Transaction _createTransaction({
     note: note,
     state: TransactionState.actual,
     deletedAt: deletedAt,
+    tagIds: tagIds,
     splits: splits,
     ledgerEntries: ledgerEntries ?? [_createLedgerEntry()],
     createdAt: DateTime.utc(2024),

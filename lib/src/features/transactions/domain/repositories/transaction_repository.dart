@@ -4,6 +4,7 @@ import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
@@ -27,6 +28,13 @@ import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entr
 /// They must be created through [createOffset], rather than [create] or
 /// [createAll], because offset validation and persistence must occur atomically.
 ///
+/// Tags are reusable metadata referenced through [Transaction.tagIds].
+/// Transaction persistence stores those references but does not own the
+/// corresponding tag entities.
+///
+/// Cross-feature operations may use [existsByTagId] to enforce referential
+/// integrity before a tag is deleted.
+///
 /// ## Guarantees
 ///
 /// Batch creation is atomic.
@@ -45,6 +53,9 @@ abstract interface class TransactionRepository {
   ///
   /// Returns a failure when the transaction is deleted or its identifier is
   /// already persisted.
+  ///
+  /// Validation that referenced tag entities exist and are eligible for
+  /// assignment occurs before this repository operation.
   Future<Result<void, TransactionFailure>> create(Transaction transaction);
 
   /// Atomically stores every standalone transaction in [transactions].
@@ -53,6 +64,9 @@ abstract interface class TransactionRepository {
   ///
   /// If any transaction cannot be stored, none are stored.
   /// An empty list succeeds without changing persistence.
+  ///
+  /// Validation that referenced tag entities exist and are eligible for
+  /// assignment occurs before this repository operation.
   Future<Result<void, TransactionFailure>> createAll(
     List<Transaction> transactions,
   );
@@ -71,6 +85,9 @@ abstract interface class TransactionRepository {
   ///
   /// The supplied transaction must be active and contain an offset
   /// relationship.
+  ///
+  /// Validation that referenced tag entities exist and are eligible for
+  /// assignment occurs before this repository operation.
   Future<Result<void, TransactionFailure>> createOffset(
     Transaction transaction,
   );
@@ -124,6 +141,15 @@ abstract interface class TransactionRepository {
     JarId jarId,
   );
 
+  /// Returns transactions tagged with [tagId].
+  ///
+  /// A transaction is returned when [Transaction.tagIds] contains [tagId].
+  ///
+  /// Results preserve persistence insertion order.
+  Future<Result<List<Transaction>, TransactionFailure>> getTransactionsByTagId(
+    TagId tagId,
+  );
+
   /// Whether at least one persisted transaction affects [accountId].
   Future<Result<bool, TransactionFailure>> existsByAccountId(
     AccountId accountId,
@@ -142,10 +168,25 @@ abstract interface class TransactionRepository {
   /// Whether at least one persisted transaction is allocated to [jarId].
   Future<Result<bool, TransactionFailure>> existsByJarId(JarId jarId);
 
+  /// Whether at least one persisted transaction references [tagId].
+  ///
+  /// This operation supports cross-feature referential-integrity checks before
+  /// deleting a tag.
+  ///
+  /// Archived tag state does not affect this query. A historical transaction
+  /// referencing an archived tag still counts as a reference.
+  Future<Result<bool, TransactionFailure>> existsByTagId(TagId tagId);
+
   /// Returns persisted transactions matching [query].
   ///
-  /// An empty query returns all persisted transactions. Results preserve
-  /// persistence insertion order.
+  /// An empty query returns all persisted transactions.
+  ///
+  /// Criteria from different query fields use AND semantics. Multiple values
+  /// within one field use OR semantics. Consequently, when
+  /// [TransactionQuery.tagIds] contains several tag IDs, a transaction matches
+  /// that criterion when it references at least one of them.
+  ///
+  /// Results preserve persistence insertion order.
   Future<Result<List<Transaction>, TransactionFailure>> query(
     TransactionQuery query,
   );
@@ -159,6 +200,9 @@ abstract interface class TransactionRepository {
   /// The supplied transaction must be active and have the currently persisted
   /// [Transaction.entityVersion]. The offset relationship cannot be added,
   /// removed, or changed through this method.
+  ///
+  /// Validation that newly assigned tag references exist and are eligible for
+  /// assignment occurs before this repository operation.
   Future<Result<void, TransactionFailure>> update(Transaction transaction);
 
   /// Physically removes the transaction identified by [id].
@@ -175,6 +219,10 @@ abstract interface class TransactionRepository {
   /// Restores the caller-retained deleted [transaction].
   ///
   /// Offset invariants are revalidated before persistence.
+  ///
+  /// Tag references must also satisfy the current cross-feature restoration
+  /// rules before this repository operation is called.
+  ///
   /// The deleted snapshot is not mutated, and the restored record has a null
   /// [Transaction.deletedAt].
   Future<Result<void, TransactionFailure>> restore(Transaction transaction);
