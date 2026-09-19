@@ -21,9 +21,11 @@ import 'package:axiom/src/features/rates/data/repositories/sembast_rate_reposito
 import 'package:axiom/src/features/rates/di/rate_repository_provider.dart';
 import 'package:axiom/src/features/settings/data/repositories/sembast_settings_repository_impl.dart';
 import 'package:axiom/src/features/settings/di/settings_repository_provider.dart';
+import 'package:axiom/src/features/tags/data/repositories/sembast_tag_repository_impl.dart';
+import 'package:axiom/src/features/tags/di/tag_repository_provider.dart';
 import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
-import 'package:axiom/src/features/transactions/di/transaction_repository_provider.dart';
 import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_series_repository_impl.dart';
+import 'package:axiom/src/features/transactions/di/transaction_repository_provider.dart';
 import 'package:axiom/src/features/transactions/di/transaction_series_repository_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod/riverpod.dart';
@@ -71,34 +73,56 @@ void main() {
     test('resolves every domain repository to its Sembast implementation', () {
       // When
       final assetRepository = container.read(assetRepositoryProvider);
+
       final settingsRepository = container.read(settingsRepositoryProvider);
+
       final rateRepository = container.read(rateRepositoryProvider);
+
       final transactionRepository = container.read(
         transactionRepositoryProvider,
       );
+
       final transactionSeriesRepository = container.read(
         transactionSeriesRepositoryProvider,
       );
+
       final merchantRepository = container.read(merchantRepositoryProvider);
+
       final accountRepository = container.read(accountRepositoryProvider);
+
       final custodianRepository = container.read(custodianRepositoryProvider);
+
       final categoryRepository = container.read(categoryRepositoryProvider);
+
       final jarRepository = container.read(jarRepositoryProvider);
+
+      final tagRepository = container.read(tagRepositoryProvider);
 
       // Then
       expect(assetRepository, isA<SembastAssetRepositoryImpl>());
+
       expect(settingsRepository, isA<SembastSettingsRepositoryImpl>());
+
       expect(rateRepository, isA<SembastRateRepositoryImpl>());
+
       expect(transactionRepository, isA<SembastTransactionRepositoryImpl>());
+
       expect(
         transactionSeriesRepository,
         isA<SembastTransactionSeriesRepositoryImpl>(),
       );
+
       expect(merchantRepository, isA<SembastMerchantRepositoryImpl>());
+
       expect(accountRepository, isA<SembastAccountRepositoryImpl>());
+
       expect(custodianRepository, isA<SembastCustodianRepositoryImpl>());
+
       expect(categoryRepository, isA<SembastCategoryRepositoryImpl>());
+
       expect(jarRepository, isA<SembastJarRepositoryImpl>());
+
+      expect(tagRepository, isA<SembastTagRepositoryImpl>());
     });
 
     test('keeps repository instances alive for the container lifetime', () {
@@ -107,41 +131,55 @@ void main() {
         container.read(assetRepositoryProvider),
         same(container.read(assetRepositoryProvider)),
       );
+
       expect(
         container.read(settingsRepositoryProvider),
         same(container.read(settingsRepositoryProvider)),
       );
+
       expect(
         container.read(rateRepositoryProvider),
         same(container.read(rateRepositoryProvider)),
       );
+
       expect(
         container.read(transactionRepositoryProvider),
         same(container.read(transactionRepositoryProvider)),
       );
+
       expect(
         container.read(transactionSeriesRepositoryProvider),
         same(container.read(transactionSeriesRepositoryProvider)),
       );
+
       expect(
         container.read(merchantRepositoryProvider),
         same(container.read(merchantRepositoryProvider)),
       );
+
       expect(
         container.read(accountRepositoryProvider),
         same(container.read(accountRepositoryProvider)),
       );
+
       expect(
         container.read(custodianRepositoryProvider),
         same(container.read(custodianRepositoryProvider)),
       );
+
       expect(
         container.read(categoryRepositoryProvider),
         same(container.read(categoryRepositoryProvider)),
       );
+
       expect(
         container.read(jarRepositoryProvider),
         same(container.read(jarRepositoryProvider)),
+      );
+
+      expect(
+        container.read(tagRepositoryProvider),
+        same(container.read(tagRepositoryProvider)),
       );
     });
   });
