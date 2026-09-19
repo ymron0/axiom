@@ -60,6 +60,44 @@ void main() {
         expect(snapshot.assetBalances, isEmpty);
         expect(snapshot.valuationAmount.amount, Decimal.zero);
       });
+
+      test(
+        'allows account denomination and valuation to use different currencies',
+        () {
+          final snapshot = _accountSnapshot(
+            denominationAmount: _incoming(assetId: 'asset-eur', amount: '100'),
+            valuationAmount: _incoming(assetId: 'asset-chf', amount: '95'),
+          );
+
+          expect(
+            snapshot.denominationAmount.assetId,
+            AssetId.fromString('asset-eur'),
+          );
+
+          expect(
+            snapshot.valuationAmount.assetId,
+            AssetId.fromString('asset-chf'),
+          );
+        },
+      );
+
+      test('rejects an unknown denomination amount', () {
+        expect(
+          () => _accountSnapshot(
+            denominationAmount: AssetAmount.incoming(
+              assetId: AssetId.fromString('asset-eur'),
+              amount: Decimal.fromInt(-1),
+            ),
+          ),
+          throwsA(
+            isA<ArgumentError>().having(
+              (error) => error.name,
+              'name',
+              'denominationAmount',
+            ),
+          ),
+        );
+      });
     });
 
     group('custodian snapshots', () {
@@ -92,6 +130,22 @@ void main() {
         expect(snapshot.assetBalances, isEmpty);
         expect(snapshot.valuationAmount.amount, Decimal.zero);
       });
+
+      test('requires custodian denomination to equal valuation', () {
+        expect(
+          () => _custodianSnapshot(
+            denominationAmount: _incoming(assetId: 'asset-eur', amount: '100'),
+            valuationAmount: _incoming(assetId: 'asset-chf', amount: '95'),
+          ),
+          throwsA(
+            isA<ArgumentError>().having(
+              (error) => error.name,
+              'name',
+              'denominationAmount',
+            ),
+          ),
+        );
+      });
     });
 
     group('jar snapshots', () {
@@ -115,6 +169,22 @@ void main() {
 
         expect(snapshot.assetBalances.single.isOutgoing, isTrue);
         expect(snapshot.valuationAmount.isOutgoing, isTrue);
+      });
+
+      test('requires jar denomination to equal valuation', () {
+        expect(
+          () => _jarSnapshot(
+            denominationAmount: _incoming(assetId: 'asset-chf', amount: '200'),
+            valuationAmount: _incoming(assetId: 'asset-chf', amount: '250'),
+          ),
+          throwsA(
+            isA<ArgumentError>().having(
+              (error) => error.name,
+              'name',
+              'denominationAmount',
+            ),
+          ),
+        );
       });
     });
 
@@ -444,14 +514,23 @@ BalanceSnapshot _accountSnapshot({
   CalendarDate? snapshotDate,
   DateTime? capturedAt,
   List<AssetAmount>? assetBalances,
+  AssetAmount? denominationAmount,
   AssetAmount? valuationAmount,
 }) {
+  final balances =
+      assetBalances ?? [_incoming(assetId: 'asset-eur', amount: '125.50')];
+
   return BalanceSnapshot(
     subject: BalanceSnapshotSubject.account(AccountId.fromString('account-1')),
     snapshotDate: snapshotDate ?? CalendarDate(2026, 9, 19),
     capturedAt: capturedAt ?? DateTime.utc(2026, 9, 19, 20),
-    assetBalances:
-        assetBalances ?? [_incoming(assetId: 'asset-eur', amount: '125.50')],
+    assetBalances: balances,
+    denominationAmount:
+        denominationAmount ??
+        _incoming(
+          assetId: 'asset-eur',
+          amount: balances.isEmpty ? '0' : '125.50',
+        ),
     valuationAmount:
         valuationAmount ?? _incoming(assetId: 'asset-chf', amount: '119.25'),
   );
@@ -461,8 +540,12 @@ BalanceSnapshot _custodianSnapshot({
   CalendarDate? snapshotDate,
   DateTime? capturedAt,
   List<AssetAmount>? assetBalances,
+  AssetAmount? denominationAmount,
   AssetAmount? valuationAmount,
 }) {
+  final valuation =
+      valuationAmount ?? _incoming(assetId: 'asset-chf', amount: '95');
+
   return BalanceSnapshot(
     subject: BalanceSnapshotSubject.custodian(
       CustodianId.fromString('custodian-1'),
@@ -471,8 +554,8 @@ BalanceSnapshot _custodianSnapshot({
     capturedAt: capturedAt ?? DateTime.utc(2026, 9, 19, 20),
     assetBalances:
         assetBalances ?? [_incoming(assetId: 'asset-eur', amount: '100')],
-    valuationAmount:
-        valuationAmount ?? _incoming(assetId: 'asset-chf', amount: '95'),
+    denominationAmount: denominationAmount ?? valuation,
+    valuationAmount: valuation,
   );
 }
 
@@ -480,16 +563,20 @@ BalanceSnapshot _jarSnapshot({
   CalendarDate? snapshotDate,
   DateTime? capturedAt,
   List<AssetAmount>? assetBalances,
+  AssetAmount? denominationAmount,
   AssetAmount? valuationAmount,
 }) {
+  final valuation =
+      valuationAmount ?? _incoming(assetId: 'asset-chf', amount: '250');
+
   return BalanceSnapshot(
     subject: BalanceSnapshotSubject.jar(JarId.fromString('jar-1')),
     snapshotDate: snapshotDate ?? CalendarDate(2026, 9, 19),
     capturedAt: capturedAt ?? DateTime.utc(2026, 9, 19, 20),
     assetBalances:
         assetBalances ?? [_incoming(assetId: 'asset-chf', amount: '250')],
-    valuationAmount:
-        valuationAmount ?? _incoming(assetId: 'asset-chf', amount: '250'),
+    denominationAmount: denominationAmount ?? valuation,
+    valuationAmount: valuation,
   );
 }
 

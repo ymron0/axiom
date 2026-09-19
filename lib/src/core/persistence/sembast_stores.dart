@@ -22,6 +22,7 @@ abstract final class SembastStores {
   static const String categoriesName = 'categories';
   static const String jarsName = 'jars';
   static const String tagsName = 'tags';
+  static const String balanceSnapshotsName = 'balanceSnapshots';
 
   /// Names of every application-owned Sembast store.
   ///
@@ -38,6 +39,7 @@ abstract final class SembastStores {
     categoriesName,
     jarsName,
     tagsName,
+    balanceSnapshotsName,
   ];
 
   static final StoreRef<String, Map<String, Object?>> assets =
@@ -73,6 +75,9 @@ abstract final class SembastStores {
   static final StoreRef<String, Map<String, Object?>> tags =
       stringMapStoreFactory.store(tagsName);
 
+  static final StoreRef<String, Map<String, Object?>> balanceSnapshots =
+      stringMapStoreFactory.store(balanceSnapshotsName);
+
   /// References to every application-owned Sembast store.
   ///
   /// This is primarily intended for database-level infrastructure such as
@@ -92,6 +97,7 @@ abstract final class SembastStores {
           categories,
           jars,
           tags,
+          balanceSnapshots,
         ],
       );
 }

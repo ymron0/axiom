@@ -18,6 +18,7 @@ void main() {
       expect(SembastStores.categoriesName, 'categories');
       expect(SembastStores.jarsName, 'jars');
       expect(SembastStores.tagsName, 'tags');
+      expect(SembastStores.balanceSnapshotsName, 'balanceSnapshots');
     });
 
     test('registers every current application store', () {
@@ -33,6 +34,7 @@ void main() {
         'categories',
         'jars',
         'tags',
+        'balanceSnapshots',
       ]);
     });
 
@@ -44,19 +46,34 @@ void main() {
 
     test('store references use their declared names', () {
       expect(SembastStores.assets.name, SembastStores.assetsName);
+
       expect(SembastStores.settings.name, SembastStores.settingsName);
+
       expect(SembastStores.rates.name, SembastStores.ratesName);
+
       expect(SembastStores.merchants.name, SembastStores.merchantsName);
+
       expect(SembastStores.transactions.name, SembastStores.transactionsName);
+
       expect(
         SembastStores.transactionSeries.name,
         SembastStores.transactionSeriesName,
       );
+
       expect(SembastStores.accounts.name, SembastStores.accountsName);
+
       expect(SembastStores.custodians.name, SembastStores.custodiansName);
+
       expect(SembastStores.categories.name, SembastStores.categoriesName);
+
       expect(SembastStores.jars.name, SembastStores.jarsName);
+
       expect(SembastStores.tags.name, SembastStores.tagsName);
+
+      expect(
+        SembastStores.balanceSnapshots.name,
+        SembastStores.balanceSnapshotsName,
+      );
     });
 
     test('all store references correspond to all declared names', () {
