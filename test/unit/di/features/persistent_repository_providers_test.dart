@@ -23,6 +23,8 @@ import 'package:axiom/src/features/settings/data/repositories/sembast_settings_r
 import 'package:axiom/src/features/settings/di/settings_repository_provider.dart';
 import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
 import 'package:axiom/src/features/transactions/di/transaction_repository_provider.dart';
+import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_series_repository_impl.dart';
+import 'package:axiom/src/features/transactions/di/transaction_series_repository_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:riverpod/riverpod.dart';
 import 'package:test/test.dart';
@@ -74,6 +76,9 @@ void main() {
       final transactionRepository = container.read(
         transactionRepositoryProvider,
       );
+      final transactionSeriesRepository = container.read(
+        transactionSeriesRepositoryProvider,
+      );
       final merchantRepository = container.read(merchantRepositoryProvider);
       final accountRepository = container.read(accountRepositoryProvider);
       final custodianRepository = container.read(custodianRepositoryProvider);
@@ -85,6 +90,10 @@ void main() {
       expect(settingsRepository, isA<SembastSettingsRepositoryImpl>());
       expect(rateRepository, isA<SembastRateRepositoryImpl>());
       expect(transactionRepository, isA<SembastTransactionRepositoryImpl>());
+      expect(
+        transactionSeriesRepository,
+        isA<SembastTransactionSeriesRepositoryImpl>(),
+      );
       expect(merchantRepository, isA<SembastMerchantRepositoryImpl>());
       expect(accountRepository, isA<SembastAccountRepositoryImpl>());
       expect(custodianRepository, isA<SembastCustodianRepositoryImpl>());
@@ -109,6 +118,10 @@ void main() {
       expect(
         container.read(transactionRepositoryProvider),
         same(container.read(transactionRepositoryProvider)),
+      );
+      expect(
+        container.read(transactionSeriesRepositoryProvider),
+        same(container.read(transactionSeriesRepositoryProvider)),
       );
       expect(
         container.read(merchantRepositoryProvider),
