@@ -233,5 +233,160 @@ void main() {
         isA<TransactionOffsetExceedsAvailableAmountFailure>(),
       );
     });
+
+    test('accepts an offset equal to the full original amount', () {
+      // Given
+      final original = offsetOriginalTransactionFixture(
+        amount: Decimal.fromInt(100),
+      );
+
+      final offset = offsetTransactionFixture(amount: Decimal.fromInt(100));
+
+      // When
+      final result = policy.validateNewOffset(
+        original: original,
+        offset: offset,
+        existingOffsets: const [],
+      );
+
+      // Then
+      expect(result.isSuccess, isTrue);
+    });
+
+    test('rejects an offset one cent above the original amount', () {
+      // Given
+      final original = offsetOriginalTransactionFixture(
+        amount: Decimal.fromInt(100),
+      );
+
+      final offset = offsetTransactionFixture(amount: Decimal.parse('100.01'));
+
+      // When
+      final result = policy.validateNewOffset(
+        original: original,
+        offset: offset,
+        existingOffsets: const [],
+      );
+
+      // Then
+      expect(
+        result.failureOrNull,
+        isA<TransactionOffsetExceedsAvailableAmountFailure>(),
+      );
+    });
+
+    test('accepts an expense offset of an income transaction', () {
+      // Given
+      final original = offsetOriginalTransactionFixture(
+        kind: TransactionKind.income,
+      );
+
+      final offset = offsetTransactionFixture(
+        originalId: original.id.value,
+        kind: TransactionKind.expense,
+      );
+
+      // When
+      final result = policy.validateNewOffset(
+        original: original,
+        offset: offset,
+        existingOffsets: const [],
+      );
+
+      // Then
+      expect(result.isSuccess, isTrue);
+    });
+
+    test('rejects a self-referencing offset', () {
+      // Given
+      final original = offsetOriginalTransactionFixture(id: 'self-reference');
+
+      final offset = offsetTransactionFixture(
+        id: 'self-reference',
+        originalId: 'self-reference',
+      );
+
+      // When
+      final result = policy.validateNewOffset(
+        original: original,
+        offset: offset,
+        existingOffsets: const [],
+      );
+
+      // Then
+      expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
+    });
+
+    test('rejects an offset that references another original', () {
+      // Given
+      final original = offsetOriginalTransactionFixture(
+        id: 'expected-original',
+      );
+
+      final offset = offsetTransactionFixture(originalId: 'different-original');
+
+      // When
+      final result = policy.validateNewOffset(
+        original: original,
+        offset: offset,
+        existingOffsets: const [],
+      );
+
+      // Then
+      expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
+    });
+
+    test('rejects using an offset transaction as an original', () {
+      // Given
+      final original = offsetTransactionFixture(
+        id: 'existing-offset',
+        originalId: 'root',
+        amount: Decimal.fromInt(100),
+      );
+
+      // When
+      final result = policy.validateOriginal(original);
+
+      // Then
+      expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
+    });
+
+    test('rejects allocation on an offset of an unallocated original', () {
+      // Given
+      final categoryId = CategoryId.fromString('restaurants');
+
+      final original = offsetOriginalTransactionFixture();
+
+      final offset = offsetTransactionFixture(categoryId: categoryId);
+
+      // When
+      final result = policy.validateNewOffset(
+        original: original,
+        offset: offset,
+        existingOffsets: const [],
+      );
+
+      // Then
+      expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
+    });
+
+    test('requires allocation information for an allocated original', () {
+      // Given
+      final categoryId = CategoryId.fromString('restaurants');
+
+      final original = offsetOriginalTransactionFixture(categoryId: categoryId);
+
+      final offset = offsetTransactionFixture(amount: Decimal.fromInt(50));
+
+      // When
+      final result = policy.validateNewOffset(
+        original: original,
+        offset: offset,
+        existingOffsets: const [],
+      );
+
+      // Then
+      expect(result.failureOrNull, isA<TransactionOffsetValidationFailure>());
+    });
   });
 }
