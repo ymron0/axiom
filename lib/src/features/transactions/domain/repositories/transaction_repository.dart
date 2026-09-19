@@ -35,6 +35,9 @@ import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entr
 /// aggregate's class version rather than an update count.
 ///
 /// Delete and restore use a caller-owned deleted snapshot.
+///
+/// Expected domain and persistence failures are returned as
+/// [TransactionFailure] values inside [Result].
 abstract interface class TransactionRepository {
   /// Stores the active standalone [transaction].
   ///
