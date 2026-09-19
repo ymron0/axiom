@@ -9,6 +9,8 @@ import 'package:axiom/src/features/accounts/data/repositories/sembast_account_re
 import 'package:axiom/src/features/accounts/di/account_repository_provider.dart';
 import 'package:axiom/src/features/assets/data/repositories/sembast_asset_repository_impl.dart';
 import 'package:axiom/src/features/assets/di/asset_repository_provider.dart';
+import 'package:axiom/src/features/balance_snapshots/data/repositories/sembast_balance_snapshot_repository_impl.dart';
+import 'package:axiom/src/features/balance_snapshots/di/balance_snapshot_repository_provider.dart';
 import 'package:axiom/src/features/categories/data/repositories/sembast_category_repository_impl.dart';
 import 'package:axiom/src/features/categories/di/category_repository_provider.dart';
 import 'package:axiom/src/features/custodians/data/repositories/sembast_custodian_repository_impl.dart';
@@ -98,6 +100,10 @@ void main() {
 
       final tagRepository = container.read(tagRepositoryProvider);
 
+      final balanceSnapshotRepository = container.read(
+        balanceSnapshotRepositoryProvider,
+      );
+
       // Then
       expect(assetRepository, isA<SembastAssetRepositoryImpl>());
 
@@ -123,6 +129,11 @@ void main() {
       expect(jarRepository, isA<SembastJarRepositoryImpl>());
 
       expect(tagRepository, isA<SembastTagRepositoryImpl>());
+
+      expect(
+        balanceSnapshotRepository,
+        isA<SembastBalanceSnapshotRepositoryImpl>(),
+      );
     });
 
     test('keeps repository instances alive for the container lifetime', () {
@@ -180,6 +191,11 @@ void main() {
       expect(
         container.read(tagRepositoryProvider),
         same(container.read(tagRepositoryProvider)),
+      );
+
+      expect(
+        container.read(balanceSnapshotRepositoryProvider),
+        same(container.read(balanceSnapshotRepositoryProvider)),
       );
     });
   });
