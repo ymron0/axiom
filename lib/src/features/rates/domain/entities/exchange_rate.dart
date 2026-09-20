@@ -1,12 +1,4 @@
-import 'package:axiom/src/core/identity/ids/asset_id.dart';
-import 'package:axiom/src/core/identity/ids/rate_id.dart';
-import 'package:axiom/src/core/ports/clock/clock.dart';
-import 'package:axiom/src/core/ports/clock/clock_factory.dart';
-import 'package:axiom/src/features/rates/domain/entities/rate.dart';
-import 'package:dart_mappable/dart_mappable.dart';
-import 'package:decimal/decimal.dart';
-
-part 'exchange_rate.mapper.dart';
+part of 'rate.dart';
 
 /// A rate expressing the exchange relationship between two currencies.
 ///

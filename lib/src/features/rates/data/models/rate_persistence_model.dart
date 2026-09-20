@@ -3,59 +3,18 @@ import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_reader.dart';
-import 'package:axiom/src/features/rates/domain/entities/exchange_rate.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:decimal/decimal.dart';
 
 /// Persistence representation of a [Rate].
 ///
-/// This model owns the translation boundary between domain rates and their
-/// persisted representation.
-///
-/// ## Identity
-///
-/// The rate ID is stored as the Sembast record key rather than duplicated
-/// inside the record value.
-///
-/// [recordKey] supplied to [fromRecord] is therefore the authoritative
-/// persisted identity.
-///
-/// ## Record representation
-///
-/// Rate records contain only persistence-safe primitive values.
-///
-/// Decimal values are stored as strings so that persistence never introduces
-/// binary floating-point rounding.
-///
-/// Timestamps are stored as UTC ISO-8601 strings.
-///
-/// A type discriminator is persisted because [Rate] is an abstract hierarchy
-/// and additional rate types may be introduced later.
-///
-/// ## Query fields
-///
-/// [baseAssetIdField] and [quoteAssetIdField] are public because persistent
-/// repository implementations query those fields directly.
-///
-/// [effectiveAt] is intentionally reconstructed as a [DateTime] before
-/// temporal ordering is performed. Repository semantics therefore do not
-/// depend on textual ordering of serialized timestamps.
-///
-/// ## Failure behavior
-///
-/// Persisted data is treated as untrusted input.
-///
-/// Malformed records, unsupported rate types, malformed decimal values,
-/// invalid identifiers, and reconstructed entities that violate current
-/// domain invariants produce [PersistenceRecordException].
-///
-/// The persistent repository translates that internal exception into the
-/// feature's typed persistence failure contract.
+/// The concrete rate type is retained explicitly so exchange-rate and
+/// market-price semantics survive persistence round-trips.
 final class RatePersistenceModel {
-  /// Field used by persistence queries for the ordered pair's base asset.
+  /// Field used to query the ordered pair's base asset.
   static const String baseAssetIdField = 'baseAssetId';
 
-  /// Field used by persistence queries for the ordered pair's quote asset.
+  /// Field used to query the ordered pair's quote asset.
   static const String quoteAssetIdField = 'quoteAssetId';
 
   static const String _typeField = 'type';
@@ -66,37 +25,33 @@ final class RatePersistenceModel {
   static const String _effectiveAtField = 'effectiveAt';
 
   static const String _exchangeRateType = 'exchangeRate';
+  static const String _marketPriceRateType = 'marketPriceRate';
 
   /// Persisted rate identity.
-  ///
-  /// This value is represented by the Sembast record key and is intentionally
-  /// omitted from [toRecord].
   final String id;
 
-  /// Discriminator identifying the concrete [Rate] subtype.
+  /// Concrete rate discriminator.
   final String type;
 
-  /// Domain entity class version.
+  /// Domain entity version.
   final int entityVersion;
 
-  /// Creation timestamp normalized to UTC.
+  /// Entity creation timestamp.
   final DateTime createdAt;
 
-  /// Most recent modification timestamp normalized to UTC.
+  /// Entity modification timestamp.
   final DateTime modifiedAt;
 
-  /// Persisted base asset identity.
+  /// Base asset identity.
   final String baseAssetId;
 
-  /// Persisted quote asset identity.
+  /// Quote asset identity.
   final String quoteAssetId;
 
-  /// Exact decimal representation of the rate.
-  ///
-  /// The value is deliberately stored as a string rather than as a `double`.
+  /// Exact decimal rate representation.
   final String rate;
 
-  /// Financial effective timestamp normalized to UTC.
+  /// Financial effective instant.
   final DateTime effectiveAt;
 
   const RatePersistenceModel._({
@@ -111,23 +66,11 @@ final class RatePersistenceModel {
     required this.effectiveAt,
   });
 
-  /// Creates a persistence model from [rate].
-  ///
-  /// Domain invariants have already been validated by the entity, so this
-  /// operation performs structural translation only.
-  ///
-  /// Throws [UnsupportedError] when a new concrete [Rate] subtype reaches the
-  /// persistence layer before explicit persistence support has been added.
-  ///
-  /// Such an error is a programming/configuration error rather than corrupt
-  /// persisted data and must therefore not be converted into a persistence
-  /// failure.
+  /// Creates the persistence model from a domain rate.
   factory RatePersistenceModel.fromEntity(Rate rate) {
     final type = switch (rate) {
       ExchangeRate() => _exchangeRateType,
-      _ => throw UnsupportedError(
-        'Unsupported rate type: ${rate.runtimeType}.',
-      ),
+      MarketPriceRate() => _marketPriceRateType,
     };
 
     return RatePersistenceModel._(
@@ -143,12 +86,7 @@ final class RatePersistenceModel {
     );
   }
 
-  /// Reconstructs a persistence model from a stored [record].
-  ///
-  /// [recordKey] is the rate identity stored as the Sembast record key.
-  ///
-  /// Throws [PersistenceRecordException] when required fields are absent,
-  /// malformed, or contain unsupported serialized values.
+  /// Reconstructs a persistence model from a stored record.
   factory RatePersistenceModel.fromRecord({
     required String recordKey,
     required PersistenceRecord record,
@@ -168,13 +106,7 @@ final class RatePersistenceModel {
     );
   }
 
-  /// Converts this model into the persisted record representation.
-  ///
-  /// [id] is intentionally omitted because it is stored as the Sembast record
-  /// key.
-  ///
-  /// Decimal values remain strings so their exact decimal representation is
-  /// preserved without introducing binary floating-point conversion.
+  /// Converts this model to its primitive persistence record.
   PersistenceRecord toRecord() {
     return <String, Object?>{
       _typeField: type,
@@ -188,20 +120,23 @@ final class RatePersistenceModel {
     };
   }
 
-  /// Reconstructs the domain [Rate] represented by this model.
-  ///
-  /// Throws [PersistenceRecordException] when:
-  ///
-  /// - the persisted rate type is unsupported;
-  /// - the decimal representation is malformed;
-  /// - persisted identifiers are invalid; or
-  /// - persisted values violate current [Rate] invariants.
+  /// Reconstructs the domain rate.
   Rate toEntity() {
     try {
       final decimalRate = _parseDecimal(rate);
 
       return switch (type) {
         _exchangeRateType => ExchangeRate(
+          id: RateId.fromString(id),
+          baseAssetId: AssetId.fromString(baseAssetId),
+          quoteAssetId: AssetId.fromString(quoteAssetId),
+          rate: decimalRate,
+          effectiveAt: effectiveAt,
+          entityVersion: entityVersion,
+          createdAt: createdAt,
+          modifiedAt: modifiedAt,
+        ),
+        _marketPriceRateType => MarketPriceRate(
           id: RateId.fromString(id),
           baseAssetId: AssetId.fromString(baseAssetId),
           quoteAssetId: AssetId.fromString(quoteAssetId),
@@ -225,11 +160,6 @@ final class RatePersistenceModel {
     }
   }
 
-  /// Reads a required persisted timestamp and normalizes it to UTC.
-  ///
-  /// Persisted timestamps without timezone information are rejected because
-  /// accepting local timestamps would make reconstruction dependent on the
-  /// runtime environment.
   static DateTime _readUtcDateTime(
     PersistenceRecordReader reader,
     String field,
@@ -247,10 +177,6 @@ final class RatePersistenceModel {
     return parsedValue.toUtc();
   }
 
-  /// Parses an exact persisted decimal representation.
-  ///
-  /// Decimal values are serialized as strings rather than doubles so that
-  /// financial values round-trip without binary floating-point loss.
   static Decimal _parseDecimal(String value) {
     try {
       return Decimal.parse(value);

@@ -7,10 +7,12 @@ import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
 import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/features/rates/application/use_cases/create_exchange_rate_use_case.dart';
+import 'package:axiom/src/features/rates/application/use_cases/create_market_price_rate_use_case.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_at_use_case.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_by_id_use_case.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_for_pair_use_case.dart';
 import 'package:axiom/src/features/rates/di/create_exchange_rate_use_case_provider.dart';
+import 'package:axiom/src/features/rates/di/create_market_price_rate_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/get_rate_at_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/get_rate_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/rates/di/get_rate_for_pair_use_case_provider.dart';
@@ -62,25 +64,29 @@ void main() {
     test('resolves rate use cases from the default dependencies', () {
       final providers = [
         container.read(createExchangeRateUseCaseProvider),
+        container.read(createMarketPriceRateUseCaseProvider),
         container.read(getRateAtUseCaseProvider),
         container.read(getRateByIdUseCaseProvider),
         container.read(getRateForPairUseCaseProvider),
       ];
 
       expect(providers[0], isA<CreateExchangeRateUseCase>());
-      expect(providers[1], isA<GetRateAtUseCase>());
-      expect(providers[2], isA<GetRateByIdUseCase>());
-      expect(providers[3], isA<GetRateForPairUseCase>());
+      expect(providers[1], isA<CreateMarketPriceRateUseCase>());
+      expect(providers[2], isA<GetRateAtUseCase>());
+      expect(providers[3], isA<GetRateByIdUseCase>());
+      expect(providers[4], isA<GetRateForPairUseCase>());
     });
 
     test('passes an overridden repository to rate use cases', () async {
       final repository = MockRateRepository();
       const failure = RateNotFoundFailure(message: 'rate missing');
-      when(() => repository.getAtOrBefore(
-        baseAssetId: any(named: 'baseAssetId'),
-        quoteAssetId: any(named: 'quoteAssetId'),
-        effectiveAt: any(named: 'effectiveAt'),
-      )).thenAnswer((_) async => failure);
+      when(
+        () => repository.getAtOrBefore(
+          baseAssetId: any(named: 'baseAssetId'),
+          quoteAssetId: any(named: 'quoteAssetId'),
+          effectiveAt: any(named: 'effectiveAt'),
+        ),
+      ).thenAnswer((_) async => failure);
       final container = ProviderContainer(
         overrides: [
           assetRepositoryProvider.overrideWithValue(MockAssetRepository()),

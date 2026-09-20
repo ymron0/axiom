@@ -4,7 +4,6 @@ library;
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
-import 'package:axiom/src/features/rates/domain/entities/exchange_rate.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';

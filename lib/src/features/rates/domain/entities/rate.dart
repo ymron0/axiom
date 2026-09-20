@@ -4,19 +4,20 @@ import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/ports/clock/clock.dart';
 import 'package:axiom/src/core/ports/clock/clock_factory.dart';
-import 'package:axiom/src/features/rates/domain/entities/exchange_rate.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
 
+part 'exchange_rate.dart';
+part 'market_price_rate.dart';
 part 'rate.mapper.dart';
 
-/// Base domain entity for a value relating one asset to another.
+/// Base domain entity for an observed value relating one asset to another.
 ///
 /// A rate represents an ordered asset pair consisting of a [baseAssetId] and
 /// a [quoteAssetId]. The [rate] states how many units of the quote asset
 /// correspond to exactly one unit of the base asset.
 ///
-/// For example, for BTC/USD:
+/// For example:
 ///
 /// ```text
 /// base asset  = BTC
@@ -26,84 +27,61 @@ part 'rate.mapper.dart';
 /// 1 BTC = 65000 USD
 /// ```
 ///
-/// Reversing the asset pair changes the economic meaning of the rate.
-/// BTC/USD and USD/BTC are therefore distinct rates and their values are
-/// reciprocals of one another.
+/// Reversing the asset pair changes the economic meaning of the observation.
 ///
-/// The terms "base asset" and "quote asset" are standard financial pair
-/// terminology. They are unrelated to the application's configured valuation
-/// currency.
+/// ## Rate types
+///
+/// Concrete rate types describe the financial nature of the observation.
+///
+/// Examples include:
+///
+/// - currency exchange rates; and
+/// - market prices for crypto, stocks, and commodities.
+///
+/// The mathematical base/quote semantics are identical for every subtype.
 ///
 /// ## Time semantics
 ///
-/// [effectiveAt] identifies the instant at which the rate applies in the
-/// financial domain. It is distinct from [createdAt] and [modifiedAt], which
-/// describe the lifecycle of this entity inside the application.
+/// [effectiveAt] identifies the instant at which the observation applies in
+/// the financial domain.
 ///
-/// [effectiveAt] is normalized to UTC when the entity is constructed.
+/// It is distinct from [createdAt] and [modifiedAt], which describe the
+/// lifecycle of this entity inside the application.
 ///
-/// A rate received today may therefore legitimately have an [effectiveAt]
-/// from yesterday if the underlying source reports yesterday's closing rate.
+/// [effectiveAt] is normalized to UTC.
 ///
 /// ## Invariants
 ///
-/// - [id] must contain a valid [RateId].
-/// - [baseAssetId] and [quoteAssetId] must identify different assets.
-/// - [rate] must be strictly greater than zero.
-/// - [effectiveAt] is represented in UTC.
-/// - [entityVersion] must be greater than zero.
-/// - [modifiedAt] must not precede [createdAt].
+/// - [baseAssetId] and [quoteAssetId] identify different assets.
+/// - [rate] is strictly greater than zero.
+/// - [effectiveAt] is stored in UTC.
+/// - inherited audited-entity invariants remain valid.
 ///
 /// ## Contract
 ///
-/// Concrete rate types define what kind of financial observation the rate
-/// represents, but must preserve the base/quote semantics defined here.
-///
-/// Subclasses must not reinterpret [rate] as "base units per quote unit".
-/// It always represents:
+/// Concrete rate types must preserve:
 ///
 /// ```text
 /// 1 base asset = rate × quote asset
 /// ```
+///
+/// Asset-type compatibility requires access to the referenced Asset entities
+/// and is therefore validated at the application boundary.
 @MappableClass(includeCustomMappers: [DecimalMapper()])
-abstract class Rate extends AuditedEntity<RateId> with RateMappable {
+sealed class Rate extends AuditedEntity<RateId> with RateMappable {
   /// The asset for which one unit is being valued.
-  ///
-  /// In BTC/USD, BTC is the base asset.
   final AssetId baseAssetId;
 
   /// The asset in which the base asset's value is expressed.
-  ///
-  /// In BTC/USD, USD is the quote asset.
   final AssetId quoteAssetId;
 
-  /// The number of quote-asset units corresponding to one base-asset unit.
-  ///
-  /// For BTC/USD at 65000:
-  ///
-  /// ```text
-  /// 1 BTC = 65000 USD
-  /// ```
-  ///
-  /// This value is always strictly greater than zero.
+  /// Number of quote-asset units corresponding to one base-asset unit.
   final Decimal rate;
 
-  /// The instant at which this rate is economically effective.
-  ///
-  /// This is domain time and must not be confused with [createdAt] or
-  /// [modifiedAt], which are application audit timestamps.
-  ///
-  /// The supplied value is normalized to UTC.
+  /// Instant at which this observation is financially effective.
   final DateTime effectiveAt;
 
-  /// Creates the common state shared by all rate types.
-  ///
-  /// Throws an [ArgumentError] when:
-  ///
-  /// - [baseAssetId] and [quoteAssetId] identify the same asset;
-  /// - [rate] is zero or negative;
-  /// - [entityVersion] is less than one; or
-  /// - [modifiedAt] precedes [createdAt].
+  /// Creates common state shared by all rate types.
   @MappableConstructor()
   Rate({
     required super.id,
@@ -117,32 +95,6 @@ abstract class Rate extends AuditedEntity<RateId> with RateMappable {
   }) : rate = _validateRate(rate),
        effectiveAt = effectiveAt.toUtc() {
     _validateAssetPair();
-  }
-
-  /// Creates the common state for a new rate.
-  ///
-  /// Generates a new [RateId], starts [entityVersion] at `1`, and uses one UTC
-  /// instant from [clock] for both [createdAt] and [modifiedAt].
-  factory Rate.create({
-    required AssetId baseAssetId,
-    required AssetId quoteAssetId,
-    required Decimal rate,
-    required DateTime effectiveAt,
-    Clock? clock,
-  }) {
-    final resolvedClock = clock ?? createClock();
-    final now = resolvedClock.nowUtc;
-
-    return ExchangeRate(
-      id: RateId.generate(),
-      baseAssetId: baseAssetId,
-      quoteAssetId: quoteAssetId,
-      rate: rate,
-      effectiveAt: effectiveAt,
-      entityVersion: 1,
-      createdAt: now,
-      modifiedAt: now,
-    );
   }
 
   void _validateAssetPair() {

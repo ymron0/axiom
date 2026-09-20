@@ -10,6 +10,7 @@ import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/rates/application/models/rate_source_observation.dart';
 import 'package:axiom/src/features/rates/application/policies/rate_refresh_policy.dart';
 import 'package:axiom/src/features/rates/application/ports/exchange_rate_source_adapter.dart';
+import 'package:axiom/src/features/rates/application/ports/market_price_source_adapter.dart';
 import 'package:axiom/src/features/rates/application/services/synchronize_rate_service.dart';
 import 'package:axiom/src/features/rates/data/cache/in_memory_latest_rate_cache.dart';
 import 'package:axiom/src/features/rates/data/repositories/sembast_rate_repository_impl.dart';
@@ -64,7 +65,8 @@ void main() {
         final service = SynchronizeRateService(
           repository: rateRepository,
           getAssetsByIds: GetAssetsByIdsUseCase(assetRepository),
-          source: source,
+          exchangeRateSource: source,
+          marketPriceSource: _FakeMarketPriceSourceAdapter(),
           cache: cache,
           refreshPolicy: RateRefreshPolicy(maxAge: const Duration(hours: 6)),
           canonicalBridgeAssetId: usd.id,
@@ -145,5 +147,15 @@ final class _FakeExchangeRateSourceAdapter
     expect(quoteCurrency.code.value, 'USD');
 
     return Success(observation);
+  }
+}
+
+final class _FakeMarketPriceSourceAdapter implements MarketPriceSourceAdapter {
+  @override
+  Future<Result<RateSourceObservation, BaseFailure>> fetchLatest({
+    required Asset baseAsset,
+    required Currency quoteCurrency,
+  }) async {
+    throw UnimplementedError();
   }
 }

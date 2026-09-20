@@ -1,16 +1,12 @@
 @Tags(['domain'])
 library;
 
-import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/rate_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
-import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
-
-part 'rate_test.mapper.dart';
 
 void main() {
   group('Rate', () {
@@ -19,7 +15,7 @@ void main() {
       final timestamp = DateTime.parse('2024-01-15T12:30:00+02:00');
 
       // When
-      final rate = Rate.create(
+      final rate = ExchangeRate.create(
         baseAssetId: AssetId.fromString('asset-btc'),
         quoteAssetId: AssetId.fromString('asset-usd'),
         rate: Decimal.parse('65000'),
@@ -37,7 +33,7 @@ void main() {
 
     test('uses the default clock when none is supplied', () {
       // When
-      final rate = Rate.create(
+      final rate = ExchangeRate.create(
         baseAssetId: AssetId.fromString('asset-btc'),
         quoteAssetId: AssetId.fromString('asset-usd'),
         rate: Decimal.parse('65000'),
@@ -59,7 +55,7 @@ void main() {
       final modifiedAt = DateTime.utc(2024, 1, 2);
 
       // When
-      final rate = TestRate(
+      final rate = ExchangeRate(
         id: id,
         baseAssetId: baseAssetId,
         quoteAssetId: quoteAssetId,
@@ -249,7 +245,7 @@ void main() {
   });
 }
 
-TestRate _createRate({
+ExchangeRate _createRate({
   RateId? id,
   AssetId? baseAssetId,
   AssetId? quoteAssetId,
@@ -259,7 +255,7 @@ TestRate _createRate({
   DateTime? createdAt,
   DateTime? modifiedAt,
 }) {
-  return TestRate(
+  return ExchangeRate(
     id: id ?? RateId.fromString('rate-btc-usd'),
     baseAssetId: baseAssetId ?? AssetId.fromString('asset-btc'),
     quoteAssetId: quoteAssetId ?? AssetId.fromString('asset-usd'),
@@ -269,19 +265,4 @@ TestRate _createRate({
     createdAt: createdAt ?? DateTime.utc(2024, 1, 1),
     modifiedAt: modifiedAt ?? DateTime.utc(2024, 1, 1),
   );
-}
-
-@MappableClass(includeCustomMappers: [DecimalMapper()])
-final class TestRate extends Rate with TestRateMappable {
-  @MappableConstructor()
-  TestRate({
-    required super.id,
-    required super.baseAssetId,
-    required super.quoteAssetId,
-    required super.rate,
-    required super.effectiveAt,
-    required super.entityVersion,
-    required super.createdAt,
-    required super.modifiedAt,
-  });
 }

@@ -5,61 +5,52 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
+import 'package:axiom/src/features/rates/application/failures/invalid_rate_asset_semantics_failure.dart';
 import 'package:axiom/src/features/rates/application/failures/rate_synchronization_conflict_failure.dart';
-import 'package:axiom/src/features/rates/application/failures/unsupported_rate_synchronization_asset_failure.dart';
 import 'package:axiom/src/features/rates/application/models/rate_cache_entry.dart';
 import 'package:axiom/src/features/rates/application/models/rate_source_observation.dart';
 import 'package:axiom/src/features/rates/application/policies/rate_refresh_policy.dart';
 import 'package:axiom/src/features/rates/application/ports/exchange_rate_source_adapter.dart';
 import 'package:axiom/src/features/rates/application/ports/latest_rate_cache.dart';
-import 'package:axiom/src/features/rates/domain/entities/exchange_rate.dart';
+import 'package:axiom/src/features/rates/application/ports/market_price_source_adapter.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dart';
 
-/// Synchronizes the latest persisted exchange rate for one base currency.
+/// Synchronizes the latest persisted rate for one asset.
 ///
-/// Persisted rates always use the configured canonical bridge asset as quote
-/// asset. With the current configuration this is USD.
+/// Persisted rates use the configured canonical bridge asset as their quote
+/// asset. Under the current configuration this is USD.
 ///
-/// ## Workflow
+/// ## Source selection
 ///
-/// 1. Check the latest-rate cache.
-/// 2. Return it immediately when the refresh policy says it is fresh.
-/// 3. Resolve the requested base asset and canonical quote asset.
-/// 4. Require both assets to be [Currency] instances.
-/// 5. Request a normalized observation from the external adapter.
-/// 6. Compare it with the latest persisted observation.
-/// 7. Persist only a genuinely newer observation.
-/// 8. Update the latest-rate cache only after persistence succeeds.
+/// Currency assets use [ExchangeRateSourceAdapter].
+///
+/// Crypto, stock, and commodity assets use [MarketPriceSourceAdapter].
+///
+/// ## Persisted rate types
+///
+/// Currency/Currency observations become [ExchangeRate] entities.
+///
+/// Market-priced non-currency/Currency observations become [MarketPriceRate]
+/// entities.
 ///
 /// ## Financial semantics
 ///
-/// `Rate.effectiveAt` determines whether an observation is newer.
+/// [Rate.effectiveAt] determines observation ordering.
 ///
-/// `Rate.createdAt`, `Rate.modifiedAt`, and cache time never determine market
-/// ordering.
+/// Audit timestamps and cache timestamps do not determine financial ordering.
 ///
-/// A source observation older than the already-persisted rate must never
-/// replace or downgrade the persisted latest rate.
+/// Older source observations cannot replace newer persisted observations.
 ///
-/// A source observation having the same effective timestamp and same value is
-/// treated as an idempotent synchronization.
+/// Equal timestamp/equal value is idempotent.
 ///
-/// A source observation having the same timestamp but a different value
-/// returns [RateSynchronizationConflictFailure].
-///
-/// ## Failure semantics
-///
-/// Source, asset-repository, and rate-repository failures are propagated
-/// unchanged where possible.
-///
-/// A stale cache is not silently returned after a source failure. Doing so
-/// would disguise failed synchronization as successful fresh data.
+/// Equal timestamp/different value is a synchronization conflict.
 final class SynchronizeRateService {
   final RateRepository _repository;
   final GetAssetsByIdsUseCase _getAssetsByIds;
-  final ExchangeRateSourceAdapter _source;
+  final ExchangeRateSourceAdapter _exchangeRateSource;
+  final MarketPriceSourceAdapter _marketPriceSource;
   final LatestRateCache _cache;
   final RateRefreshPolicy _refreshPolicy;
   final AssetId _canonicalBridgeAssetId;
@@ -69,7 +60,8 @@ final class SynchronizeRateService {
   SynchronizeRateService({
     required RateRepository repository,
     required GetAssetsByIdsUseCase getAssetsByIds,
-    required ExchangeRateSourceAdapter source,
+    required ExchangeRateSourceAdapter exchangeRateSource,
+    required MarketPriceSourceAdapter marketPriceSource,
     required LatestRateCache cache,
     required RateRefreshPolicy refreshPolicy,
     required AssetId canonicalBridgeAssetId,
@@ -77,7 +69,10 @@ final class SynchronizeRateService {
   }) : _repository = repository, // ignore: prefer_initializing_formals
        _getAssetsByIds = // ignore: prefer_initializing_formals
            getAssetsByIds,
-       _source = source, // ignore: prefer_initializing_formals
+       _exchangeRateSource = // ignore: prefer_initializing_formals
+           exchangeRateSource,
+       _marketPriceSource = // ignore: prefer_initializing_formals
+           marketPriceSource,
        _cache = cache, // ignore: prefer_initializing_formals
        _refreshPolicy = // ignore: prefer_initializing_formals
            refreshPolicy,
@@ -86,11 +81,6 @@ final class SynchronizeRateService {
        _clock = clock; // ignore: prefer_initializing_formals
 
   /// Synchronizes the latest persisted rate for [baseAssetId].
-  ///
-  /// The quote asset is always the injected canonical bridge asset.
-  ///
-  /// Set [forceRefresh] to bypass a fresh cache entry. Persistence remains
-  /// idempotent even during a forced refresh.
   Future<Result<Rate, BaseFailure>> call({
     required AssetId baseAssetId,
     bool forceRefresh = false,
@@ -118,18 +108,21 @@ final class SynchronizeRateService {
       return Success(cachedEntry!.rate);
     }
 
-    final currenciesResult = await _loadCurrencies(baseAssetId);
+    final pairResult = await _loadPair(baseAssetId);
 
-    return currenciesResult.when<Future<Result<Rate, BaseFailure>>>(
+    return pairResult.when<Future<Result<Rate, BaseFailure>>>(
       success: (pair) async {
-        final sourceResult = await _source.fetchLatest(
-          baseCurrency: pair.base,
+        final sourceResult = await _fetchLatest(
+          baseAsset: pair.base,
           quoteCurrency: pair.quote,
         );
 
         return sourceResult.when<Future<Result<Rate, BaseFailure>>>(
-          success: (observation) =>
-              _synchronizeObservation(pair: pair, observation: observation),
+          success: (observation) => _synchronizeObservation(
+            baseAsset: pair.base,
+            quoteCurrency: pair.quote,
+            observation: observation,
+          ),
           failure: (failure) async => failure,
         );
       },
@@ -137,15 +130,15 @@ final class SynchronizeRateService {
     );
   }
 
-  Future<Result<_CurrencyPair, BaseFailure>> _loadCurrencies(
+  Future<Result<({Asset base, Currency quote}), BaseFailure>> _loadPair(
     AssetId baseAssetId,
   ) async {
-    final assetsResult = await _getAssetsByIds([
+    final result = await _getAssetsByIds([
       baseAssetId,
       _canonicalBridgeAssetId,
     ]);
 
-    return assetsResult.when<Result<_CurrencyPair, BaseFailure>>(
+    return result.when<Result<({Asset base, Currency quote}), BaseFailure>>(
       success: (lookup) {
         if (lookup.missing.isNotEmpty) {
           return ReferencedAssetNotFoundFailure(
@@ -184,50 +177,62 @@ final class SynchronizeRateService {
           );
         }
 
-        // Asset is sealed and currently permits only Currency. Remove this
-        // exclusion and add a test when another Asset subtype is introduced.
-        // coverage:ignore-start
-        if (baseAsset is! Currency) {
-          return UnsupportedRateSynchronizationAssetFailure(
-            message:
-                'Exchange-rate base asset must be a currency: '
-                '${baseAsset.id.value}',
-          );
-        }
-
         if (quoteAsset is! Currency) {
-          return UnsupportedRateSynchronizationAssetFailure(
+          return InvalidRateAssetSemanticsFailure(
             message:
-                'Exchange-rate quote asset must be a currency: '
-                '${quoteAsset.id.value}',
+                'Canonical persisted-rate quote asset must be a Currency: '
+                '${quoteAsset.id.value}.',
           );
         }
-        // coverage:ignore-end
 
-        return Success(_CurrencyPair(base: baseAsset, quote: quoteAsset));
+        return Success((base: baseAsset, quote: quoteAsset));
       },
       failure: (failure) => failure,
     );
   }
 
+  Future<Result<RateSourceObservation, BaseFailure>> _fetchLatest({
+    required Asset baseAsset,
+    required Currency quoteCurrency,
+  }) {
+    return switch (baseAsset) {
+      Currency() => _exchangeRateSource.fetchLatest(
+        baseCurrency: baseAsset,
+        quoteCurrency: quoteCurrency,
+      ),
+      CryptoAsset() ||
+      StockAsset() ||
+      CommodityAsset() => _marketPriceSource.fetchLatest(
+        baseAsset: baseAsset,
+        quoteCurrency: quoteCurrency,
+      ),
+    };
+  }
+
   Future<Result<Rate, BaseFailure>> _synchronizeObservation({
-    required _CurrencyPair pair,
+    required Asset baseAsset,
+    required Currency quoteCurrency,
     required RateSourceObservation observation,
   }) async {
     final latestResult = await _repository.getLatestByPair(
-      baseAssetId: pair.base.id,
-      quoteAssetId: pair.quote.id,
+      baseAssetId: baseAsset.id,
+      quoteAssetId: quoteCurrency.id,
     );
 
     return latestResult.when<Future<Result<Rate, BaseFailure>>>(
       success: (latest) => _synchronizeAgainstExisting(
         latest: latest,
-        pair: pair,
+        baseAsset: baseAsset,
+        quoteCurrency: quoteCurrency,
         observation: observation,
       ),
       failure: (failure) {
         if (failure is RateNotFoundFailure) {
-          return _createObservation(pair: pair, observation: observation);
+          return _createObservation(
+            baseAsset: baseAsset,
+            quoteCurrency: quoteCurrency,
+            observation: observation,
+          );
         }
 
         return Future.value(failure);
@@ -237,9 +242,19 @@ final class SynchronizeRateService {
 
   Future<Result<Rate, BaseFailure>> _synchronizeAgainstExisting({
     required Rate latest,
-    required _CurrencyPair pair,
+    required Asset baseAsset,
+    required Currency quoteCurrency,
     required RateSourceObservation observation,
   }) async {
+    final typeFailure = _validateExistingRateType(
+      baseAsset: baseAsset,
+      latest: latest,
+    );
+
+    if (typeFailure != null) {
+      return typeFailure;
+    }
+
     if (observation.effectiveAt.isBefore(latest.effectiveAt)) {
       _cacheRate(latest);
 
@@ -260,20 +275,36 @@ final class SynchronizeRateService {
       return Success(latest);
     }
 
-    return _createObservation(pair: pair, observation: observation);
+    return _createObservation(
+      baseAsset: baseAsset,
+      quoteCurrency: quoteCurrency,
+      observation: observation,
+    );
   }
 
   Future<Result<Rate, BaseFailure>> _createObservation({
-    required _CurrencyPair pair,
+    required Asset baseAsset,
+    required Currency quoteCurrency,
     required RateSourceObservation observation,
   }) async {
-    final rate = ExchangeRate.create(
-      baseAssetId: pair.base.id,
-      quoteAssetId: pair.quote.id,
-      rate: observation.rate,
-      effectiveAt: observation.effectiveAt,
-      clock: _clock,
-    );
+    final Rate rate = switch (baseAsset) {
+      Currency() => ExchangeRate.create(
+        baseAssetId: baseAsset.id,
+        quoteAssetId: quoteCurrency.id,
+        rate: observation.rate,
+        effectiveAt: observation.effectiveAt,
+        clock: _clock,
+      ),
+      CryptoAsset() ||
+      StockAsset() ||
+      CommodityAsset() => MarketPriceRate.create(
+        baseAssetId: baseAsset.id,
+        quoteAssetId: quoteCurrency.id,
+        rate: observation.rate,
+        effectiveAt: observation.effectiveAt,
+        clock: _clock,
+      ),
+    };
 
     final createResult = await _repository.create(rate);
 
@@ -287,14 +318,34 @@ final class SynchronizeRateService {
     );
   }
 
+  InvalidRateAssetSemanticsFailure? _validateExistingRateType({
+    required Asset baseAsset,
+    required Rate latest,
+  }) {
+    if (baseAsset is Currency) {
+      if (latest is! ExchangeRate) {
+        return InvalidRateAssetSemanticsFailure(
+          message:
+              'Currency asset ${baseAsset.id.value} has a persisted '
+              'non-exchange rate.',
+        );
+      }
+
+      return null;
+    }
+
+    if (latest is! MarketPriceRate) {
+      return InvalidRateAssetSemanticsFailure(
+        message:
+            'Market-priced asset ${baseAsset.id.value} has a persisted '
+            'non-market-price rate.',
+      );
+    }
+
+    return null;
+  }
+
   void _cacheRate(Rate rate) {
     _cache.put(RateCacheEntry(rate: rate, cachedAt: _clock.nowUtc));
   }
-}
-
-final class _CurrencyPair {
-  final Currency base;
-  final Currency quote;
-
-  const _CurrencyPair({required this.base, required this.quote});
 }

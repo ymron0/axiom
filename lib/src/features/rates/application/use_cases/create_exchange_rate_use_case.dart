@@ -3,22 +3,22 @@ import 'package:axiom/src/core/ports/clock/clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/rates/application/commands/create_exchange_rate_command.dart';
 import 'package:axiom/src/features/rates/application/services/create_rate_service.dart';
-import 'package:axiom/src/features/rates/domain/entities/exchange_rate.dart';
+import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 
 /// Creates and persists a new exchange-rate observation.
 ///
 /// Entity construction remains in the domain layer, while persistence and
 /// asset validation are delegated to [CreateRateService].
 final class CreateExchangeRateUseCase {
+  final CreateRateService _createRate;
+
+  final Clock _clock;
   /// Creates a use case with its persistence workflow and time source.
   const CreateExchangeRateUseCase({
     required CreateRateService createRate,
     required Clock clock,
   }) : _createRate = createRate, // ignore: prefer_initializing_formals
        _clock = clock; // ignore: prefer_initializing_formals
-
-  final CreateRateService _createRate;
-  final Clock _clock;
 
   /// Creates and persists an exchange rate from [command].
   ///
