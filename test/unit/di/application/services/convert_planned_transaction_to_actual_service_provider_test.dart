@@ -27,6 +27,7 @@ import 'package:riverpod/riverpod.dart';
 import 'package:test/test.dart';
 
 import '../../../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
+import '../../../../fixtures/application/services/allow_all_transaction_jar_balances_service.dart';
 import '../../../../mocks/category_repository_mock.dart';
 import '../../../../mocks/jar_repository_mock.dart';
 import '../../../../mocks/tag_repository_mock.dart';
@@ -90,6 +91,7 @@ void main() {
         validateAllocations: allocationValidator,
         validateTags: tagValidator,
         validateBudgets: const AllowAllTransactionBudgetsService(),
+        validateJarBalances: const AllowAllTransactionJarBalancesService(),
       );
 
       final container = ProviderContainer(

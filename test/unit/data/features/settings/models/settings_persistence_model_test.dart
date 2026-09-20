@@ -13,77 +13,92 @@ void main() {
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('EUR'),
         allowOverbudgetTransactions: false,
+        allowNegativeJarBalances: false,
       );
 
       final model = SettingsPersistenceModel.fromEntity(settings);
 
-      expect(
-        model.toRecord(),
-        <String, Object?>{
-          'valuationCurrencyId': 'EUR',
-          'allowOverbudgetTransactions': false,
-        },
-      );
+      expect(model.toRecord(), <String, Object?>{
+        'valuationCurrencyId': 'EUR',
+        'allowOverbudgetTransactions': false,
+        'allowNegativeJarBalances': false,
+      });
 
       expect(
-        SettingsPersistenceModel.fromRecord(
-          model.toRecord(),
-        ).toEntity(),
+        SettingsPersistenceModel.fromRecord(model.toRecord()).toEntity(),
         settings,
       );
     });
 
-    test(
-      'defaults legacy records to allowing overbudget transactions',
-      () {
-        final entity = SettingsPersistenceModel.fromRecord(
-          const <String, Object?>{
-            'valuationCurrencyId': 'CHF',
-          },
-        ).toEntity();
+    test('defaults legacy records to permissive transaction policies', () {
+      final entity = SettingsPersistenceModel.fromRecord(
+        const <String, Object?>{'valuationCurrencyId': 'CHF'},
+      ).toEntity();
 
-        expect(entity.allowOverbudgetTransactions, isTrue);
-      },
-    );
+      expect(entity.allowOverbudgetTransactions, isTrue);
+      expect(entity.allowNegativeJarBalances, isTrue);
+    });
+
+    test('defaults only the missing jar policy for intermediate records', () {
+      final entity = SettingsPersistenceModel.fromRecord(
+        const <String, Object?>{
+          'valuationCurrencyId': 'CHF',
+          'allowOverbudgetTransactions': false,
+        },
+      ).toEntity();
+
+      expect(entity.allowOverbudgetTransactions, isFalse);
+      expect(entity.allowNegativeJarBalances, isTrue);
+    });
 
     test('rejects invalid overbudget setting types', () {
       expect(
-        () => SettingsPersistenceModel.fromRecord(
-          const <String, Object?>{
-            'valuationCurrencyId': 'CHF',
-            'allowOverbudgetTransactions': 'false',
-          },
-        ),
+        () => SettingsPersistenceModel.fromRecord(const <String, Object?>{
+          'valuationCurrencyId': 'CHF',
+          'allowOverbudgetTransactions': 'false',
+        }),
         throwsA(isA<PersistenceRecordException>()),
       );
     });
 
-    test('rejects null overbudget setting when the field exists', () {
+    test('rejects invalid negative-jar setting types', () {
       expect(
-        () => SettingsPersistenceModel.fromRecord(
-          const <String, Object?>{
-            'valuationCurrencyId': 'CHF',
-            'allowOverbudgetTransactions': null,
-          },
-        ),
+        () => SettingsPersistenceModel.fromRecord(const <String, Object?>{
+          'valuationCurrencyId': 'CHF',
+          'allowNegativeJarBalances': 'false',
+        }),
+        throwsA(isA<PersistenceRecordException>()),
+      );
+    });
+
+    test('rejects null policy values when fields exist', () {
+      expect(
+        () => SettingsPersistenceModel.fromRecord(const <String, Object?>{
+          'valuationCurrencyId': 'CHF',
+          'allowOverbudgetTransactions': null,
+        }),
+        throwsA(isA<PersistenceRecordException>()),
+      );
+
+      expect(
+        () => SettingsPersistenceModel.fromRecord(const <String, Object?>{
+          'valuationCurrencyId': 'CHF',
+          'allowNegativeJarBalances': null,
+        }),
         throwsA(isA<PersistenceRecordException>()),
       );
     });
 
     test('rejects missing and invalid valuation currency identifiers', () {
       expect(
-        () => SettingsPersistenceModel.fromRecord(
-          const <String, Object?>{},
-        ),
+        () => SettingsPersistenceModel.fromRecord(const <String, Object?>{}),
         throwsA(isA<PersistenceRecordException>()),
       );
 
       expect(
-        () => SettingsPersistenceModel.fromRecord(
-          const <String, Object?>{
-            'valuationCurrencyId': '',
-          },
-        ).toEntity(),
+        () => SettingsPersistenceModel.fromRecord(const <String, Object?>{
+          'valuationCurrencyId': '',
+        }).toEntity(),
         throwsA(isA<PersistenceRecordException>()),
       );
     });

@@ -33,10 +33,11 @@ import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.d
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
-import '../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
+import '../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
+import '../../fixtures/application/services/allow_all_transaction_jar_balances_service.dart';
 import '../../fixtures/core/persistence/persistence_test_environment.dart';
 import '../../fixtures/features/assets/asset_fixtures.dart';
 import '../../mocks/asset_repository_mock.dart';
@@ -86,6 +87,7 @@ void main() {
         validateAllocations: validateAllocations,
         validateTags: validateTags,
         validateBudgets: const AllowAllTransactionBudgetsService(),
+        validateJarBalances: const AllowAllTransactionJarBalancesService(),
       );
 
       updateService = UpdateTransactionService(
@@ -95,6 +97,7 @@ void main() {
         validateAllocations: validateAllocations,
         validateTags: validateTags,
         validateBudgets: const AllowAllTransactionBudgetsService(),
+        validateJarBalances: const AllowAllTransactionJarBalancesService(),
       );
     });
 

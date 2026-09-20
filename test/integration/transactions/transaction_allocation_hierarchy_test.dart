@@ -39,6 +39,7 @@ import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
 import '../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
+import '../../fixtures/application/services/allow_all_transaction_jar_balances_service.dart';
 import '../../fixtures/core/persistence/persistence_test_environment.dart';
 import '../../fixtures/features/categories/category_fixtures.dart';
 import '../../fixtures/features/assets/asset_fixtures.dart';
@@ -118,6 +119,7 @@ void main() {
           getTagsByIds: GetTagsByIdsUseCase(tagRepository),
         ),
         validateBudgets: const AllowAllTransactionBudgetsService(),
+        validateJarBalances: const AllowAllTransactionJarBalancesService(),
       );
     });
 

@@ -28,6 +28,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
+import '../../../fixtures/application/services/allow_all_transaction_jar_balances_service.dart';
 import '../../../fixtures/features/transactions/transaction_fixtures.dart';
 import '../../../fixtures/features/assets/asset_fixtures.dart';
 import '../../../mocks/category_repository_mock.dart';
@@ -74,7 +75,9 @@ void main() {
         final assetId = invocation.positionalArguments.single as AssetId;
         return Success(currencyFixture(id: assetId.value));
       });
-      when(() => assetRepository.getByIds(any())).thenAnswer((invocation) async {
+      when(() => assetRepository.getByIds(any())).thenAnswer((
+        invocation,
+      ) async {
         final ids = invocation.positionalArguments.single as List<AssetId>;
         return Success(
           BatchLookup(
@@ -97,6 +100,7 @@ void main() {
         validateAllocations: allocationValidator,
         validateTags: tagValidator,
         validateBudgets: const AllowAllTransactionBudgetsService(),
+        validateJarBalances: const AllowAllTransactionJarBalancesService(),
       );
 
       service = ConvertPlannedTransactionToActualService(

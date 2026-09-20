@@ -9,10 +9,10 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 /// This type forms the mapping boundary between the Settings domain model and
 /// the storage representation written to Sembast.
 ///
-/// Existing records created before `allowOverbudgetTransactions` was introduced
-/// do not contain that field. Those records are interpreted as allowing
-/// overbudget transactions so upgrading does not silently introduce stricter
-/// transaction behavior.
+/// Existing records created before either transaction-policy setting was
+/// introduced may not contain those fields. Missing policy fields are
+/// interpreted as `true` so upgrades preserve the historically permissive
+/// behavior.
 final class SettingsPersistenceModel {
   /// Persisted field containing the valuation currency identifier.
   static const String valuationCurrencyIdField = 'valuationCurrencyId';
@@ -21,10 +21,15 @@ final class SettingsPersistenceModel {
   static const String allowOverbudgetTransactionsField =
       'allowOverbudgetTransactions';
 
+  /// Persisted field controlling whether jar balances may become negative.
+  static const String allowNegativeJarBalancesField =
+      'allowNegativeJarBalances';
+
   /// Creates a persistence model from validated persistence values.
   const SettingsPersistenceModel._({
     required this.valuationCurrencyId,
     required this.allowOverbudgetTransactions,
+    required this.allowNegativeJarBalances,
   });
 
   /// String representation of the configured valuation currency identifier.
@@ -33,20 +38,24 @@ final class SettingsPersistenceModel {
   /// Whether overbudget transactions are allowed.
   final bool allowOverbudgetTransactions;
 
+  /// Whether negative jar balances are allowed.
+  final bool allowNegativeJarBalances;
+
   /// Creates a persistence model from the current domain [settings].
   factory SettingsPersistenceModel.fromEntity(Settings settings) {
     return SettingsPersistenceModel._(
       valuationCurrencyId: settings.valuationCurrencyId.value,
       allowOverbudgetTransactions: settings.allowOverbudgetTransactions,
+      allowNegativeJarBalances: settings.allowNegativeJarBalances,
     );
   }
 
   /// Reconstructs a persistence model from an untrusted persisted [record].
   ///
-  /// Older settings records that do not contain
-  /// [allowOverbudgetTransactionsField] default to `true`.
+  /// Older settings records that do not contain policy fields default those
+  /// policies to `true`.
   ///
-  /// If the field exists, it must contain a valid boolean.
+  /// If a policy field exists, it must contain a valid boolean.
   factory SettingsPersistenceModel.fromRecord(PersistenceRecord record) {
     final reader = PersistenceRecordReader(record);
 
@@ -55,9 +64,15 @@ final class SettingsPersistenceModel {
         ? reader.requiredBool(allowOverbudgetTransactionsField)
         : true;
 
+    final allowNegativeJarBalances =
+        reader.contains(allowNegativeJarBalancesField)
+        ? reader.requiredBool(allowNegativeJarBalancesField)
+        : true;
+
     return SettingsPersistenceModel._(
       valuationCurrencyId: reader.requiredString(valuationCurrencyIdField),
       allowOverbudgetTransactions: allowOverbudgetTransactions,
+      allowNegativeJarBalances: allowNegativeJarBalances,
     );
   }
 
@@ -66,6 +81,7 @@ final class SettingsPersistenceModel {
     return <String, Object?>{
       valuationCurrencyIdField: valuationCurrencyId,
       allowOverbudgetTransactionsField: allowOverbudgetTransactions,
+      allowNegativeJarBalancesField: allowNegativeJarBalances,
     };
   }
 
@@ -78,6 +94,7 @@ final class SettingsPersistenceModel {
       return Settings(
         valuationCurrencyId: AssetId.fromString(valuationCurrencyId),
         allowOverbudgetTransactions: allowOverbudgetTransactions,
+        allowNegativeJarBalances: allowNegativeJarBalances,
       );
     } on ArgumentError {
       throw const PersistenceRecordException(

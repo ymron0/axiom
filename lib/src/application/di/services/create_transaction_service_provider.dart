@@ -1,6 +1,7 @@
 import 'package:axiom/src/application/di/services/validate_transaction_allocations_service_provider.dart';
 import 'package:axiom/src/application/di/services/validate_transaction_asset_semantics_service_provider.dart';
 import 'package:axiom/src/application/di/services/validate_transaction_budgets_service_provider.dart';
+import 'package:axiom/src/application/di/services/validate_transaction_jar_balances_service_provider.dart';
 import 'package:axiom/src/application/di/services/validate_transaction_tags_service_provider.dart';
 import 'package:axiom/src/application/services/create_transaction_service.dart';
 import 'package:axiom/src/core/di/clock_provider.dart';
@@ -21,5 +22,8 @@ CreateTransactionService createTransactionService(Ref ref) {
     ),
     validateTags: ref.watch(validateTransactionTagsServiceProvider),
     validateBudgets: ref.watch(validateTransactionBudgetsServiceProvider),
+    validateJarBalances: ref.watch(
+      validateTransactionJarBalancesServiceProvider,
+    ),
   );
 }

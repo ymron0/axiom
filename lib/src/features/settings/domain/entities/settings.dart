@@ -6,11 +6,11 @@ part 'settings.mapper.dart';
 /// General application settings.
 ///
 /// The valuation currency is the common monetary reference used for
-/// cross-asset values, totals, summaries, budgets, and other valuation-based
-/// amounts.
+/// cross-asset values, totals, summaries, budgets, jars, and other
+/// valuation-based amounts.
 ///
-/// Budget enforcement is configurable independently from the category budget
-/// definitions themselves.
+/// Budget enforcement and negative-jar-balance enforcement are configurable
+/// independently from their underlying domain definitions.
 ///
 /// ## Overbudget transaction semantics
 ///
@@ -23,8 +23,22 @@ part 'settings.mapper.dart';
 /// When `false`, transaction creation and update workflows reject financial
 /// changes that would worsen an applicable category budget beyond its limit.
 ///
-/// The default is `true` so existing behavior remains permissive unless the
-/// user explicitly enables strict budget enforcement.
+/// ## Negative jar balance semantics
+///
+/// [allowNegativeJarBalances] determines whether actual transaction allocations
+/// may create or worsen a negative jar balance.
+///
+/// When `true`, jar balances may become negative.
+///
+/// When `false`, transaction creation and update workflows reject changes that
+/// would create a new negative jar balance or worsen an existing negative
+/// balance.
+///
+/// Existing negative balances may still be improved while strict enforcement is
+/// enabled.
+///
+/// Both transaction-policy settings default to `true` so existing behavior
+/// remains permissive unless the user explicitly enables stricter enforcement.
 ///
 /// ## Invariants
 ///
@@ -47,6 +61,7 @@ class Settings with SettingsMappable {
   const Settings({
     required this.valuationCurrencyId,
     this.allowOverbudgetTransactions = true,
+    this.allowNegativeJarBalances = true,
   });
 
   /// Identifier of the currency used as the application's valuation currency.
@@ -59,4 +74,12 @@ class Settings with SettingsMappable {
   /// `false` means actual transaction workflows reject changes that would
   /// worsen an applicable budget beyond its configured limit.
   final bool allowOverbudgetTransactions;
+
+  /// Whether transactions may create or worsen negative jar balances.
+  ///
+  /// `true` means jar balances may become negative.
+  ///
+  /// `false` means actual transaction workflows reject changes that would
+  /// create or worsen a negative jar balance.
+  final bool allowNegativeJarBalances;
 }

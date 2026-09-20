@@ -3,6 +3,7 @@ library;
 
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
 import 'package:axiom/src/application/failures/transaction_would_exceed_budget_failure.dart';
+import 'package:axiom/src/application/failures/transaction_would_make_jar_balance_negative_failure.dart';
 import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/application/services/update_transaction_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
@@ -39,6 +40,7 @@ import '../../../mocks/settings_repository_mock.dart';
 import '../../../mocks/tag_repository_mock.dart';
 import '../../../mocks/transaction_repository_mock.dart';
 import '../../../mocks/validate_transaction_budgets_service_mock.dart';
+import '../../../mocks/validate_transaction_jar_balances_service_mock.dart';
 
 void main() {
   group('UpdateTransactionService', () {
@@ -49,6 +51,7 @@ void main() {
     late MockGetCategoryByIdUseCase getCategoryById;
     late MockGetJarByIdUseCase getJarById;
     late MockValidateTransactionBudgetsService validateBudgets;
+    late MockValidateTransactionJarBalancesService validateJarBalances;
     late UpdateTransactionService service;
 
     setUpAll(() {
@@ -66,6 +69,7 @@ void main() {
       getCategoryById = MockGetCategoryByIdUseCase();
       getJarById = MockGetJarByIdUseCase();
       validateBudgets = MockValidateTransactionBudgetsService();
+      validateJarBalances = MockValidateTransactionJarBalancesService();
 
       when(() => settingsRepository.get()).thenAnswer(
         (_) async => Success(
@@ -96,6 +100,10 @@ void main() {
         () => validateBudgets(any(), previous: any(named: 'previous')),
       ).thenAnswer((_) async => const Success(null));
 
+      when(
+        () => validateJarBalances(any(), previous: any(named: 'previous')),
+      ).thenAnswer((_) async => const Success(null));
+
       service = UpdateTransactionService(
         getTransactionById: GetTransactionByIdUseCase(repository),
         updateTransaction: UpdateTransactionUseCase(repository),
@@ -114,6 +122,7 @@ void main() {
           getTagsByIds: GetTagsByIdsUseCase(tagRepository),
         ),
         validateBudgets: validateBudgets,
+        validateJarBalances: validateJarBalances,
       );
     });
 
@@ -147,6 +156,10 @@ void main() {
         () => validateBudgets(transaction, previous: transaction),
       ).called(1);
 
+      verify(
+        () => validateJarBalances(transaction, previous: transaction),
+      ).called(1);
+
       verify(() => repository.update(transaction)).called(1);
     });
 
@@ -168,6 +181,10 @@ void main() {
 
       verifyNever(
         () => validateBudgets(any(), previous: any(named: 'previous')),
+      );
+
+      verifyNever(
+        () => validateJarBalances(any(), previous: any(named: 'previous')),
       );
 
       verifyNever(() => repository.update(any()));
@@ -192,6 +209,10 @@ void main() {
 
       verifyNever(
         () => validateBudgets(any(), previous: any(named: 'previous')),
+      );
+
+      verifyNever(
+        () => validateJarBalances(any(), previous: any(named: 'previous')),
       );
 
       verifyNever(() => repository.update(any()));
@@ -250,6 +271,10 @@ void main() {
         () => validateBudgets(any(), previous: any(named: 'previous')),
       );
 
+      verifyNever(
+        () => validateJarBalances(any(), previous: any(named: 'previous')),
+      );
+
       verifyNever(() => repository.update(any()));
     });
 
@@ -272,6 +297,10 @@ void main() {
 
       verify(
         () => validateBudgets(transaction, previous: transaction),
+      ).called(1);
+
+      verify(
+        () => validateJarBalances(transaction, previous: transaction),
       ).called(1);
 
       verify(() => repository.update(transaction)).called(1);
@@ -300,6 +329,43 @@ void main() {
 
         verify(
           () => validateBudgets(transaction, previous: transaction),
+        ).called(1);
+
+        verifyNever(
+          () => validateJarBalances(any(), previous: any(named: 'previous')),
+        );
+
+        verifyNever(() => repository.update(any()));
+      },
+    );
+
+    test(
+      'does not update when jar-balance validation rejects the transaction',
+      () async {
+        final transaction = transactionFixture(id: 'jar-balance-rejected');
+
+        when(
+          () => repository.getById(transaction.id),
+        ).thenAnswer((_) async => Success<Transaction?>(transaction));
+
+        const failure = TransactionWouldMakeJarBalanceNegativeFailure(
+          message: 'Jar balance would become negative.',
+        );
+
+        when(
+          () => validateJarBalances(transaction, previous: transaction),
+        ).thenAnswer((_) async => failure);
+
+        final result = await service(transaction);
+
+        expect(result.failureOrNull, same(failure));
+
+        verify(
+          () => validateBudgets(transaction, previous: transaction),
+        ).called(1);
+
+        verify(
+          () => validateJarBalances(transaction, previous: transaction),
         ).called(1);
 
         verifyNever(() => repository.update(any()));

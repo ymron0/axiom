@@ -50,6 +50,7 @@ import 'package:decimal/decimal.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
+import '../../fixtures/application/services/allow_all_transaction_jar_balances_service.dart';
 import '../../fixtures/core/persistence/persistence_test_environment.dart';
 import '../../fixtures/features/assets/asset_fixtures.dart';
 import '../../mocks/asset_repository_mock.dart';
@@ -144,6 +145,7 @@ void main() {
           queryTransactions: QueryTransactionsUseCase(transactionRepository),
           calculator: const CategorySpendingCalculator(),
         ),
+        validateJarBalances: const AllowAllTransactionJarBalancesService(),
       );
 
       final firstResult = await service(

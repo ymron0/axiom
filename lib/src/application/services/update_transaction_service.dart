@@ -1,6 +1,7 @@
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_asset_semantics_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_budgets_service.dart';
+import 'package:axiom/src/application/services/validate_transaction_jar_balances_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_tags_service.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
@@ -19,6 +20,7 @@ final class UpdateTransactionService {
   final ValidateTransactionAllocationsService _validateAllocations;
   final ValidateTransactionTagsService _validateTags;
   final ValidateTransactionBudgetsService _validateBudgets;
+  final ValidateTransactionJarBalancesService _validateJarBalances;
 
   /// Creates the transaction update workflow.
   const UpdateTransactionService({
@@ -28,6 +30,7 @@ final class UpdateTransactionService {
     required ValidateTransactionAllocationsService validateAllocations,
     required ValidateTransactionTagsService validateTags,
     required ValidateTransactionBudgetsService validateBudgets,
+    required ValidateTransactionJarBalancesService validateJarBalances,
   }) : _getTransactionById = // ignore: prefer_initializing_formals
            getTransactionById,
        _updateTransaction = // ignore: prefer_initializing_formals
@@ -37,7 +40,9 @@ final class UpdateTransactionService {
            validateAllocations,
        _validateTags = validateTags, // ignore: prefer_initializing_formals
        _validateBudgets = // ignore: prefer_initializing_formals
-           validateBudgets;
+           validateBudgets,
+       _validateJarBalances = // ignore: prefer_initializing_formals
+           validateJarBalances;
 
   /// Validates and persists [transaction].
   Future<Result<void, BaseFailure>> call(Transaction transaction) async {
@@ -84,6 +89,15 @@ final class UpdateTransactionService {
     );
 
     if (budgetResult case final Failure<BaseFailure> failure) {
+      return failure;
+    }
+
+    final jarBalanceResult = await _validateJarBalances(
+      transaction,
+      previous: existing,
+    );
+
+    if (jarBalanceResult case final Failure<BaseFailure> failure) {
       return failure;
     }
 
