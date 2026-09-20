@@ -27,6 +27,7 @@ import 'package:axiom/src/features/transactions/domain/failures/transaction_not_
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
+import '../../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
 import '../../../fixtures/features/transactions/transaction_fixtures.dart';
 import '../../../fixtures/features/assets/asset_fixtures.dart';
 import '../../../mocks/category_repository_mock.dart';
@@ -95,6 +96,7 @@ void main() {
         ),
         validateAllocations: allocationValidator,
         validateTags: tagValidator,
+        validateBudgets: const AllowAllTransactionBudgetsService(),
       );
 
       service = ConvertPlannedTransactionToActualService(

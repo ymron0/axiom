@@ -22,52 +22,51 @@ void main() {
       useCase = UpdateSettingsUseCase(repository);
     });
 
-    test('returns the updated settings', () async {
-      // Given
+    test('persists a changed overbudget policy', () async {
       final settings = Settings(
-        valuationCurrencyId: AssetId.fromString('update-settings'),
+        valuationCurrencyId: AssetId.fromString('asset-chf'),
+        allowOverbudgetTransactions: false,
       );
+
       when(
         () => repository.update(settings),
       ).thenAnswer((_) async => Success<Settings>(settings));
 
-      // When
-      final result = await useCase.call(settings);
+      final result = await useCase(settings);
 
-      // Then
       expect(result.valueOrNull, same(settings));
+      expect(result.valueOrNull?.allowOverbudgetTransactions, isFalse);
+
       verify(() => repository.update(settings)).called(1);
     });
 
     test('propagates not-found failures', () async {
-      // Given
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('missing-settings'),
       );
+
       const failure = SettingsNotInitializedFailure(
         message: 'settings not found',
       );
+
       when(() => repository.update(settings)).thenAnswer((_) async => failure);
 
-      // When
-      final result = await useCase.call(settings);
+      final result = await useCase(settings);
 
-      // Then
       expect(result.failureOrNull, same(failure));
     });
 
     test('propagates repository failures', () async {
-      // Given
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('failed-settings-update'),
       );
+
       const failure = SettingsRepositoryFailure(message: 'update failed');
+
       when(() => repository.update(settings)).thenAnswer((_) async => failure);
 
-      // When
-      final result = await useCase.call(settings);
+      final result = await useCase(settings);
 
-      // Then
       expect(result.failureOrNull, same(failure));
     });
   });

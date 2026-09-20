@@ -1,5 +1,6 @@
 import 'package:axiom/src/application/di/services/validate_transaction_allocations_service_provider.dart';
 import 'package:axiom/src/application/di/services/validate_transaction_asset_semantics_service_provider.dart';
+import 'package:axiom/src/application/di/services/validate_transaction_budgets_service_provider.dart';
 import 'package:axiom/src/application/di/services/validate_transaction_tags_service_provider.dart';
 import 'package:axiom/src/application/services/update_transaction_service.dart';
 import 'package:axiom/src/features/transactions/di/get_transaction_by_id_use_case_provider.dart';
@@ -12,16 +13,13 @@ part 'update_transaction_service_provider.g.dart';
 @riverpod
 UpdateTransactionService updateTransactionService(Ref ref) {
   return UpdateTransactionService(
-    getTransactionById: ref.watch(
-      getTransactionByIdUseCaseProvider,
-    ),
+    getTransactionById: ref.watch(getTransactionByIdUseCaseProvider),
     updateTransaction: ref.watch(updateTransactionUseCaseProvider),
-    validateAssets: ref.watch(
-      validateTransactionAssetSemanticsServiceProvider,
-    ),
+    validateAssets: ref.watch(validateTransactionAssetSemanticsServiceProvider),
     validateAllocations: ref.watch(
       validateTransactionAllocationsServiceProvider,
     ),
     validateTags: ref.watch(validateTransactionTagsServiceProvider),
+    validateBudgets: ref.watch(validateTransactionBudgetsServiceProvider),
   );
 }

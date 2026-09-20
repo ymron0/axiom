@@ -26,6 +26,7 @@ import 'package:axiom/src/features/transactions/di/get_transaction_by_id_use_cas
 import 'package:riverpod/riverpod.dart';
 import 'package:test/test.dart';
 
+import '../../../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
 import '../../../../mocks/category_repository_mock.dart';
 import '../../../../mocks/jar_repository_mock.dart';
 import '../../../../mocks/tag_repository_mock.dart';
@@ -88,6 +89,7 @@ void main() {
         ),
         validateAllocations: allocationValidator,
         validateTags: tagValidator,
+        validateBudgets: const AllowAllTransactionBudgetsService(),
       );
 
       final container = ProviderContainer(

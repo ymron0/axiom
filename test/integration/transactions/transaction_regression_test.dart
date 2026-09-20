@@ -33,6 +33,7 @@ import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.d
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
+import '../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
@@ -84,6 +85,7 @@ void main() {
         validateAssets: _assetValidator(assetId),
         validateAllocations: validateAllocations,
         validateTags: validateTags,
+        validateBudgets: const AllowAllTransactionBudgetsService(),
       );
 
       updateService = UpdateTransactionService(
@@ -92,6 +94,7 @@ void main() {
         validateAssets: _assetValidator(assetId),
         validateAllocations: validateAllocations,
         validateTags: validateTags,
+        validateBudgets: const AllowAllTransactionBudgetsService(),
       );
     });
 

@@ -7,49 +7,70 @@ import 'package:test/test.dart';
 
 void main() {
   group('Settings', () {
+    test('allows overbudget transactions by default', () {
+      final settings = Settings(
+        valuationCurrencyId: AssetId.fromString('currency-eur'),
+      );
+
+      expect(settings.allowOverbudgetTransactions, isTrue);
+    });
+
+    test('supports disabling overbudget transactions', () {
+      final settings = Settings(
+        valuationCurrencyId: AssetId.fromString('currency-eur'),
+        allowOverbudgetTransactions: false,
+      );
+
+      expect(settings.allowOverbudgetTransactions, isFalse);
+    });
+
     test('preserves the required typed valuation currency ID', () {
-      // Given
       final valuationCurrencyId = AssetId.fromString('currency-eur');
 
-      // When
       final settings = Settings(valuationCurrencyId: valuationCurrencyId);
 
-      // Then
       expect(settings.valuationCurrencyId, same(valuationCurrencyId));
     });
 
-    test('provides mapped value semantics without mutating the original', () {
-      // Given
+    test('copyWith can change only the overbudget policy', () {
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('currency-eur'),
       );
+
+      final changed = settings.copyWith(allowOverbudgetTransactions: false);
+
+      expect(changed.valuationCurrencyId, settings.valuationCurrencyId);
+      expect(settings.allowOverbudgetTransactions, isTrue);
+      expect(changed.allowOverbudgetTransactions, isFalse);
+    });
+
+    test('provides mapped value semantics without mutating the original', () {
+      final settings = Settings(
+        valuationCurrencyId: AssetId.fromString('currency-eur'),
+        allowOverbudgetTransactions: true,
+      );
+
       final equivalent = Settings(
         valuationCurrencyId: AssetId.fromString('currency-eur'),
+        allowOverbudgetTransactions: true,
       );
 
-      // When
-      final changed = settings.copyWith(
-        valuationCurrencyId: AssetId.fromString('currency-usd'),
-      );
+      final changed = settings.copyWith(allowOverbudgetTransactions: false);
 
-      // Then
       expect(settings, equivalent);
       expect(settings, isNot(changed));
-      expect(settings.valuationCurrencyId.value, 'currency-eur');
-      expect(changed.valuationCurrencyId.value, 'currency-usd');
     });
 
     test('round trips through dart_mappable serialization', () {
-      // Given
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('currency-eur'),
+        allowOverbudgetTransactions: false,
       );
 
-      // When
       final decoded = SettingsMapper.fromJson(settings.toJson());
 
-      // Then
       expect(decoded, settings);
+      expect(decoded.allowOverbudgetTransactions, isFalse);
     });
   });
 }

@@ -9,64 +9,64 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 /// This type forms the mapping boundary between the Settings domain model and
 /// the storage representation written to Sembast.
 ///
-/// The domain entity is deliberately not serialized directly. Keeping the
-/// persistence representation separate allows the persisted record shape to
-/// evolve independently from the domain model and gives future database
-/// migrations an explicit storage format to target.
-///
-/// Persisted values use storage-friendly primitives only. In particular,
-/// [Settings.valuationCurrencyId] is stored as its string value and is rebuilt
-/// as an [AssetId] when the domain entity is reconstructed.
-///
-/// Cross-aggregate invariants are not validated here. Whether
-/// [valuationCurrencyId] identifies an existing [Currency] remains an
-/// application-level responsibility because this mapper must not depend on
-/// the Assets repository.
+/// Existing records created before `allowOverbudgetTransactions` was introduced
+/// do not contain that field. Those records are interpreted as allowing
+/// overbudget transactions so upgrading does not silently introduce stricter
+/// transaction behavior.
 final class SettingsPersistenceModel {
   /// Persisted field containing the valuation currency identifier.
-  ///
-  /// This field name becomes part of the persistent database schema once
-  /// released and must not be renamed without an appropriate database
-  /// migration.
   static const String valuationCurrencyIdField = 'valuationCurrencyId';
 
+  /// Persisted field controlling whether transactions may exceed budgets.
+  static const String allowOverbudgetTransactionsField =
+      'allowOverbudgetTransactions';
+
   /// Creates a persistence model from validated persistence values.
-  const SettingsPersistenceModel._({required this.valuationCurrencyId});
+  const SettingsPersistenceModel._({
+    required this.valuationCurrencyId,
+    required this.allowOverbudgetTransactions,
+  });
 
   /// String representation of the configured valuation currency identifier.
   final String valuationCurrencyId;
 
+  /// Whether overbudget transactions are allowed.
+  final bool allowOverbudgetTransactions;
+
   /// Creates a persistence model from the current domain [settings].
-  ///
-  /// Domain values are assumed to already satisfy domain invariants.
   factory SettingsPersistenceModel.fromEntity(Settings settings) {
     return SettingsPersistenceModel._(
       valuationCurrencyId: settings.valuationCurrencyId.value,
+      allowOverbudgetTransactions: settings.allowOverbudgetTransactions,
     );
   }
 
   /// Reconstructs a persistence model from an untrusted persisted [record].
   ///
-  /// Persisted data must never be trusted merely because it originated from
-  /// this application. The record is therefore read through
-  /// [PersistenceRecordReader], which validates the required field shape.
+  /// Older settings records that do not contain
+  /// [allowOverbudgetTransactionsField] default to `true`.
   ///
-  /// Throws [PersistenceRecordException] when the persisted representation is
-  /// malformed.
+  /// If the field exists, it must contain a valid boolean.
   factory SettingsPersistenceModel.fromRecord(PersistenceRecord record) {
     final reader = PersistenceRecordReader(record);
 
+    final allowOverbudgetTransactions =
+        reader.contains(allowOverbudgetTransactionsField)
+        ? reader.requiredBool(allowOverbudgetTransactionsField)
+        : true;
+
     return SettingsPersistenceModel._(
       valuationCurrencyId: reader.requiredString(valuationCurrencyIdField),
+      allowOverbudgetTransactions: allowOverbudgetTransactions,
     );
   }
 
   /// Converts this persistence model into the record stored by Sembast.
-  ///
-  /// The returned map contains persistence primitives only and does not expose
-  /// domain value objects to the storage layer.
   PersistenceRecord toRecord() {
-    return <String, Object?>{valuationCurrencyIdField: valuationCurrencyId};
+    return <String, Object?>{
+      valuationCurrencyIdField: valuationCurrencyId,
+      allowOverbudgetTransactionsField: allowOverbudgetTransactions,
+    };
   }
 
   /// Reconstructs the domain [Settings] entity.
@@ -77,6 +77,7 @@ final class SettingsPersistenceModel {
     try {
       return Settings(
         valuationCurrencyId: AssetId.fromString(valuationCurrencyId),
+        allowOverbudgetTransactions: allowOverbudgetTransactions,
       );
     } on ArgumentError {
       throw const PersistenceRecordException(

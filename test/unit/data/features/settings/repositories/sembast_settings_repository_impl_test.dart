@@ -19,8 +19,11 @@ void main() {
   late Database database;
   late SettingsRepository repository;
 
-  Settings settings(String assetId) {
-    return Settings(valuationCurrencyId: AssetId.fromString(assetId));
+  Settings settings(String assetId, {bool allowOverbudgetTransactions = true}) {
+    return Settings(
+      valuationCurrencyId: AssetId.fromString(assetId),
+      allowOverbudgetTransactions: allowOverbudgetTransactions,
+    );
   }
 
   setUp(() async {
@@ -32,94 +35,108 @@ void main() {
 
   group('SembastSettingsRepositoryImpl', () {
     test('starts uninitialized', () async {
-      // When
       final result = await repository.get();
 
-      // Then
       expect(result.isSuccess, isTrue);
       expect(result.valueOrNull, isNull);
     });
 
-    test('creates and reads settings', () async {
-      // Given
-      final expected = settings('asset-chf');
+    test('creates and reads settings including budget policy', () async {
+      final expected = settings(
+        'asset-chf',
+        allowOverbudgetTransactions: false,
+      );
 
-      // When
       final result = await repository.create(expected);
 
-      // Then
       expect(result.isSuccess, isTrue);
 
       final stored = (await repository.get()).valueOrNull;
+
       expect(stored, isNotNull);
       expect(stored!.valuationCurrencyId, expected.valuationCurrencyId);
+      expect(stored.allowOverbudgetTransactions, isFalse);
+    });
+
+    test('reads legacy settings without the policy as permissive', () async {
+      await SembastStores.settings.record(SembastRecordKeys.settings).put(
+        database,
+        <String, Object?>{'valuationCurrencyId': 'asset-chf'},
+      );
+
+      final result = await repository.get();
+
+      expect(result.isSuccess, isTrue);
+      expect(result.valueOrNull?.allowOverbudgetTransactions, isTrue);
     });
 
     test(
       'returns SettingsAlreadyInitializedFailure without replacement',
       () async {
-        // Given
         final original = settings('asset-chf');
-        final replacement = settings('asset-usd');
+        final replacement = settings(
+          'asset-usd',
+          allowOverbudgetTransactions: false,
+        );
 
         await repository.create(original);
 
-        // When
         final result = await repository.create(replacement);
 
-        // Then
         expect(result.failureOrNull, isA<SettingsAlreadyInitializedFailure>());
 
-        expect(
-          (await repository.get()).valueOrNull?.valuationCurrencyId,
-          original.valuationCurrencyId,
-        );
+        final stored = (await repository.get()).valueOrNull!;
+
+        expect(stored.valuationCurrencyId, original.valuationCurrencyId);
+        expect(stored.allowOverbudgetTransactions, isTrue);
       },
     );
 
     test(
       'returns SettingsNotInitializedFailure when update has no record',
       () async {
-        // Given
-        final replacement = settings('asset-usd');
+        final replacement = settings(
+          'asset-chf',
+          allowOverbudgetTransactions: false,
+        );
 
-        // When
         final result = await repository.update(replacement);
 
-        // Then
         expect(result.failureOrNull, isA<SettingsNotInitializedFailure>());
       },
     );
 
-    test('updates initialized settings', () async {
-      // Given
-      await repository.create(settings('asset-chf'));
-      final replacement = settings('asset-usd');
+    test('updates the overbudget policy', () async {
+      await repository.create(
+        settings('asset-chf', allowOverbudgetTransactions: true),
+      );
 
-      // When
+      final replacement = settings(
+        'asset-chf',
+        allowOverbudgetTransactions: false,
+      );
+
       final result = await repository.update(replacement);
 
-      // Then
       expect(result.isSuccess, isTrue);
-      expect(
-        (await repository.get()).valueOrNull?.valuationCurrencyId,
-        AssetId.fromString('asset-usd'),
-      );
+
+      final stored = (await repository.get()).valueOrNull!;
+
+      expect(stored.valuationCurrencyId, AssetId.fromString('asset-chf'));
+      expect(stored.allowOverbudgetTransactions, isFalse);
     });
 
     test('allows exactly one concurrent initialization', () async {
-      // Given
       final first = settings('asset-chf');
       final second = settings('asset-usd');
 
-      // When
       final results = await Future.wait([
         repository.create(first),
         repository.create(second),
       ]);
 
-      // Then
       expect(results.where((result) => result.isSuccess), hasLength(1));
+
       expect(
         results.where(
           (result) => result.failureOrNull is SettingsAlreadyInitializedFailure,
@@ -129,15 +146,26 @@ void main() {
     });
 
     test('translates malformed persisted settings to typed failure', () async {
-      // Given
       await SembastStores.settings
           .record(SembastRecordKeys.settings)
           .put(database, <String, Object?>{});
 
-      // When
       final result = await repository.get();
 
-      // Then
+      expect(result.failureOrNull, isA<SettingsRepositoryFailure>());
+    });
+
+    test('translates malformed budget policy to typed failure', () async {
+      await SembastStores.settings.record(SembastRecordKeys.settings).put(
+        database,
+        <String, Object?>{
+          'valuationCurrencyId': 'asset-chf',
+          'allowOverbudgetTransactions': 'no',
+        },
+      );
+
+      final result = await repository.get();
+
       expect(result.failureOrNull, isA<SettingsRepositoryFailure>());
     });
   });

@@ -1,9 +1,10 @@
-@Tags(['application'])
+@Tags(['application', 'di'])
 library;
 
 import 'package:axiom/src/application/di/services/update_transaction_service_provider.dart';
 import 'package:axiom/src/application/di/services/validate_transaction_allocations_service_provider.dart';
 import 'package:axiom/src/application/di/services/validate_transaction_asset_semantics_service_provider.dart';
+import 'package:axiom/src/application/di/services/validate_transaction_budgets_service_provider.dart';
 import 'package:axiom/src/application/di/services/validate_transaction_tags_service_provider.dart';
 import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/application/services/update_transaction_service.dart';
@@ -21,12 +22,13 @@ import 'package:axiom/src/features/transactions/di/update_transaction_use_case_p
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
+import '../../../../mocks/asset_repository_mock.dart';
 import '../../../../mocks/get_category_by_id_use_case_mock.dart';
 import '../../../../mocks/get_jar_by_id_use_case_mock.dart';
-import '../../../../mocks/asset_repository_mock.dart';
 import '../../../../mocks/settings_repository_mock.dart';
 import '../../../../mocks/tag_repository_mock.dart';
 import '../../../../mocks/transaction_repository_mock.dart';
+import '../../../../mocks/validate_transaction_budgets_service_mock.dart';
 
 void main() {
   group('updateTransactionServiceProvider', () {
@@ -60,6 +62,9 @@ void main() {
             ValidateTransactionTagsService(
               getTagsByIds: GetTagsByIdsUseCase(MockTagRepository()),
             ),
+          ),
+          validateTransactionBudgetsServiceProvider.overrideWithValue(
+            MockValidateTransactionBudgetsService(),
           ),
         ],
       );

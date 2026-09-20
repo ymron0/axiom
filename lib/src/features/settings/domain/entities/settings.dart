@@ -7,39 +7,56 @@ part 'settings.mapper.dart';
 ///
 /// The valuation currency is the common monetary reference used for
 /// cross-asset values, totals, summaries, budgets, and other valuation-based
-/// amounts. The selected currency is referenced by ID rather than embedded in
-/// this object because settings store the relationship to the asset; the
-/// asset repository remains responsible for resolving the ID to its domain
-/// entity.
+/// amounts.
+///
+/// Budget enforcement is configurable independently from the category budget
+/// definitions themselves.
+///
+/// ## Overbudget transaction semantics
+///
+/// [allowOverbudgetTransactions] determines whether an actual transaction may
+/// worsen a category budget beyond its configured limit.
+///
+/// When `true`, category budgets are informational and transactions may exceed
+/// their limits.
+///
+/// When `false`, transaction creation and update workflows reject financial
+/// changes that would worsen an applicable category budget beyond its limit.
+///
+/// The default is `true` so existing behavior remains permissive unless the
+/// user explicitly enables strict budget enforcement.
 ///
 /// ## Invariants
 ///
 /// - [valuationCurrencyId] is required.
-/// - [valuationCurrencyId] must resolve to an existing [Currency] 
-/// in the application level.
-/// - Other [Asset] subtypes are invalid valuation currencies.
+/// - [valuationCurrencyId] must resolve to an existing Currency in the
+///   application level.
+/// - Other Asset subtypes are invalid valuation currencies.
 ///
 /// ## Semantics
 ///
 /// The valuation currency does not constrain the currencies used by accounts
 /// or transactions, and it does not convert or duplicate currency data. It is
-/// the single application-wide monetary reference. The field remains typed as
-/// [AssetId] because asset IDs identify all asset subtypes; the narrower
-/// currency constraint is validated by the initial-settings workflow after
-/// resolving the ID through [AssetRepository].
+/// the single application-wide monetary reference.
 ///
-/// Once initial setup has completed, normal settings operations cannot replace
+/// Once initial setup has completed, normal settings operations must preserve
 /// the valuation currency. Changing it requires an application reset.
-///
-/// ## Contract
-///
-/// Constructing this value stores the reference only. Callers creating the
-/// initial settings must use the application workflow that validates the
-/// referenced asset before persisting this object.
 @MappableClass()
 class Settings with SettingsMappable {
-  const Settings({required this.valuationCurrencyId});
+  /// Creates application settings.
+  const Settings({
+    required this.valuationCurrencyId,
+    this.allowOverbudgetTransactions = true,
+  });
 
   /// Identifier of the currency used as the application's valuation currency.
   final AssetId valuationCurrencyId;
+
+  /// Whether transactions may worsen category spending beyond budget limits.
+  ///
+  /// `true` means overbudget transactions are allowed.
+  ///
+  /// `false` means actual transaction workflows reject changes that would
+  /// worsen an applicable budget beyond its configured limit.
+  final bool allowOverbudgetTransactions;
 }

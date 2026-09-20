@@ -38,6 +38,7 @@ import 'package:axiom/src/features/transactions/domain/value_objects/transaction
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
 
+import '../../fixtures/application/services/allow_all_transaction_budgets_service.dart';
 import '../../fixtures/core/persistence/persistence_test_environment.dart';
 import '../../fixtures/features/categories/category_fixtures.dart';
 import '../../fixtures/features/assets/asset_fixtures.dart';
@@ -116,6 +117,7 @@ void main() {
         validateTags: ValidateTransactionTagsService(
           getTagsByIds: GetTagsByIdsUseCase(tagRepository),
         ),
+        validateBudgets: const AllowAllTransactionBudgetsService(),
       );
     });
 
