@@ -1,4 +1,4 @@
-@Tags(['core', 'persistence'])
+@Tags(['core', 'data', 'persistence'])
 library;
 
 import 'dart:io';
@@ -25,44 +25,55 @@ void main() {
       expect(result, same(expected));
     });
 
-    test('returns the operation result unchanged when it returns a failure', () async {
-      const expected = TestFailure(message: 'already failed');
+    test(
+      'returns the operation result unchanged when it returns a failure',
+      () async {
+        const expected = TestFailure(message: 'already failed');
 
-      final result = await guardPersistenceOperation<String, TestFailure>(
-        operation: () async => expected,
-        persistenceFailure: (message) => TestFailure(message: message),
-        failureMessage: 'Persistence failed.',
-      );
+        final result = await guardPersistenceOperation<String, TestFailure>(
+          operation: () async => expected,
+          persistenceFailure: (message) => TestFailure(message: message),
+          failureMessage: 'Persistence failed.',
+        );
 
-      expect(result, same(expected));
-    });
+        expect(result, same(expected));
+      },
+    );
 
-    test('translates PersistenceRecordException to the fixed message', () async {
-      final result = await guardPersistenceOperation<String, TestFailure>(
-        operation: () async {
-          throw const PersistenceRecordException(reason: 'invalid record');
-        },
-        persistenceFailure: (message) => TestFailure(message: message),
-        failureMessage: 'Persistence failed.',
-      );
+    test(
+      'translates PersistenceRecordException to the fixed message',
+      () async {
+        final result = await guardPersistenceOperation<String, TestFailure>(
+          operation: () async {
+            throw const PersistenceRecordException(reason: 'invalid record');
+          },
+          persistenceFailure: (message) => TestFailure(message: message),
+          failureMessage: 'Persistence failed.',
+        );
 
-      expect(result.failureOrNull?.message,
-          'Persisted data is invalid or cannot be reconstructed.');
-    });
+        expect(
+          result.failureOrNull?.message,
+          'Persisted data is invalid or cannot be reconstructed.',
+        );
+      },
+    );
 
     for (final exception in <Object>[
       const FileSystemException('write failed'),
       DatabaseException.closed('database is closed'),
     ]) {
-      test('translates ${exception.runtimeType} to the supplied message', () async {
-        final result = await guardPersistenceOperation<String, TestFailure>(
-          operation: () async => throw exception,
-          persistenceFailure: (message) => TestFailure(message: message),
-          failureMessage: 'Write failed.',
-        );
+      test(
+        'translates ${exception.runtimeType} to the supplied message',
+        () async {
+          final result = await guardPersistenceOperation<String, TestFailure>(
+            operation: () async => throw exception,
+            persistenceFailure: (message) => TestFailure(message: message),
+            failureMessage: 'Write failed.',
+          );
 
-        expect(result.failureOrNull?.message, 'Write failed.');
-      });
+          expect(result.failureOrNull?.message, 'Write failed.');
+        },
+      );
     }
 
     test('propagates unexpected exceptions', () async {

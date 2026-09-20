@@ -1,4 +1,4 @@
-@Tags(['core', 'persistence'])
+@Tags(['core', 'data', 'persistence'])
 library;
 
 import 'dart:io';
@@ -32,6 +32,7 @@ void main() {
       Future<void> operation(Transaction _) async {
         invoked = true;
       }
+
       final migration = _migration(2, 3, operation: operation);
       final database = await _openDatabase();
 
@@ -153,22 +154,24 @@ void main() {
       expect(executedVersions, isEmpty);
     });
 
-    test('0 to the current version does not replay historical migrations',
-        () async {
-      final database = await _openDatabase();
-      final executedVersions = <int>[];
-      final migrator = DatabaseMigrator(
-        supportedVersion: 3,
-        migrations: [
-          _migration(1, 2, operation: (_) async => executedVersions.add(1)),
-          _migration(2, 3, operation: (_) async => executedVersions.add(2)),
-        ],
-      );
+    test(
+      '0 to the current version does not replay historical migrations',
+      () async {
+        final database = await _openDatabase();
+        final executedVersions = <int>[];
+        final migrator = DatabaseMigrator(
+          supportedVersion: 3,
+          migrations: [
+            _migration(1, 2, operation: (_) async => executedVersions.add(1)),
+            _migration(2, 3, operation: (_) async => executedVersions.add(2)),
+          ],
+        );
 
-      await migrator.migrate(database, 0, 3);
+        await migrator.migrate(database, 0, 3);
 
-      expect(executedVersions, isEmpty);
-    });
+        expect(executedVersions, isEmpty);
+      },
+    );
 
     test('1 to 1 performs no migration work', () async {
       final database = await _openDatabase();
@@ -215,30 +218,34 @@ void main() {
       expect(executedVersions, [2]);
     });
 
-    test('executes intermediate migrations in ascending schema order',
-        () async {
-      final database = await _openDatabase();
-      final executedVersions = <int>[];
-      final migrator = DatabaseMigrator(
-        supportedVersion: 4,
-        migrations: [
-          _migration(1, 2, operation: (_) async => executedVersions.add(1)),
-          _migration(2, 3, operation: (_) async => executedVersions.add(2)),
-          _migration(3, 4, operation: (_) async => executedVersions.add(3)),
-        ],
-      );
+    test(
+      'executes intermediate migrations in ascending schema order',
+      () async {
+        final database = await _openDatabase();
+        final executedVersions = <int>[];
+        final migrator = DatabaseMigrator(
+          supportedVersion: 4,
+          migrations: [
+            _migration(1, 2, operation: (_) async => executedVersions.add(1)),
+            _migration(2, 3, operation: (_) async => executedVersions.add(2)),
+            _migration(3, 4, operation: (_) async => executedVersions.add(3)),
+          ],
+        );
 
-      await migrator.migrate(database, 1, 4);
+        await migrator.migrate(database, 1, 4);
 
-      expect(executedVersions, [1, 2, 3]);
-    });
+        expect(executedVersions, [1, 2, 3]);
+      },
+    );
 
     test('rejects a downgrade with both database versions', () async {
       final database = await _openDatabase();
 
       await expectLater(
-        DatabaseMigrator(supportedVersion: 1, migrations: [])
-            .migrate(database, 2, 1),
+        DatabaseMigrator(
+          supportedVersion: 1,
+          migrations: [],
+        ).migrate(database, 2, 1),
         throwsA(
           isA<UnsupportedDatabaseVersionException>()
               .having(
@@ -255,56 +262,65 @@ void main() {
       );
     });
 
-    test('rejects a downgrade before executing any migration operation',
-        () async {
-      final database = await _openDatabase();
-      final executedVersions = <int>[];
-      final migrator = _threeVersionMigrator(executedVersions);
+    test(
+      'rejects a downgrade before executing any migration operation',
+      () async {
+        final database = await _openDatabase();
+        final executedVersions = <int>[];
+        final migrator = _threeVersionMigrator(executedVersions);
 
-      await expectLater(
-        migrator.migrate(database, 2, 1),
-        throwsA(isA<UnsupportedDatabaseVersionException>()),
-      );
+        await expectLater(
+          migrator.migrate(database, 2, 1),
+          throwsA(isA<UnsupportedDatabaseVersionException>()),
+        );
 
-      expect(executedVersions, isEmpty);
-    });
+        expect(executedVersions, isEmpty);
+      },
+    );
 
-    test('rejects a negative old version with DatabaseMigrationException',
-        () async {
-      final database = await _openDatabase();
+    test(
+      'rejects a negative old version with DatabaseMigrationException',
+      () async {
+        final database = await _openDatabase();
 
-      await expectLater(
-        DatabaseMigrator(supportedVersion: 1, migrations: [])
-            .migrate(database, -1, 1),
-        throwsA(isA<DatabaseMigrationException>()),
-      );
-    });
+        await expectLater(
+          DatabaseMigrator(
+            supportedVersion: 1,
+            migrations: [],
+          ).migrate(database, -1, 1),
+          throwsA(isA<DatabaseMigrationException>()),
+        );
+      },
+    );
 
-    test('rejects a new version above the configured supported version',
-        () async {
-      final database = await _openDatabase();
+    test(
+      'rejects a new version above the configured supported version',
+      () async {
+        final database = await _openDatabase();
 
-      await expectLater(
-        DatabaseMigrator(
-          supportedVersion: 2,
-          migrations: [_migration(1, 2)],
-        ).migrate(database, 1, 3),
-        throwsA(isA<DatabaseMigrationException>()),
-      );
-    });
+        await expectLater(
+          DatabaseMigrator(
+            supportedVersion: 2,
+            migrations: [_migration(1, 2)],
+          ).migrate(database, 1, 3),
+          throwsA(isA<DatabaseMigrationException>()),
+        );
+      },
+    );
 
     test('rejects a new version below version 1', () async {
       final database = await _openDatabase();
 
       await expectLater(
-        DatabaseMigrator(supportedVersion: 1, migrations: [])
-            .migrate(database, 0, 0),
+        DatabaseMigrator(
+          supportedVersion: 1,
+          migrations: [],
+        ).migrate(database, 0, 0),
         throwsA(isA<DatabaseMigrationException>()),
       );
     });
 
-    test('preserves an explicitly thrown DatabaseMigrationException',
-        () async {
+    test('preserves an explicitly thrown DatabaseMigrationException', () async {
       final database = await _openDatabase();
       const failure = DatabaseMigrationException(
         fromVersion: 1,
@@ -313,9 +329,7 @@ void main() {
       );
       final migrator = DatabaseMigrator(
         supportedVersion: 2,
-        migrations: [
-          _migration(1, 2, operation: (_) async => throw failure),
-        ],
+        migrations: [_migration(1, 2, operation: (_) async => throw failure)],
       );
 
       await expectLater(
@@ -362,51 +376,49 @@ void main() {
       await _expectTranslatedFailure(
         database: database,
         error: const FileSystemException('write failed'),
-        message: 'The database could not be persisted during database migration.',
+        message:
+            'The database could not be persisted during database migration.',
       );
     });
 
-    test('translated failures preserve the precise migration step versions',
-        () async {
-      final database = await _openDatabase();
-      final migrator = DatabaseMigrator(
-        supportedVersion: 3,
-        migrations: [
-          _migration(1, 2),
-          _migration(
-            2,
-            3,
-            operation: (_) async {
-              throw const FormatException('invalid value');
-            },
+    test(
+      'translated failures preserve the precise migration step versions',
+      () async {
+        final database = await _openDatabase();
+        final migrator = DatabaseMigrator(
+          supportedVersion: 3,
+          migrations: [
+            _migration(1, 2),
+            _migration(
+              2,
+              3,
+              operation: (_) async {
+                throw const FormatException('invalid value');
+              },
+            ),
+          ],
+        );
+
+        await expectLater(
+          migrator.migrate(database, 1, 3),
+          throwsA(
+            isA<DatabaseMigrationException>()
+                .having((exception) => exception.fromVersion, 'fromVersion', 2)
+                .having((exception) => exception.toVersion, 'toVersion', 3),
           ),
-        ],
-      );
-
-      await expectLater(
-        migrator.migrate(database, 1, 3),
-        throwsA(
-          isA<DatabaseMigrationException>()
-              .having((exception) => exception.fromVersion, 'fromVersion', 2)
-              .having((exception) => exception.toVersion, 'toVersion', 3),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('does not translate programmer errors', () async {
       final database = await _openDatabase();
       final error = StateError('programmer error');
       final migrator = DatabaseMigrator(
         supportedVersion: 2,
-        migrations: [
-          _migration(1, 2, operation: (_) async => throw error),
-        ],
+        migrations: [_migration(1, 2, operation: (_) async => throw error)],
       );
 
-      await expectLater(
-        migrator.migrate(database, 1, 2),
-        throwsA(same(error)),
-      );
+      await expectLater(migrator.migrate(database, 1, 2), throwsA(same(error)));
     });
 
     test('commits successful migration writes', () async {
@@ -471,56 +483,60 @@ void main() {
       expect(await secondStore.record(1).get(database), isNull);
     });
 
-    test('translates a file-system error from the migration transaction',
-        () async {
-      final database = MockDatabase();
-      when(() => database.transaction<Null>(any())).thenThrow(
-        const FileSystemException('transaction write failed'),
-      );
+    test(
+      'translates a file-system error from the migration transaction',
+      () async {
+        final database = MockDatabase();
+        when(
+          () => database.transaction<Null>(any()),
+        ).thenThrow(const FileSystemException('transaction write failed'));
 
-      final migrator = DatabaseMigrator(
-        supportedVersion: 2,
-        migrations: [_migration(1, 2)],
-      );
+        final migrator = DatabaseMigrator(
+          supportedVersion: 2,
+          migrations: [_migration(1, 2)],
+        );
 
-      await expectLater(
-        migrator.migrate(database, 1, 2),
-        throwsA(
-          isA<DatabaseMigrationException>()
-              .having((exception) => exception.fromVersion, 'fromVersion', 1)
-              .having((exception) => exception.toVersion, 'toVersion', 2)
-              .having(
-                (exception) => exception.message,
-                'message',
-                'The database migration transaction could not be persisted.',
-              ),
-        ),
-      );
-    });
-
-    test('translates a database error from the migration transaction',
-        () async {
-      final database = MockDatabase();
-      when(() => database.transaction<Null>(any())).thenThrow(
-        DatabaseException.closed('transaction failed'),
-      );
-
-      final migrator = DatabaseMigrator(
-        supportedVersion: 2,
-        migrations: [_migration(1, 2)],
-      );
-
-      await expectLater(
-        migrator.migrate(database, 1, 2),
-        throwsA(
-          isA<DatabaseMigrationException>().having(
-            (exception) => exception.message,
-            'message',
-            'The database migration transaction failed.',
+        await expectLater(
+          migrator.migrate(database, 1, 2),
+          throwsA(
+            isA<DatabaseMigrationException>()
+                .having((exception) => exception.fromVersion, 'fromVersion', 1)
+                .having((exception) => exception.toVersion, 'toVersion', 2)
+                .having(
+                  (exception) => exception.message,
+                  'message',
+                  'The database migration transaction could not be persisted.',
+                ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
+
+    test(
+      'translates a database error from the migration transaction',
+      () async {
+        final database = MockDatabase();
+        when(
+          () => database.transaction<Null>(any()),
+        ).thenThrow(DatabaseException.closed('transaction failed'));
+
+        final migrator = DatabaseMigrator(
+          supportedVersion: 2,
+          migrations: [_migration(1, 2)],
+        );
+
+        await expectLater(
+          migrator.migrate(database, 1, 2),
+          throwsA(
+            isA<DatabaseMigrationException>().having(
+              (exception) => exception.message,
+              'message',
+              'The database migration transaction failed.',
+            ),
+          ),
+        );
+      },
+    );
   });
 }
 
@@ -555,9 +571,7 @@ Future<void> _expectTranslatedFailure({
 }) async {
   final migrator = DatabaseMigrator(
     supportedVersion: 2,
-    migrations: [
-      _migration(1, 2, operation: (_) async => throw error),
-    ],
+    migrations: [_migration(1, 2, operation: (_) async => throw error)],
   );
 
   await expectLater(

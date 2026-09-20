@@ -1,4 +1,4 @@
-@Tags(['core', 'persistence'])
+@Tags(['core', 'data', 'persistence'])
 library;
 
 import 'package:axiom/src/core/persistence/database_migrator.dart';
@@ -284,118 +284,124 @@ void main() {
       },
     );
 
-    test('failed migration leaves database closed and can be retried', () async {
-      // Given
-      final expectedError = StateError('migration failed');
-      var shouldFail = true;
-      final factory = MockDatabaseFactory();
-      final migrator = DatabaseMigrator(
-        supportedVersion: 2,
-        migrations: [
-          DatabaseMigration(
-            fromVersion: 1,
-            toVersion: 2,
-            operation: (_) async {
-              if (shouldFail) {
-                shouldFail = false;
-                throw expectedError;
-              }
-            },
-          ),
-        ],
-      );
-      final database = await createTestSembastDatabase(
-        databaseFactory: factory,
-        migrator: migrator,
-      );
-      final rawDatabase = await databaseFactoryMemory.openDatabase(
-        '${database.path}-result',
-        version: DatabaseSchema.version,
-      );
-      when(
-        () => factory.openDatabase(
-          any(),
-          version: any(named: 'version'),
-          onVersionChanged: any(named: 'onVersionChanged'),
-          mode: any(named: 'mode'),
-        ),
-      ).thenAnswer((invocation) async {
-        final onVersionChanged = invocation.namedArguments[#onVersionChanged];
-        await onVersionChanged(rawDatabase, 1, 2);
-        return rawDatabase;
-      });
-
-      // When / Then
-      await expectLater(database.open(), throwsA(same(expectedError)));
-      expect(database.isOpen, isFalse);
-
-      // When
-      final retriedDatabase = await database.open();
-
-      // Then
-      expect(identical(retriedDatabase, rawDatabase), isTrue);
-      expect(database.isOpen, isTrue);
-      verify(
-        () => factory.openDatabase(
-          database.path,
+    test(
+      'failed migration leaves database closed and can be retried',
+      () async {
+        // Given
+        final expectedError = StateError('migration failed');
+        var shouldFail = true;
+        final factory = MockDatabaseFactory();
+        final migrator = DatabaseMigrator(
+          supportedVersion: 2,
+          migrations: [
+            DatabaseMigration(
+              fromVersion: 1,
+              toVersion: 2,
+              operation: (_) async {
+                if (shouldFail) {
+                  shouldFail = false;
+                  throw expectedError;
+                }
+              },
+            ),
+          ],
+        );
+        final database = await createTestSembastDatabase(
+          databaseFactory: factory,
+          migrator: migrator,
+        );
+        final rawDatabase = await databaseFactoryMemory.openDatabase(
+          '${database.path}-result',
           version: DatabaseSchema.version,
-          onVersionChanged: any(named: 'onVersionChanged'),
-          mode: DatabaseMode.create,
-        ),
-      ).called(2);
-    });
-
-    test('successful migration stores and reuses the opened database', () async {
-      // Given
-      final factory = MockDatabaseFactory();
-      final migrator = DatabaseMigrator(
-        supportedVersion: 2,
-        migrations: [
-          DatabaseMigration(
-            fromVersion: 1,
-            toVersion: 2,
-            operation: (_) async {},
+        );
+        when(
+          () => factory.openDatabase(
+            any(),
+            version: any(named: 'version'),
+            onVersionChanged: any(named: 'onVersionChanged'),
+            mode: any(named: 'mode'),
           ),
-        ],
-      );
-      final database = await createTestSembastDatabase(
-        databaseFactory: factory,
-        migrator: migrator,
-      );
-      final rawDatabase = await databaseFactoryMemory.openDatabase(
-        '${database.path}-result',
-        version: DatabaseSchema.version,
-      );
-      when(
-        () => factory.openDatabase(
-          any(),
-          version: any(named: 'version'),
-          onVersionChanged: any(named: 'onVersionChanged'),
-          mode: any(named: 'mode'),
-        ),
-      ).thenAnswer((invocation) async {
-        final onVersionChanged = invocation.namedArguments[#onVersionChanged];
-        await onVersionChanged(rawDatabase, 1, 2);
-        return rawDatabase;
-      });
+        ).thenAnswer((invocation) async {
+          final onVersionChanged = invocation.namedArguments[#onVersionChanged];
+          await onVersionChanged(rawDatabase, 1, 2);
+          return rawDatabase;
+        });
 
-      // When
-      final first = await database.open();
-      final second = await database.open();
+        // When / Then
+        await expectLater(database.open(), throwsA(same(expectedError)));
+        expect(database.isOpen, isFalse);
 
-      // Then
-      expect(identical(first, rawDatabase), isTrue);
-      expect(identical(second, rawDatabase), isTrue);
-      expect(database.isOpen, isTrue);
-      verify(
-        () => factory.openDatabase(
-          database.path,
+        // When
+        final retriedDatabase = await database.open();
+
+        // Then
+        expect(identical(retriedDatabase, rawDatabase), isTrue);
+        expect(database.isOpen, isTrue);
+        verify(
+          () => factory.openDatabase(
+            database.path,
+            version: DatabaseSchema.version,
+            onVersionChanged: any(named: 'onVersionChanged'),
+            mode: DatabaseMode.create,
+          ),
+        ).called(2);
+      },
+    );
+
+    test(
+      'successful migration stores and reuses the opened database',
+      () async {
+        // Given
+        final factory = MockDatabaseFactory();
+        final migrator = DatabaseMigrator(
+          supportedVersion: 2,
+          migrations: [
+            DatabaseMigration(
+              fromVersion: 1,
+              toVersion: 2,
+              operation: (_) async {},
+            ),
+          ],
+        );
+        final database = await createTestSembastDatabase(
+          databaseFactory: factory,
+          migrator: migrator,
+        );
+        final rawDatabase = await databaseFactoryMemory.openDatabase(
+          '${database.path}-result',
           version: DatabaseSchema.version,
-          onVersionChanged: any(named: 'onVersionChanged'),
-          mode: DatabaseMode.create,
-        ),
-      ).called(1);
-    });
+        );
+        when(
+          () => factory.openDatabase(
+            any(),
+            version: any(named: 'version'),
+            onVersionChanged: any(named: 'onVersionChanged'),
+            mode: any(named: 'mode'),
+          ),
+        ).thenAnswer((invocation) async {
+          final onVersionChanged = invocation.namedArguments[#onVersionChanged];
+          await onVersionChanged(rawDatabase, 1, 2);
+          return rawDatabase;
+        });
+
+        // When
+        final first = await database.open();
+        final second = await database.open();
+
+        // Then
+        expect(identical(first, rawDatabase), isTrue);
+        expect(identical(second, rawDatabase), isTrue);
+        expect(database.isOpen, isTrue);
+        verify(
+          () => factory.openDatabase(
+            database.path,
+            version: DatabaseSchema.version,
+            onVersionChanged: any(named: 'onVersionChanged'),
+            mode: DatabaseMode.create,
+          ),
+        ).called(1);
+      },
+    );
 
     test('unsupported downgrade propagates its exception', () async {
       final database = await createTestSembastDatabase();

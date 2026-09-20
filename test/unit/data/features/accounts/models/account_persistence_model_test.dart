@@ -88,10 +88,7 @@ void main() {
           'logo': <String, Object?>{'source': 'remote', 'value': ''},
         },
       );
-      expect(
-        invalidLogo.toEntity,
-        throwsA(isA<PersistenceRecordException>()),
-      );
+      expect(invalidLogo.toEntity, throwsA(isA<PersistenceRecordException>()));
     });
 
     test('rejects malformed and timezone-less timestamps', () {

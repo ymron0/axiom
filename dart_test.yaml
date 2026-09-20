@@ -1,15 +1,21 @@
 tags:
+  application:
+    description: Tests for use cases, application services, and orchestrators.
+  
   core:
     description: Tests for shared core primitives and infrastructure.
+
+  data:
+    description: Tests for repository implementations, persistence, and data mapping.
+
+  di:
+    description: Tests for dependency-injection and composition-root wiring.
 
   domain:
     description: Tests for domain entities, value objects, failures, and domain services.
 
-  application:
-    description: Tests for use cases, application services, and orchestrators.
-
-  data:
-    description: Tests for repository implementations, persistence, and data mapping.
+  integration:
+    description: Tests spanning multiple components or architectural layers.
 
   persistence:
     description: Tests for core persistence mechanisms, including databases and stores.
@@ -17,8 +23,5 @@ tags:
   presentation:
     description: Tests for notifiers, controllers, widgets, and screens.
 
-  di:
-    description: Tests for dependency-injection and composition-root wiring.
-
-  integration:
-    description: Tests spanning multiple components or architectural layers.
+  repositories:
+    description: Tests for concrete repository implementations and repository-specific persistence behavior.

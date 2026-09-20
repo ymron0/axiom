@@ -1,4 +1,4 @@
-@Tags(['integration', 'core', 'persistence', 'repositories'])
+@Tags(['integration', 'core', 'data', 'persistence', 'repositories'])
 library;
 
 import 'package:axiom/src/core/identity/ids/account_id.dart';

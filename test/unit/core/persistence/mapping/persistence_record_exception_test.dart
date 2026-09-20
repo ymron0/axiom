@@ -1,4 +1,4 @@
-@Tags(['core', 'persistence'])
+@Tags(['core', 'data', 'persistence'])
 library;
 
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';

@@ -1,4 +1,4 @@
-@Tags(['core', 'persistence'])
+@Tags(['core', 'data', 'persistence'])
 library;
 
 import 'package:axiom/src/core/persistence/failures/database_migration_failure.dart';

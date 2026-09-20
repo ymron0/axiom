@@ -1,4 +1,4 @@
-@Tags(['integration', 'core', 'persistence'])
+@Tags(['integration', 'core', 'data', 'persistence'])
 library;
 
 import 'dart:convert';

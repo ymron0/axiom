@@ -1,4 +1,4 @@
-@Tags(['integration', 'balance_snapshots', 'persistence'])
+@Tags(['integration', 'data', 'persistence'])
 library;
 
 import 'package:axiom/src/application/di/services/capture_balance_snapshots_service_provider.dart';

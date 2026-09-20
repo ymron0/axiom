@@ -16,21 +16,21 @@ void main() {
     };
 
     test('round-trips the persistence representation and domain value', () {
-      final model = AssetAmountPersistenceModel.fromRecord(record, path: 'amount');
+      final model = AssetAmountPersistenceModel.fromRecord(
+        record,
+        path: 'amount',
+      );
 
-      expect(model.toRecord(), <String, Object?>{
-        ...record,
-        'amount': '12.5',
-      });
+      expect(model.toRecord(), <String, Object?>{...record, 'amount': '12.5'});
       expect(model.toEntity().amount, Decimal.parse('12.50'));
     });
 
     test('reports malformed structural values with their nested path', () {
       expect(
-        () => AssetAmountPersistenceModel.fromRecord(
-          <String, Object?>{...record, 'amount': 'invalid'},
-          path: 'entry.amount',
-        ),
+        () => AssetAmountPersistenceModel.fromRecord(<String, Object?>{
+          ...record,
+          'amount': 'invalid',
+        }, path: 'entry.amount'),
         throwsA(isA<PersistenceRecordException>()),
       );
     });

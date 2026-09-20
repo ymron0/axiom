@@ -1,4 +1,4 @@
-@Tags(['integration', 'rates', 'persistence'])
+@Tags(['integration', 'data', 'persistence'])
 library;
 
 import 'package:axiom/src/core/failures/base_failure.dart';

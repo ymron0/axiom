@@ -1,4 +1,4 @@
-@Tags(['core', 'persistence'])
+@Tags(['core', 'data', 'persistence'])
 library;
 
 import 'dart:io';
@@ -27,16 +27,19 @@ void main() {
       expect(result.failureOrNull, isNull);
     });
 
-    test('returned success contains the exact same Database instance', () async {
-      // Given
-      final database = await _openDatabase();
+    test(
+      'returned success contains the exact same Database instance',
+      () async {
+        // Given
+        final database = await _openDatabase();
 
-      // When
-      final result = await DatabaseIntegrityChecker().check(database);
+        // When
+        final result = await DatabaseIntegrityChecker().check(database);
 
-      // Then
-      expect(result.valueOrNull, same(database));
-    });
+        // Then
+        expect(result.valueOrNull, same(database));
+      },
+    );
 
     test('empty declared stores pass', () async {
       // Given
@@ -69,27 +72,37 @@ void main() {
       expect(result.isSuccess, isTrue);
     });
 
-    test('version lower than expected returns DatabaseIntegrityFailure', () async {
-      // Given
-      final database = await _openDatabase(version: DatabaseSchema.version - 1);
+    test(
+      'version lower than expected returns DatabaseIntegrityFailure',
+      () async {
+        // Given
+        final database = await _openDatabase(
+          version: DatabaseSchema.version - 1,
+        );
 
-      // When
-      final result = await DatabaseIntegrityChecker().check(database);
+        // When
+        final result = await DatabaseIntegrityChecker().check(database);
 
-      // Then
-      expect(result, isA<DatabaseIntegrityFailure>());
-    });
+        // Then
+        expect(result, isA<DatabaseIntegrityFailure>());
+      },
+    );
 
-    test('version higher than expected returns DatabaseIntegrityFailure', () async {
-      // Given
-      final database = await _openDatabase(version: DatabaseSchema.version + 1);
+    test(
+      'version higher than expected returns DatabaseIntegrityFailure',
+      () async {
+        // Given
+        final database = await _openDatabase(
+          version: DatabaseSchema.version + 1,
+        );
 
-      // When
-      final result = await DatabaseIntegrityChecker().check(database);
+        // When
+        final result = await DatabaseIntegrityChecker().check(database);
 
-      // Then
-      expect(result, isA<DatabaseIntegrityFailure>());
-    });
+        // Then
+        expect(result, isA<DatabaseIntegrityFailure>());
+      },
+    );
 
     test('blank store name returns DatabaseIntegrityFailure', () async {
       // Given
@@ -107,21 +120,24 @@ void main() {
       expect(result, isA<DatabaseIntegrityFailure>());
     });
 
-    test('whitespace-only store name returns DatabaseIntegrityFailure', () async {
-      // Given
-      final database = await _openDatabase();
-      final store = stringMapStoreFactory.store('valid');
-      final checker = DatabaseIntegrityChecker(
-        storeNames: ['  \t  '],
-        stores: [store],
-      );
+    test(
+      'whitespace-only store name returns DatabaseIntegrityFailure',
+      () async {
+        // Given
+        final database = await _openDatabase();
+        final store = stringMapStoreFactory.store('valid');
+        final checker = DatabaseIntegrityChecker(
+          storeNames: ['  \t  '],
+          stores: [store],
+        );
 
-      // When
-      final result = await checker.check(database);
+        // When
+        final result = await checker.check(database);
 
-      // Then
-      expect(result, isA<DatabaseIntegrityFailure>());
-    });
+        // Then
+        expect(result, isA<DatabaseIntegrityFailure>());
+      },
+    );
 
     test('duplicate store names return DatabaseIntegrityFailure', () async {
       // Given
@@ -140,48 +156,17 @@ void main() {
       expect(result, isA<DatabaseIntegrityFailure>());
     });
 
-    test('fewer names than store references returns DatabaseIntegrityFailure', () async {
-      // Given
-      final database = await _openDatabase();
-      final checker = DatabaseIntegrityChecker(
-        storeNames: ['one'],
-        stores: [
-          stringMapStoreFactory.store('one'),
-          stringMapStoreFactory.store('two'),
-        ],
-      );
-
-      // When
-      final result = await checker.check(database);
-
-      // Then
-      expect(result, isA<DatabaseIntegrityFailure>());
-    });
-
-    test('more names than store references returns DatabaseIntegrityFailure', () async {
-      // Given
-      final database = await _openDatabase();
-      final checker = DatabaseIntegrityChecker(
-        storeNames: ['one', 'two'],
-        stores: [stringMapStoreFactory.store('one')],
-      );
-
-      // When
-      final result = await checker.check(database);
-
-      // Then
-      expect(result, isA<DatabaseIntegrityFailure>());
-    });
-
     test(
-      'store reference whose name differs from its declared name returns '
-      'DatabaseIntegrityFailure',
+      'fewer names than store references returns DatabaseIntegrityFailure',
       () async {
         // Given
         final database = await _openDatabase();
         final checker = DatabaseIntegrityChecker(
-          storeNames: ['declared'],
-          stores: [stringMapStoreFactory.store('actual')],
+          storeNames: ['one'],
+          stores: [
+            stringMapStoreFactory.store('one'),
+            stringMapStoreFactory.store('two'),
+          ],
         );
 
         // When
@@ -192,41 +177,81 @@ void main() {
       },
     );
 
-    test('DatabaseException while probing a store returns DatabaseIntegrityFailure', () async {
+    test(
+      'more names than store references returns DatabaseIntegrityFailure',
+      () async {
+        // Given
+        final database = await _openDatabase();
+        final checker = DatabaseIntegrityChecker(
+          storeNames: ['one', 'two'],
+          stores: [stringMapStoreFactory.store('one')],
+        );
+
+        // When
+        final result = await checker.check(database);
+
+        // Then
+        expect(result, isA<DatabaseIntegrityFailure>());
+      },
+    );
+
+    test('store reference whose name differs from its declared name returns '
+        'DatabaseIntegrityFailure', () async {
       // Given
-      final store = stringMapStoreFactory.store('unreadable');
-      final database = _databaseWithProbeError(
-        DatabaseException.closed('store probe failed'),
-        store,
+      final database = await _openDatabase();
+      final checker = DatabaseIntegrityChecker(
+        storeNames: ['declared'],
+        stores: [stringMapStoreFactory.store('actual')],
       );
 
       // When
-      final result = await DatabaseIntegrityChecker(
-        storeNames: ['unreadable'],
-        stores: [store],
-      ).check(database);
+      final result = await checker.check(database);
 
       // Then
       expect(result, isA<DatabaseIntegrityFailure>());
     });
 
-    test('FileSystemException while probing a store returns DatabaseIntegrityFailure', () async {
-      // Given
-      final store = stringMapStoreFactory.store('unreadable');
-      final database = _databaseWithProbeError(
-        const FileSystemException('store probe failed'),
-        store,
-      );
+    test(
+      'DatabaseException while probing a store returns DatabaseIntegrityFailure',
+      () async {
+        // Given
+        final store = stringMapStoreFactory.store('unreadable');
+        final database = _databaseWithProbeError(
+          DatabaseException.closed('store probe failed'),
+          store,
+        );
 
-      // When
-      final result = await DatabaseIntegrityChecker(
-        storeNames: ['unreadable'],
-        stores: [store],
-      ).check(database);
+        // When
+        final result = await DatabaseIntegrityChecker(
+          storeNames: ['unreadable'],
+          stores: [store],
+        ).check(database);
 
-      // Then
-      expect(result, isA<DatabaseIntegrityFailure>());
-    });
+        // Then
+        expect(result, isA<DatabaseIntegrityFailure>());
+      },
+    );
+
+    test(
+      'FileSystemException while probing a store returns DatabaseIntegrityFailure',
+      () async {
+        // Given
+        final store = stringMapStoreFactory.store('unreadable');
+        final database = _databaseWithProbeError(
+          const FileSystemException('store probe failed'),
+          store,
+        );
+
+        // When
+        final result = await DatabaseIntegrityChecker(
+          storeNames: ['unreadable'],
+          stores: [store],
+        ).check(database);
+
+        // Then
+        expect(result, isA<DatabaseIntegrityFailure>());
+      },
+    );
 
     test('failure message identifies the unreadable store', () async {
       // Given

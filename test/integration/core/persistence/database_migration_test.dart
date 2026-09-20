@@ -1,4 +1,4 @@
-@Tags(['integration', 'core', 'persistence'])
+@Tags(['integration', 'core', 'data', 'persistence'])
 library;
 
 import 'package:axiom/src/core/persistence/database_migrator.dart';
@@ -32,7 +32,9 @@ void main() {
           version: _version1,
         );
 
-        await store.record(_recordKey).put(rawVersion1.database, _version1Record);
+        await store
+            .record(_recordKey)
+            .put(rawVersion1.database, _version1Record);
         await rawVersion1.close();
 
         Map<String, Object?>? secondMigrationInput;
@@ -102,7 +104,9 @@ void main() {
           version: _version1,
         );
 
-        await store.record(_recordKey).put(rawVersion1.database, _version1Record);
+        await store
+            .record(_recordKey)
+            .put(rawVersion1.database, _version1Record);
         await rawVersion1.close();
 
         const migrationFailure = DatabaseMigrationException(
@@ -250,7 +254,8 @@ DatabaseMigrator _createMigrator({
       DatabaseMigration(
         fromVersion: _version1,
         toVersion: _version2,
-        operation: firstMigration ??
+        operation:
+            firstMigration ??
             (transaction) async {
               await store.record(_recordKey).put(transaction, {
                 'schemaVersion': _version2,

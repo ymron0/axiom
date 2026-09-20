@@ -1,4 +1,4 @@
-@Tags(['core', 'persistence'])
+@Tags(['core', 'data', 'persistence'])
 library;
 
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
@@ -481,20 +481,23 @@ void main() {
         expect(result, sourceMap);
       });
 
-      test('does not mutate the source record when the returned map is mutated', () {
-        // Given
-        final sourceMap = <String, Object?>{'name': 'Ada'};
-        final record = <String, Object?>{'metadata': sourceMap};
-        final reader = PersistenceRecordReader(record);
-        final result = reader.requiredMap('metadata');
+      test(
+        'does not mutate the source record when the returned map is mutated',
+        () {
+          // Given
+          final sourceMap = <String, Object?>{'name': 'Ada'};
+          final record = <String, Object?>{'metadata': sourceMap};
+          final reader = PersistenceRecordReader(record);
+          final result = reader.requiredMap('metadata');
 
-        // When
-        result['newField'] = true;
+          // When
+          result['newField'] = true;
 
-        // Then
-        expect(sourceMap, {'name': 'Ada'});
-        expect(record['metadata'], same(sourceMap));
-      });
+          // Then
+          expect(sourceMap, {'name': 'Ada'});
+          expect(record['metadata'], same(sourceMap));
+        },
+      );
     });
 
     group('optionalMap', () {
@@ -581,26 +584,31 @@ void main() {
         expect(result, sourceMap);
       });
 
-      test('does not mutate the source record when the returned map is mutated', () {
-        // Given
-        final sourceMap = <String, Object?>{'name': 'Ada'};
-        final record = <String, Object?>{'metadata': sourceMap};
-        final reader = PersistenceRecordReader(record);
-        final result = reader.optionalMap('metadata');
+      test(
+        'does not mutate the source record when the returned map is mutated',
+        () {
+          // Given
+          final sourceMap = <String, Object?>{'name': 'Ada'};
+          final record = <String, Object?>{'metadata': sourceMap};
+          final reader = PersistenceRecordReader(record);
+          final result = reader.optionalMap('metadata');
 
-        // When
-        result!['newField'] = true;
+          // When
+          result!['newField'] = true;
 
-        // Then
-        expect(sourceMap, {'name': 'Ada'});
-        expect(record['metadata'], same(sourceMap));
-      });
+          // Then
+          expect(sourceMap, {'name': 'Ada'});
+          expect(record['metadata'], same(sourceMap));
+        },
+      );
     });
 
     group('requiredList', () {
       test('returns a valid list', () {
         // Given
-        const reader = PersistenceRecordReader({'values': [1, null, 'three']});
+        const reader = PersistenceRecordReader({
+          'values': [1, null, 'three'],
+        });
 
         // When
         final result = reader.requiredList('values');
@@ -671,26 +679,31 @@ void main() {
         expect(result, sourceList);
       });
 
-      test('does not mutate the source record when the returned list is mutated', () {
-        // Given
-        final sourceList = <Object?>[1, 2];
-        final record = <String, Object?>{'values': sourceList};
-        final reader = PersistenceRecordReader(record);
-        final result = reader.requiredList('values');
+      test(
+        'does not mutate the source record when the returned list is mutated',
+        () {
+          // Given
+          final sourceList = <Object?>[1, 2];
+          final record = <String, Object?>{'values': sourceList};
+          final reader = PersistenceRecordReader(record);
+          final result = reader.requiredList('values');
 
-        // When
-        result.add(3);
+          // When
+          result.add(3);
 
-        // Then
-        expect(sourceList, [1, 2]);
-        expect(record['values'], same(sourceList));
-      });
+          // Then
+          expect(sourceList, [1, 2]);
+          expect(record['values'], same(sourceList));
+        },
+      );
     });
 
     group('optionalList', () {
       test('returns a valid list', () {
         // Given
-        const reader = PersistenceRecordReader({'values': [1, null, 'three']});
+        const reader = PersistenceRecordReader({
+          'values': [1, null, 'three'],
+        });
 
         // When
         final result = reader.optionalList('values');
@@ -751,20 +764,23 @@ void main() {
         expect(result, sourceList);
       });
 
-      test('does not mutate the source record when the returned list is mutated', () {
-        // Given
-        final sourceList = <Object?>[1, 2];
-        final record = <String, Object?>{'values': sourceList};
-        final reader = PersistenceRecordReader(record);
-        final result = reader.optionalList('values');
+      test(
+        'does not mutate the source record when the returned list is mutated',
+        () {
+          // Given
+          final sourceList = <Object?>[1, 2];
+          final record = <String, Object?>{'values': sourceList};
+          final reader = PersistenceRecordReader(record);
+          final result = reader.optionalList('values');
 
-        // When
-        result!.add(3);
+          // When
+          result!.add(3);
 
-        // Then
-        expect(sourceList, [1, 2]);
-        expect(record['values'], same(sourceList));
-      });
+          // Then
+          expect(sourceList, [1, 2]);
+          expect(record['values'], same(sourceList));
+        },
+      );
     });
   });
 }

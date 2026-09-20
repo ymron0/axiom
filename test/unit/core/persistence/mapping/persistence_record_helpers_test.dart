@@ -1,4 +1,4 @@
-@Tags(['core', 'persistence'])
+@Tags(['core', 'data', 'persistence'])
 library;
 
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
@@ -243,9 +243,7 @@ void main() {
       });
 
       test('throws for a malformed calendar date', () {
-        const reader = PersistenceRecordReader({
-          'effectiveUntil': '2026-9-16',
-        });
+        const reader = PersistenceRecordReader({'effectiveUntil': '2026-9-16'});
 
         expect(
           () => readOptionalCalendarDate(reader, 'effectiveUntil'),
@@ -285,10 +283,7 @@ void main() {
 
       test('throws for a timestamp representation', () {
         expect(
-          () => readCalendarDate(
-            '2026-09-16T00:00:00.000Z',
-            field: 'startsOn',
-          ),
+          () => readCalendarDate('2026-09-16T00:00:00.000Z', field: 'startsOn'),
           throwsA(
             _persistenceRecordException(
               field: 'startsOn',
@@ -365,10 +360,7 @@ void main() {
         };
 
         // When
-        final result = persistenceRecordFromListValue(
-          value,
-          field: 'splits',
-        );
+        final result = persistenceRecordFromListValue(value, field: 'splits');
 
         // Then
         expect(result, <String, Object?>{

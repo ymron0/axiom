@@ -1,4 +1,4 @@
-@Tags(['integration', 'tags', 'persistence'])
+@Tags(['integration', 'data', 'persistence'])
 library;
 
 import 'dart:io';
