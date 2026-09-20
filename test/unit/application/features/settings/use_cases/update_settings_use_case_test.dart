@@ -6,7 +6,7 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/settings/application/use_cases/update_settings_use_case.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
-import 'package:axiom/src/features/settings/domain/failures/settings_persistence_failure.dart';
+import 'package:axiom/src/features/settings/data/failures/settings_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 

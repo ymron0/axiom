@@ -11,7 +11,7 @@ import 'package:axiom/src/features/jars/domain/failures/jar_already_exists_failu
 import 'package:axiom/src/features/jars/domain/failures/jar_not_archived_failure.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_not_deleted_failure.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_not_found_failure.dart';
-import 'package:axiom/src/features/jars/domain/failures/jar_persistence_failure.dart';
+import 'package:axiom/src/features/jars/data/failures/jar_persistence_failure.dart';
 import 'package:axiom/src/features/jars/domain/repositories/jar_repository.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';

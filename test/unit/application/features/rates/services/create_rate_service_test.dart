@@ -9,7 +9,7 @@ import 'package:axiom/src/application/failures/invalid_valuation_currency_failur
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/rates/application/services/create_rate_service.dart';
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
-import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 

@@ -1,7 +1,7 @@
-@Tags(['domain'])
+@Tags(['data', 'persistence'])
 library;
 
-import 'package:axiom/src/features/accounts/domain/failures/account_persistence_failure.dart';
+import 'package:axiom/src/features/accounts/data/failures/account_persistence_failure.dart';
 import 'package:test/test.dart';
 
 void main() {

@@ -16,7 +16,7 @@ import 'package:axiom/src/features/accounts/domain/failures/account_already_dele
 import 'package:axiom/src/features/accounts/domain/failures/account_already_exists_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_archived_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
-import 'package:axiom/src/features/accounts/domain/failures/account_persistence_failure.dart';
+import 'package:axiom/src/features/accounts/data/failures/account_persistence_failure.dart';
 import 'package:axiom/src/features/accounts/domain/repositories/account_repository.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';

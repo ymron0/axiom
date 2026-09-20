@@ -19,7 +19,7 @@ import 'package:axiom/src/features/categories/domain/failures/category_already_d
 import 'package:axiom/src/features/categories/domain/failures/category_already_exists_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_archived_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_found_failure.dart';
-import 'package:axiom/src/features/categories/domain/failures/category_persistence_failure.dart';
+import 'package:axiom/src/features/categories/data/failures/category_persistence_failure.dart';
 import 'package:axiom/src/features/categories/domain/repositories/category_repository.dart';
 import 'package:axiom/src/features/categories/domain/value_objects/category_budget.dart';
 import 'package:decimal/decimal.dart';

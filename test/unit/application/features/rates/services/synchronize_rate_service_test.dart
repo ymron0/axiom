@@ -7,7 +7,7 @@ import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
-import 'package:axiom/src/features/assets/domain/failures/asset_persistence_failure.dart';
+import 'package:axiom/src/features/assets/data/failures/asset_persistence_failure.dart';
 import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/features/rates/application/failures/rate_synchronization_conflict_failure.dart';
 import 'package:axiom/src/features/rates/application/models/rate_cache_entry.dart';
@@ -18,7 +18,7 @@ import 'package:axiom/src/features/rates/application/services/synchronize_rate_s
 import 'package:axiom/src/features/rates/data/cache/in_memory_latest_rate_cache.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
-import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';

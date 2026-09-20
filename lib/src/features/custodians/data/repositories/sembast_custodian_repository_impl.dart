@@ -12,7 +12,7 @@ import 'package:axiom/src/features/custodians/domain/failures/custodian_already_
 import 'package:axiom/src/features/custodians/domain/failures/custodian_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_archived_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_found_failure.dart';
-import 'package:axiom/src/features/custodians/domain/failures/custodian_persistence_failure.dart';
+import 'package:axiom/src/features/custodians/data/failures/custodian_persistence_failure.dart';
 import 'package:axiom/src/features/custodians/domain/repositories/custodian_repository.dart';
 import 'package:axiom/src/features/custodians/data/models/custodian_persistence_model.dart';
 import 'package:sembast/sembast.dart';

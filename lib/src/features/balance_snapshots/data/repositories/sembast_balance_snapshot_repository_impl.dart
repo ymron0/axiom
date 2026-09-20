@@ -6,7 +6,7 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/balance_snapshots/data/models/balance_snapshot_persistence_model.dart';
 import 'package:axiom/src/features/balance_snapshots/data/models/balance_snapshot_record_key.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/failures/balance_snapshot_failure.dart';
-import 'package:axiom/src/features/balance_snapshots/domain/failures/balance_snapshot_persistence_failure.dart';
+import 'package:axiom/src/features/balance_snapshots/data/failures/balance_snapshot_persistence_failure.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/repositories/balance_snapshot_repository.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/value_objects/balance_snapshot.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/value_objects/balance_snapshot_date_range.dart';

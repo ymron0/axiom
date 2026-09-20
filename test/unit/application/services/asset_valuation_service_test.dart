@@ -8,7 +8,7 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/services/asset_valuation_calculator.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
-import 'package:axiom/src/features/rates/domain/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
 import 'package:axiom/src/features/rates/domain/services/rate_conversion_service.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';

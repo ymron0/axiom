@@ -1,14 +1,14 @@
-@Tags(['domain'])
+@Tags(['data', 'persistence'])
 library;
 
-import 'package:axiom/src/features/balance_snapshots/domain/failures/balance_snapshot_persistence_failure.dart';
+import 'package:axiom/src/features/custodians/data/failures/custodian_persistence_failure.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('BalanceSnapshotPersistenceFailure', () {
+  group('CustodianPersistenceFailure', () {
     test('can be instantiated without a diagnostic message', () {
       // Given
-      const failure = BalanceSnapshotPersistenceFailure();
+      const failure = CustodianPersistenceFailure();
 
       // Then
       expect(failure.message, isNull);
@@ -16,10 +16,10 @@ void main() {
 
     test('preserves the provided diagnostic message', () {
       // Given
-      const message = 'Balance snapshot persistence failed.';
+      const message = 'Custodian persistence failed.';
 
       // When
-      const failure = BalanceSnapshotPersistenceFailure(message: message);
+      const failure = CustodianPersistenceFailure(message: message);
 
       // Then
       expect(failure.message, message);
@@ -27,15 +27,15 @@ void main() {
 
     test('returns its static type identifier from type', () {
       // Given
-      const failure = BalanceSnapshotPersistenceFailure();
+      const failure = CustodianPersistenceFailure();
 
       // Then
-      expect(failure.type, BalanceSnapshotPersistenceFailure.typeId);
+      expect(failure.type, CustodianPersistenceFailure.typeId);
     });
 
     test('returns itself from failureOrNull', () {
       // Given
-      const failure = BalanceSnapshotPersistenceFailure();
+      const failure = CustodianPersistenceFailure();
 
       // Then
       expect(failure.failureOrNull, same(failure));

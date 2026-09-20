@@ -13,7 +13,7 @@ final class InvalidValuationCurrencyFailure
     : super(message);
 
   /// Stable identifier for this failure kind.
-  static const typeId = 'settings.invalidValuationCurrency';
+  static const typeId = 'application.invalidValuationCurrency';
 
   @override
   InvalidValuationCurrencyFailure get failureOrNull => this;

@@ -1,14 +1,14 @@
-@Tags(['domain'])
+@Tags(['data', 'persistence'])
 library;
 
-import 'package:axiom/src/features/merchants/domain/failures/merchant_persistence_failure.dart';
+import 'package:axiom/src/features/assets/data/failures/asset_persistence_failure.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('MerchantPersistenceFailure', () {
+  group('AssetPersistenceFailure', () {
     test('can be instantiated without a diagnostic message', () {
       // Given
-      const failure = MerchantPersistenceFailure();
+      const failure = AssetPersistenceFailure();
 
       // Then
       expect(failure.message, isNull);
@@ -16,10 +16,10 @@ void main() {
 
     test('preserves the provided diagnostic message', () {
       // Given
-      const message = 'Merchant persistence failed.';
+      const message = 'Asset persistence failed.';
 
       // When
-      const failure = MerchantPersistenceFailure(message: message);
+      const failure = AssetPersistenceFailure(message: message);
 
       // Then
       expect(failure.message, message);
@@ -27,15 +27,15 @@ void main() {
 
     test('returns its static type identifier from type', () {
       // Given
-      const failure = MerchantPersistenceFailure();
+      const failure = AssetPersistenceFailure();
 
       // Then
-      expect(failure.type, MerchantPersistenceFailure.typeId);
+      expect(failure.type, AssetPersistenceFailure.typeId);
     });
 
     test('returns itself from failureOrNull', () {
       // Given
-      const failure = MerchantPersistenceFailure();
+      const failure = AssetPersistenceFailure();
 
       // Then
       expect(failure.failureOrNull, same(failure));

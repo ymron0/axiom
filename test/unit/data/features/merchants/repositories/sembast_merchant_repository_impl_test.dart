@@ -10,7 +10,7 @@ import 'package:axiom/src/features/merchants/domain/failures/merchant_already_de
 import 'package:axiom/src/features/merchants/domain/failures/merchant_already_exists_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_not_archived_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_not_found_failure.dart';
-import 'package:axiom/src/features/merchants/domain/failures/merchant_persistence_failure.dart';
+import 'package:axiom/src/features/merchants/data/failures/merchant_persistence_failure.dart';
 import 'package:axiom/src/features/merchants/domain/repositories/merchant_repository.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';

@@ -12,7 +12,7 @@ import 'package:axiom/src/features/tags/domain/failures/tag_already_exists_failu
 import 'package:axiom/src/features/tags/domain/failures/tag_name_already_exists_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_archived_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_found_failure.dart';
-import 'package:axiom/src/features/tags/domain/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
 import 'package:axiom/src/features/tags/domain/repositories/tag_repository.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';

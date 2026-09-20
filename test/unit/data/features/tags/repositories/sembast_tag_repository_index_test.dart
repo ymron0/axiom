@@ -6,7 +6,7 @@ import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/features/tags/data/models/tag_persistence_model.dart';
 import 'package:axiom/src/features/tags/data/repositories/sembast_tag_repository_impl.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_name_already_exists_failure.dart';
-import 'package:axiom/src/features/tags/domain/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';
 

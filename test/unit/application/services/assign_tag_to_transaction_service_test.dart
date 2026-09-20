@@ -9,7 +9,7 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/tags/application/use_cases/get_tag_by_id_use_case.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_assignable_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_found_failure.dart';
-import 'package:axiom/src/features/tags/domain/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_transaction_by_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';

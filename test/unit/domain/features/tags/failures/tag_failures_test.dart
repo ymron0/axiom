@@ -9,7 +9,6 @@ import 'package:axiom/src/features/tags/domain/failures/tag_in_use_failure.dart'
 import 'package:axiom/src/features/tags/domain/failures/tag_name_already_exists_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_archived_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_found_failure.dart';
-import 'package:axiom/src/features/tags/domain/failures/tag_persistence_failure.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -78,12 +77,5 @@ void main() {
       expect(failure.message, 'in use');
     });
 
-    test('TagPersistenceFailure exposes its stable type', () {
-      const failure = TagPersistenceFailure(message: 'storage');
-
-      expect(failure.type, TagPersistenceFailure.typeId);
-      expect(failure.failureOrNull, same(failure));
-      expect(failure.message, 'storage');
-    });
   });
 }

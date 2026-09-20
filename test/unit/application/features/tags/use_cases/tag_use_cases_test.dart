@@ -20,7 +20,7 @@ import 'package:axiom/src/features/tags/application/use_cases/unarchive_tag_use_
 import 'package:axiom/src/features/tags/application/use_cases/update_tag_use_case.dart';
 import 'package:axiom/src/features/tags/domain/entities/tag.dart';
 import 'package:axiom/src/features/tags/domain/failures/invalid_tag_name_failure.dart';
-import 'package:axiom/src/features/tags/domain/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 

@@ -1,14 +1,14 @@
-@Tags(['domain'])
+@Tags(['data', 'persistence'])
 library;
 
-import 'package:axiom/src/features/custodians/domain/failures/custodian_persistence_failure.dart';
+import 'package:axiom/src/features/categories/data/failures/category_persistence_failure.dart';
 import 'package:test/test.dart';
 
 void main() {
-  group('CustodianPersistenceFailure', () {
+  group('CategoryPersistenceFailure', () {
     test('can be instantiated without a diagnostic message', () {
       // Given
-      const failure = CustodianPersistenceFailure();
+      const failure = CategoryPersistenceFailure();
 
       // Then
       expect(failure.message, isNull);
@@ -16,10 +16,10 @@ void main() {
 
     test('preserves the provided diagnostic message', () {
       // Given
-      const message = 'Custodian persistence failed.';
+      const message = 'Category persistence failed.';
 
       // When
-      const failure = CustodianPersistenceFailure(message: message);
+      const failure = CategoryPersistenceFailure(message: message);
 
       // Then
       expect(failure.message, message);
@@ -27,15 +27,15 @@ void main() {
 
     test('returns its static type identifier from type', () {
       // Given
-      const failure = CustodianPersistenceFailure();
+      const failure = CategoryPersistenceFailure();
 
       // Then
-      expect(failure.type, CustodianPersistenceFailure.typeId);
+      expect(failure.type, CategoryPersistenceFailure.typeId);
     });
 
     test('returns itself from failureOrNull', () {
       // Given
-      const failure = CustodianPersistenceFailure();
+      const failure = CategoryPersistenceFailure();
 
       // Then
       expect(failure.failureOrNull, same(failure));

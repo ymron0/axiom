@@ -13,7 +13,7 @@ import 'package:axiom/src/features/tags/domain/failures/invalid_tag_merge_failur
 import 'package:axiom/src/features/tags/domain/failures/tag_in_use_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_assignable_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_found_failure.dart';
-import 'package:axiom/src/features/tags/domain/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_transactions_by_tag_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/transactions_exist_by_tag_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';

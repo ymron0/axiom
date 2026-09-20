@@ -19,7 +19,7 @@ import 'package:axiom/src/features/accounts/di/get_accounts_use_case_provider.da
 import 'package:axiom/src/features/accounts/domain/entities/account.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/balance_snapshots/di/balance_snapshot_repository_provider.dart';
-import 'package:axiom/src/features/balance_snapshots/domain/failures/balance_snapshot_persistence_failure.dart';
+import 'package:axiom/src/features/balance_snapshots/data/failures/balance_snapshot_persistence_failure.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/value_objects/balance_snapshot_date_range.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/value_objects/balance_snapshot_subject.dart';
 import 'package:axiom/src/features/custodians/application/use_cases/get_custodians_use_case.dart';

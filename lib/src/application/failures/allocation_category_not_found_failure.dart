@@ -13,7 +13,7 @@ final class AllocationCategoryNotFoundFailure
     : super(message);
 
   /// Stable identifier for this failure kind.
-  static const typeId = 'settings.allocationCategoryNotFound';
+  static const typeId = 'application.allocationCategoryNotFound';
 
   @override
   AllocationCategoryNotFoundFailure get failureOrNull => this;

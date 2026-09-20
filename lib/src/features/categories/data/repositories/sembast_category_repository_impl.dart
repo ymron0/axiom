@@ -15,7 +15,7 @@ import 'package:axiom/src/features/categories/domain/failures/category_already_e
 import 'package:axiom/src/features/categories/domain/failures/category_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_archived_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_found_failure.dart';
-import 'package:axiom/src/features/categories/domain/failures/category_persistence_failure.dart';
+import 'package:axiom/src/features/categories/data/failures/category_persistence_failure.dart';
 import 'package:axiom/src/features/categories/domain/repositories/category_repository.dart';
 import 'package:sembast/sembast.dart';
 
