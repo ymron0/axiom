@@ -2,10 +2,12 @@
 library;
 
 import 'package:axiom/src/application/services/validate_jar_target_currencies_service.dart';
+import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
+import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_id_use_case.dart';
 import 'package:axiom/src/features/jars/application/use_cases/update_jar_use_case.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_already_deleted_failure.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_not_found_failure.dart';
@@ -20,22 +22,37 @@ import 'package:test/test.dart';
 import '../../../../../fixtures/features/jars/jar_fixtures.dart';
 import '../../../../../mocks/jar_repository_mock.dart';
 import '../../../../../mocks/settings_repository_mock.dart';
+import '../../../../../mocks/asset_repository_mock.dart';
+import '../../../../../fixtures/features/assets/asset_fixtures.dart';
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(AssetId.fromString('fallback-asset'));
+  });
+
   group('UpdateJarUseCase', () {
     late MockJarRepository repository;
     late MockSettingsRepository settingsRepository;
+    late MockAssetRepository assetRepository;
     late UpdateJarUseCase useCase;
 
     setUp(() {
       repository = MockJarRepository();
       settingsRepository = MockSettingsRepository();
+      assetRepository = MockAssetRepository();
       useCase = UpdateJarUseCase(
         repository: repository,
         validateTargetCurrencies: ValidateJarTargetCurrenciesService(
-          getSettings: GetSettingsUseCase(settingsRepository),
+          getValuationCurrency: GetValuationCurrencyService(
+            getSettings: GetSettingsUseCase(settingsRepository),
+            getAssetById: GetAssetByIdUseCase(assetRepository),
+          ),
         ),
       );
+      when(() => assetRepository.getById(any())).thenAnswer((invocation) async {
+        final assetId = invocation.positionalArguments.single as AssetId;
+        return Success(currencyFixture(id: assetId.value));
+      });
     });
 
     test('updates an active jar', () async {

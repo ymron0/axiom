@@ -25,6 +25,9 @@ void main() {
       // Given
       final asset = currencyFixture(id: 'update-asset', code: 'AAA');
       when(
+        () => repository.getById(asset.id),
+      ).thenAnswer((_) async => Success<Asset?>(asset));
+      when(
         () => repository.update(asset),
       ).thenAnswer((_) async => Success<Asset>(asset));
 
@@ -40,6 +43,9 @@ void main() {
       // Given
       final asset = currencyFixture(id: 'missing-update', code: 'AAA');
       const failure = AssetNotFoundFailure(message: 'asset not found');
+      when(
+        () => repository.getById(asset.id),
+      ).thenAnswer((_) async => Success<Asset?>(asset));
       when(() => repository.update(asset)).thenAnswer((_) async => failure);
 
       // When
@@ -53,6 +59,9 @@ void main() {
       // Given
       final asset = currencyFixture(id: 'failed-update', code: 'AAA');
       const failure = AssetNotFoundFailure(message: 'update failed');
+      when(
+        () => repository.getById(asset.id),
+      ).thenAnswer((_) async => Success<Asset?>(asset));
       when(() => repository.update(asset)).thenAnswer((_) async => failure);
 
       // When

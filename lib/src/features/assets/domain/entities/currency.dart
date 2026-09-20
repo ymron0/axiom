@@ -2,34 +2,18 @@ part of 'asset.dart';
 
 /// A fiat currency represented as an [Asset], such as EUR, CHF, or USD.
 ///
-/// [Currency] is a distinct subtype even though it currently shares the
-/// structural metadata of [Asset]. The subtype establishes fiat-money
-/// semantics and provides a boundary for future currency-specific behavior
-/// without placing those rules on assets such as cryptocurrencies, stocks,
-/// metals, or funds.
+/// Currency assets are always eligible for payments. This is a type invariant:
+/// callers cannot disable payment support for a [Currency].
 ///
-/// [Currency] inherits the validation and identity semantics of [Asset] and
-/// additionally requires a three-letter ASCII currency code.
-///
-/// Example:
-/// ```dart
-/// final euro = Currency(
-///   id: AssetId.generate(),
-///   entityVersion: 1,
-///   createdAt: DateTime.utc(2024, 1, 1),
-///   modifiedAt: DateTime.utc(2024, 1, 1),
-///   name: 'Euro',
-///   code: AssetCode('EUR'),
-///   symbol: '€',
-///   decimalPlaces: 2,
-/// );
-/// ```
+/// [Currency] additionally requires a three-letter ASCII currency code.
 @MappableClass()
 final class Currency extends Asset with CurrencyMappable {
   /// Creates a currency.
   ///
-  /// Inherits the validation contract of [Asset]. Throws [ArgumentError] when
-  /// [code] does not contain exactly three ASCII letters.
+  /// Inherits the validation contract of [Asset].
+  ///
+  /// Throws [ArgumentError] when [code] does not contain exactly three ASCII
+  /// letters.
   Currency({
     required super.id,
     required super.entityVersion,
@@ -42,7 +26,7 @@ final class Currency extends Asset with CurrencyMappable {
     required super.decimalPlaces,
   }) {
     final codeValue = code.value;
-    final isThreeLetterCode = RegExp(r'^[A-Za-z]{3}$').hasMatch(code.value);
+    final isThreeLetterCode = RegExp(r'^[A-Za-z]{3}$').hasMatch(codeValue);
 
     if (!isThreeLetterCode) {
       throw ArgumentError.value(
@@ -53,12 +37,7 @@ final class Currency extends Asset with CurrencyMappable {
     }
   }
 
-  /// Creates a currency with a generated identity and audit timestamps.
-  ///
-  /// The generated currency starts at entity version `1`. The supplied clock
-  /// is sampled once in UTC and the resulting timestamp is used for both
-  /// [createdAt] and [modifiedAt]. Throws [ArgumentError] when [code] does
-  /// not contain exactly three ASCII letters.
+  /// Creates a currency with generated identity and audit timestamps.
   factory Currency.create({
     required String name,
     required AssetCode code,
@@ -82,4 +61,10 @@ final class Currency extends Asset with CurrencyMappable {
       decimalPlaces: decimalPlaces,
     );
   }
+
+  /// Whether this currency can be used for payments.
+  ///
+  /// Fiat currencies are always payment enabled.
+  @override
+  bool get paymentEnabled => true;
 }

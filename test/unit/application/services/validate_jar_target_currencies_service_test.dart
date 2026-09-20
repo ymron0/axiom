@@ -2,11 +2,13 @@
 library;
 
 import 'package:axiom/src/application/failures/invalid_valuation_currency_failure.dart';
+import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/application/services/validate_jar_target_currencies_service.dart';
 import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_id_use_case.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/jars/domain/value_objects/jar_target.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
@@ -16,16 +18,34 @@ import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../../mocks/get_settings_use_case_mock.dart';
+import '../../../mocks/asset_repository_mock.dart';
+import '../../../fixtures/features/assets/asset_fixtures.dart';
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(AssetId.fromString('fallback-asset'));
+  });
+
   group('ValidateJarTargetCurrenciesService', () {
     late MockGetSettingsUseCase getSettings;
+    late MockAssetRepository assetRepository;
     late ValidateJarTargetCurrenciesService service;
     final valuationCurrencyId = AssetId.fromString('currency-chf');
 
     setUp(() {
       getSettings = MockGetSettingsUseCase();
-      service = ValidateJarTargetCurrenciesService(getSettings: getSettings);
+      assetRepository = MockAssetRepository();
+      service = ValidateJarTargetCurrenciesService(
+        getValuationCurrency: GetValuationCurrencyService(
+          getSettings: getSettings,
+          getAssetById: GetAssetByIdUseCase(assetRepository),
+        ),
+      );
+
+      when(() => assetRepository.getById(any())).thenAnswer((invocation) async {
+        final assetId = invocation.positionalArguments.single as AssetId;
+        return Success(currencyFixture(id: assetId.value));
+      });
     });
 
     test('accepts a jar without targets without loading settings', () async {

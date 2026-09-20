@@ -2,9 +2,11 @@
 library;
 
 import 'package:axiom/src/application/services/asset_valuation_service.dart';
+import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/application/services/resolve_conversion_rate_service.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_id_use_case.dart';
 import 'package:axiom/src/features/assets/domain/services/asset_valuation_calculator.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
@@ -17,12 +19,19 @@ import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../../fixtures/features/rates/rate_fixtures.dart';
+import '../../../fixtures/features/assets/asset_fixtures.dart';
+import '../../../mocks/asset_repository_mock.dart';
 import '../../../mocks/get_settings_use_case_mock.dart';
 import '../../../mocks/get_rate_at_use_case_mock.dart';
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(AssetId.fromString('fallback-asset'));
+  });
+
   group('AssetValuationService', () {
     late MockGetSettingsUseCase getSettings;
+    late MockAssetRepository assetRepository;
     late MockGetRateAtUseCase getRateAt;
     late AssetValuationService service;
 
@@ -32,6 +41,7 @@ void main() {
 
     setUp(() {
       getSettings = MockGetSettingsUseCase();
+      assetRepository = MockAssetRepository();
       getRateAt = MockGetRateAtUseCase();
 
       eur = AssetId.fromString('asset-eur');
@@ -44,8 +54,18 @@ void main() {
         rateConversion: const RateConversionService(),
       );
 
-      service = AssetValuationService(
+      final getValuationCurrency = GetValuationCurrencyService(
         getSettings: getSettings,
+        getAssetById: GetAssetByIdUseCase(assetRepository),
+      );
+
+      when(() => assetRepository.getById(any())).thenAnswer((invocation) async {
+        final assetId = invocation.positionalArguments.single as AssetId;
+        return Success(currencyFixture(id: assetId.value));
+      });
+
+      service = AssetValuationService(
+        getValuationCurrency: getValuationCurrency,
         resolveConversionRate: resolveConversionRate,
         calculator: const AssetValuationCalculator(),
       );

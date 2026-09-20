@@ -1,92 +1,50 @@
+import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/application/services/resolve_conversion_rate_service.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/services/asset_valuation_calculator.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
-import 'package:axiom/src/features/settings/application/use_cases/get_settings_use_case.dart';
-import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
 import 'package:decimal/decimal.dart';
 
-/// Values asset quantities in the application's configured valuation currency.
+/// Values any supported asset in the configured fiat valuation currency.
 ///
-/// This application service coordinates Settings, Rates, and Assets without
-/// moving cross-feature responsibilities into any feature-domain entity.
+/// The input may represent a Currency, CryptoAsset, StockAsset, or
+/// CommodityAsset.
 ///
-/// ## Workflow
-///
-/// For each valuation:
-///
-/// 1. retrieve the configured valuation currency from Settings;
-/// 2. determine whether a conversion rate is economically required;
-/// 3. resolve the source-to-valuation conversion rate when required; and
-/// 4. delegate deterministic arithmetic to [AssetValuationCalculator].
-///
-/// ## Rate lookup
-///
-/// A rate is required only for a known, non-zero amount whose asset differs
-/// from the configured valuation currency.
-///
-/// Rate lookup is deliberately skipped for:
-///
-/// - identity valuation;
-/// - zero amounts; and
-/// - unknown amounts.
-///
-/// This prevents a zero balance, for example, from becoming unavailable merely
-/// because no market observation exists for an asset that currently contributes
-/// no value.
-///
-/// ## Failure semantics
-///
-/// Failures returned by Settings are propagated unchanged. A
-/// [RateNotFoundFailure] is represented as an unknown amount in the valuation
-/// currency; other rate-resolution failures are propagated unchanged.
-///
-/// When Settings have not yet been initialized, the service returns
-/// [SettingsNotInitializedFailure].
-///
-/// Malformed calculation inputs are programmer/domain-integrity errors and are
-/// therefore rejected by [AssetValuationCalculator] with [ArgumentError]
-/// rather than translated into persistence/application failures.
+/// A successful known valuation is always expressed in the configured
+/// [Currency], never in a crypto asset, stock, or commodity.
 final class AssetValuationService {
-  final GetSettingsUseCase _getSettings;
+  final GetValuationCurrencyService _getValuationCurrency;
+
   final ResolveConversionRateService _resolveConversionRate;
   final AssetValuationCalculator _calculator;
-
-  /// Creates the asset valuation service.
+  /// Creates the valuation service.
   const AssetValuationService({
-    required GetSettingsUseCase getSettings,
+    required GetValuationCurrencyService getValuationCurrency,
     required ResolveConversionRateService resolveConversionRate,
     required AssetValuationCalculator calculator,
-  }) : _getSettings = getSettings, // ignore: prefer_initializing_formals
+  }) : _getValuationCurrency = // ignore: prefer_initializing_formals
+           getValuationCurrency,
        _resolveConversionRate = // ignore: prefer_initializing_formals
            resolveConversionRate,
        _calculator = calculator; // ignore: prefer_initializing_formals
 
-  /// Values [amount] using the configured valuation currency at [at].
+  /// Values [amount] in the configured valuation currency at [at].
   ///
-  /// [at] is forwarded unchanged to rate resolution so historical valuation
-  /// uses the same effective-time semantics as the Rates feature.
+  /// Identity, zero, and unknown amounts do not require rate resolution.
   Future<Result<AssetAmount, BaseFailure>> call({
     required AssetAmount amount,
     required DateTime at,
   }) async {
-    final settingsResult = await _getSettings();
+    final currencyResult = await _getValuationCurrency();
 
-    if (settingsResult case final Failure<BaseFailure> failure) {
+    if (currencyResult case final Failure<BaseFailure> failure) {
       return failure;
     }
 
-    final settings = settingsResult.valueOrNull;
-
-    if (settings == null) {
-      return const SettingsNotInitializedFailure(
-        message: 'Settings have not been initialized.',
-      );
-    }
-
-    final valuationCurrencyId = settings.valuationCurrencyId;
+    final valuationCurrency = currencyResult.valueOrNull!;
+    final valuationCurrencyId = valuationCurrency.id;
 
     final requiresConversionRate =
         amount.assetId != valuationCurrencyId &&
@@ -118,6 +76,8 @@ final class AssetValuationService {
       ),
       failure: (failure) {
         if (failure is RateNotFoundFailure) {
+          // The quantity is known, but its value in the configured Currency
+          // cannot currently be determined.
           return Success(
             _calculator.calculate(
               amount: amount,

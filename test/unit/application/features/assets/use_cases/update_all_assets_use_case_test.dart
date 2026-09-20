@@ -2,6 +2,8 @@
 library;
 
 import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
+import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/update_all_assets_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
@@ -16,6 +18,10 @@ void main() {
     late MockAssetRepository repository;
     late UpdateAllAssetsUseCase useCase;
 
+    setUpAll(() {
+      registerFallbackValue(<AssetId>[]);
+    });
+
     setUp(() {
       repository = MockAssetRepository();
       useCase = UpdateAllAssetsUseCase(repository);
@@ -27,6 +33,13 @@ void main() {
         currencyFixture(id: 'update-all-first', code: 'AAA'),
         currencyFixture(id: 'update-all-second', code: 'BBB'),
       ];
+      when(
+        () => repository.getByIds(any<List<AssetId>>()),
+      ).thenAnswer(
+        (_) async => Success<BatchLookup<Asset, AssetId>>(
+          BatchLookup<Asset, AssetId>(found: assets, missing: const []),
+        ),
+      );
       when(
         () => repository.updateAll(assets),
       ).thenAnswer((_) async => Success<List<Asset>>(assets));
@@ -43,6 +56,13 @@ void main() {
       // Given
       final assets = [currencyFixture(id: 'missing-update-batch', code: 'AAA')];
       const failure = AssetNotFoundFailure(message: 'asset not found');
+      when(
+        () => repository.getByIds(any<List<AssetId>>()),
+      ).thenAnswer(
+        (_) async => Success<BatchLookup<Asset, AssetId>>(
+          BatchLookup<Asset, AssetId>(found: assets, missing: const []),
+        ),
+      );
       when(() => repository.updateAll(assets)).thenAnswer((_) async => failure);
 
       // When
@@ -56,6 +76,13 @@ void main() {
       // Given
       final assets = [currencyFixture(id: 'failed-update-batch', code: 'AAA')];
       const failure = AssetNotFoundFailure(message: 'batch failed');
+      when(
+        () => repository.getByIds(any<List<AssetId>>()),
+      ).thenAnswer(
+        (_) async => Success<BatchLookup<Asset, AssetId>>(
+          BatchLookup<Asset, AssetId>(found: assets, missing: const []),
+        ),
+      );
       when(() => repository.updateAll(assets)).thenAnswer((_) async => failure);
 
       // When

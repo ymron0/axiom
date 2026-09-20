@@ -8,6 +8,7 @@ import 'package:axiom/src/core/di/database_lifecycle_service_provider.dart';
 import 'package:axiom/src/core/di/database_root_path_provider.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/assets/di/get_asset_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/jars/application/use_cases/archive_jar_use_case.dart';
 import 'package:axiom/src/features/jars/application/use_cases/create_jar_use_case.dart';
 import 'package:axiom/src/features/jars/application/use_cases/delete_jar_use_case.dart';
@@ -42,6 +43,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
 import '../../../../../fixtures/features/jars/jar_fixtures.dart';
+import '../../../../../mocks/get_asset_by_id_use_case_mock.dart';
 import '../../../../../mocks/jar_repository_mock.dart';
 import '../../../../../mocks/settings_repository_mock.dart';
 
@@ -115,44 +117,47 @@ void main() {
         archivedAt: DateTime.utc(2026, 1, 2),
       );
       final clock = FixedClock(DateTime.utc(2026, 1, 3));
-      when(() => repository.create(any())).thenAnswer(
-        (_) async => const Success(null),
-      );
-      when(() => repository.getAll()).thenAnswer(
-        (_) async => Success<List<Jar>>([jar]),
-      );
-      when(() => repository.getActive()).thenAnswer(
-        (_) async => Success<List<Jar>>([jar]),
-      );
-      when(() => repository.getArchived()).thenAnswer(
-        (_) async => Success<List<Jar>>([archived]),
-      );
-      when(() => repository.getById(jar.id)).thenAnswer(
-        (_) async => Success<Jar?>(jar),
-      );
-      when(() => repository.getByKind(jar.kind)).thenAnswer(
-        (_) async => Success<List<Jar>>([jar]),
-      );
-      when(() => repository.search('jar')).thenAnswer(
-        (_) async => Success<List<Jar>>([jar]),
-      );
-      when(() => repository.update(jar)).thenAnswer(
-        (_) async => const Success(null),
-      );
-      when(() => repository.archive(jar.id, clock.nowUtc)).thenAnswer(
-        (_) async => Success(archived),
-      );
-      when(() => repository.unarchive(jar.id, clock.nowUtc)).thenAnswer(
-        (_) async => Success(jar),
-      );
-      when(() => repository.delete(jar.id)).thenAnswer(
-        (_) async => Success(jar),
-      );
-      when(() => repository.restore(deleted)).thenAnswer(
-        (_) async => const Success(null),
-      );
+      when(
+        () => repository.create(any()),
+      ).thenAnswer((_) async => const Success(null));
+      when(
+        () => repository.getAll(),
+      ).thenAnswer((_) async => Success<List<Jar>>([jar]));
+      when(
+        () => repository.getActive(),
+      ).thenAnswer((_) async => Success<List<Jar>>([jar]));
+      when(
+        () => repository.getArchived(),
+      ).thenAnswer((_) async => Success<List<Jar>>([archived]));
+      when(
+        () => repository.getById(jar.id),
+      ).thenAnswer((_) async => Success<Jar?>(jar));
+      when(
+        () => repository.getByKind(jar.kind),
+      ).thenAnswer((_) async => Success<List<Jar>>([jar]));
+      when(
+        () => repository.search('jar'),
+      ).thenAnswer((_) async => Success<List<Jar>>([jar]));
+      when(
+        () => repository.update(jar),
+      ).thenAnswer((_) async => const Success(null));
+      when(
+        () => repository.archive(jar.id, clock.nowUtc),
+      ).thenAnswer((_) async => Success(archived));
+      when(
+        () => repository.unarchive(jar.id, clock.nowUtc),
+      ).thenAnswer((_) async => Success(jar));
+      when(
+        () => repository.delete(jar.id),
+      ).thenAnswer((_) async => Success(jar));
+      when(
+        () => repository.restore(deleted),
+      ).thenAnswer((_) async => const Success(null));
       final container = ProviderContainer(
         overrides: [
+          getAssetByIdUseCaseProvider.overrideWithValue(
+            MockGetAssetByIdUseCase(),
+          ),
           jarRepositoryProvider.overrideWithValue(repository),
           settingsRepositoryProvider.overrideWithValue(
             MockSettingsRepository(),

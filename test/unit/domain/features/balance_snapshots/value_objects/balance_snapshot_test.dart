@@ -20,7 +20,7 @@ void main() {
           assetBalances: [
             _incoming(assetId: 'asset-btc', amount: '0.5'),
             _incoming(assetId: 'asset-usd', amount: '1200'),
-            _incoming(assetId: 'asset-aapl', amount: '12'),
+            _incoming(assetId: 'asset-nvda', amount: '12'),
           ],
           valuationAmount: _incoming(assetId: 'asset-chf', amount: '18450'),
         );

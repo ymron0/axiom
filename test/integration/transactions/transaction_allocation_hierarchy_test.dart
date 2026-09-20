@@ -3,14 +3,20 @@ library;
 
 import 'package:axiom/src/application/failures/allocation_category_not_found_failure.dart';
 import 'package:axiom/src/application/services/create_transaction_service.dart';
+import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
+import 'package:axiom/src/application/services/validate_transaction_asset_semantics_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_allocations_service.dart';
 import 'package:axiom/src/application/services/validate_transaction_tags_service.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
+import 'package:axiom/src/core/repositories/batch_lookup.dart';
+import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
+import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_id_use_case.dart';
+import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/categories/application/use_cases/get_category_by_id_use_case.dart';
 import 'package:axiom/src/features/categories/data/repositories/sembast_category_repository_impl.dart';
@@ -19,6 +25,8 @@ import 'package:axiom/src/features/jars/application/use_cases/get_jar_by_id_use_
 import 'package:axiom/src/features/jars/data/repositories/sembast_jar_repository_impl.dart';
 import 'package:axiom/src/features/tags/application/use_cases/get_tags_by_ids_use_case.dart';
 import 'package:axiom/src/features/tags/data/repositories/sembast_tag_repository_impl.dart';
+import 'package:axiom/src/features/settings/application/use_cases/get_settings_use_case.dart';
+import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/transactions/application/commands/create_transaction_command.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/create_transaction_use_case.dart';
 import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
@@ -32,11 +40,19 @@ import 'package:test/test.dart';
 
 import '../../fixtures/core/persistence/persistence_test_environment.dart';
 import '../../fixtures/features/categories/category_fixtures.dart';
+import '../../fixtures/features/assets/asset_fixtures.dart';
+import '../../mocks/asset_repository_mock.dart';
+import '../../mocks/settings_repository_mock.dart';
+import 'package:mocktail/mocktail.dart';
 
 void main() {
   group('Transaction allocation hierarchy', () {
     final timestamp = DateTime.utc(2026, 1, 1);
     final assetId = AssetId.fromString('asset-eur');
+
+    setUpAll(() {
+      registerFallbackValue(AssetId.fromString('fallback-asset'));
+    });
 
     final expenseParent = categoryFixture(id: 'household', name: 'Household');
 
@@ -90,6 +106,7 @@ void main() {
         createTransaction: CreateTransactionUseCase(
           repository: transactionRepository,
         ),
+        validateAssets: _assetValidator(assetId),
         validateAllocations: ValidateTransactionAllocationsService(
           getCategoryById: GetCategoryByIdUseCase(categoryRepository),
           getJarById: GetJarByIdUseCase(
@@ -246,4 +263,36 @@ void main() {
       },
     );
   });
+}
+
+ValidateTransactionAssetSemanticsService _assetValidator(
+  AssetId valuationCurrencyId,
+) {
+  final assetRepository = MockAssetRepository();
+  final settingsRepository = MockSettingsRepository();
+
+  when(() => settingsRepository.get()).thenAnswer(
+    (_) async => Success(Settings(valuationCurrencyId: valuationCurrencyId)),
+  );
+  when(() => assetRepository.getById(any())).thenAnswer((invocation) async {
+    final assetId = invocation.positionalArguments.single as AssetId;
+    return Success(currencyFixture(id: assetId.value));
+  });
+  when(() => assetRepository.getByIds(any())).thenAnswer((invocation) async {
+    final ids = invocation.positionalArguments.single as List<AssetId>;
+    return Success(
+      BatchLookup(
+        found: [for (final id in ids) currencyFixture(id: id.value)],
+        missing: const [],
+      ),
+    );
+  });
+
+  return ValidateTransactionAssetSemanticsService(
+    getAssetsByIds: GetAssetsByIdsUseCase(assetRepository),
+    getValuationCurrency: GetValuationCurrencyService(
+      getSettings: GetSettingsUseCase(settingsRepository),
+      getAssetById: GetAssetByIdUseCase(assetRepository),
+    ),
+  );
 }

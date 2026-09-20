@@ -1,21 +1,23 @@
-import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/domain/entities/base/audited_entity.dart';
+import 'package:axiom/src/core/domain/validation/text_validation.dart';
 import 'package:axiom/src/core/domain/value_objects/entity_logo.dart';
-import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/clock.dart';
 import 'package:axiom/src/core/ports/clock/clock_factory.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
-part 'currency.dart';
 part 'asset.mapper.dart';
+part 'commodity_asset.dart';
+part 'crypto_asset.dart';
+part 'currency.dart';
+part 'stock_asset.dart';
 
 /// Base domain model for an identifiable financial asset.
 ///
 /// An [Asset] owns metadata common to supported asset classes while keeping
 /// identity separate from display metadata and financial behavior. Concrete
-/// assets should extend this type and add only subtype-specific invariants and
-/// behavior.
+/// assets extend this type and define subtype-specific invariants.
 ///
 /// ## Invariants
 ///
@@ -26,43 +28,31 @@ part 'asset.mapper.dart';
 /// - [code] is a valid [AssetCode].
 /// - [decimalPlaces] is non-negative.
 /// - [logo] is either `null` or a valid [EntityLogo].
-/// - Asset identity is represented by [id], independently of display metadata.
+/// - [paymentEnabled] follows the concrete subtype's payment semantics.
 ///
-/// ## Semantics
+/// ## Payment semantics
 ///
-/// [Asset] is the common parent for financial asset types such as currencies,
-/// blockchain assets, stocks, metals, and funds. [name], [code], [symbol], and
-/// logo describe an asset; they do not define its identity.
+/// Currency assets are always payment enabled.
+///
+/// Crypto assets decide their payment capability explicitly and default to
+/// disabled.
+///
+/// Stocks and commodities can never be used directly as payment assets.
 ///
 /// ## Contract
 ///
 /// Subclasses must preserve the immutable asset state established here and
-/// must keep subtype-specific financial rules in the subtype. This type has no
-/// persistence, repository, or presentation responsibilities. Audit metadata
-/// follows the [AuditedEntity] contract.
-///
-/// Example:
-/// ```dart
-/// final asset = Currency(
-///   id: AssetId.generate(),
-///   entityVersion: 1,
-///   createdAt: DateTime.utc(2024, 1, 1),
-///   modifiedAt: DateTime.utc(2024, 1, 1),
-///   name: 'Euro',
-///   code: AssetCode('EUR'),
-///   symbol: '€',
-///   decimalPlaces: 2,
-/// );
-/// ```
+/// keep subtype-specific financial rules in the subtype. This type has no
+/// persistence, repository, or presentation responsibilities.
 @MappableClass()
 sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
-  /// The trimmed human-readable name of the asset, e.g., 'Euro'.
+  /// The trimmed human-readable name of the asset.
   final String name;
 
-  /// The code used to identify the asset, e.g. 'EUR'.
+  /// The code used to identify the asset.
   final AssetCode code;
 
-  /// An optional short symbol shown to users, e.g., '€'.
+  /// An optional short symbol shown to users.
   final String? symbol;
 
   /// The number of fractional decimal places supported by the asset.
@@ -71,12 +61,12 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
   /// An optional logo associated with the asset.
   final EntityLogo? logo;
 
-  /// Creates an asset with its identity and display metadata.
+  /// Creates the shared asset state.
   ///
   /// Trims [name] and [symbol] when supplied.
   ///
-  /// Throws [ArgumentError] when required text is blank, when supplied optional
-  /// text is blank, or when [decimalPlaces] is negative.
+  /// Throws [ArgumentError] when required text is blank, when supplied
+  /// optional text is blank, or when [decimalPlaces] is negative.
   Asset({
     required super.id,
     required super.entityVersion,
@@ -98,11 +88,13 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
     }
   }
 
-  /// Creates a new currency asset with generated identity and audit metadata.
+  /// Creates a new currency asset.
   ///
-  /// The asset starts at entity version `1`. The resolved clock is sampled once
-  /// in UTC and the resulting timestamp is used for both [createdAt] and
-  /// [modifiedAt].
+  /// This factory is retained for compatibility with the existing asset
+  /// creation application flow. New subtype-aware creation should use the
+  /// concrete subtype factories directly.
+  ///
+  /// The asset starts at entity version `1`.
   factory Asset.create({
     required String name,
     required AssetCode code,
@@ -126,4 +118,9 @@ sealed class Asset extends AuditedEntity<AssetId> with AssetMappable {
       decimalPlaces: decimalPlaces,
     );
   }
+
+  /// Whether this asset can be used directly for payments.
+  ///
+  /// The concrete subtype owns this rule.
+  bool get paymentEnabled;
 }

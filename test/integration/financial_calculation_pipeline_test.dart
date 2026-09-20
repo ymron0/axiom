@@ -2,6 +2,7 @@
 library;
 
 import 'package:axiom/src/application/services/asset_valuation_service.dart';
+import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/application/services/get_account_balance_service.dart';
 import 'package:axiom/src/application/services/get_net_worth_service.dart';
 import 'package:axiom/src/application/services/resolve_conversion_rate_service.dart';
@@ -12,6 +13,7 @@ import 'package:axiom/src/features/accounts/application/use_cases/get_accounts_u
 import 'package:axiom/src/features/accounts/domain/entities/account.dart';
 import 'package:axiom/src/features/accounts/domain/services/account_balance_calculator.dart';
 import 'package:axiom/src/features/assets/domain/services/asset_valuation_calculator.dart';
+import 'package:axiom/src/features/assets/application/use_cases/get_asset_by_id_use_case.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/rates/domain/services/rate_conversion_service.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
@@ -22,9 +24,11 @@ import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../fixtures/features/accounts/account_fixtures.dart';
+import '../fixtures/features/assets/asset_fixtures.dart';
 import '../fixtures/features/rates/rate_fixtures.dart';
 import '../mocks/account_repository_mock.dart';
 import '../mocks/get_account_by_id_use_case_mock.dart';
+import '../mocks/asset_repository_mock.dart';
 import '../mocks/get_ledger_entries_by_account_id_use_case_mock.dart';
 import '../mocks/get_settings_use_case_mock.dart';
 import '../mocks/get_rate_at_use_case_mock.dart';
@@ -38,6 +42,7 @@ void main() {
 
   group('Financial calculation pipeline', () {
     late MockGetSettingsUseCase getSettings;
+    late MockAssetRepository assetRepository;
     late MockAccountRepository accountRepository;
     late MockGetAccountByIdUseCase getAccountById;
     late MockGetLedgerEntriesByAccountIdUseCase getLedgerEntriesByAccountId;
@@ -54,6 +59,7 @@ void main() {
 
     setUp(() {
       getSettings = MockGetSettingsUseCase();
+      assetRepository = MockAssetRepository();
       accountRepository = MockAccountRepository();
       getAccountById = MockGetAccountByIdUseCase();
       getLedgerEntriesByAccountId = MockGetLedgerEntriesByAccountIdUseCase();
@@ -96,8 +102,18 @@ void main() {
         calculator: const AccountBalanceCalculator(),
       );
 
-      assetValuation = AssetValuationService(
+      final getValuationCurrency = GetValuationCurrencyService(
         getSettings: getSettings,
+        getAssetById: GetAssetByIdUseCase(assetRepository),
+      );
+
+      when(() => assetRepository.getById(any())).thenAnswer((invocation) async {
+        final assetId = invocation.positionalArguments.single as AssetId;
+        return Success(currencyFixture(id: assetId.value));
+      });
+
+      assetValuation = AssetValuationService(
+        getValuationCurrency: getValuationCurrency,
         resolveConversionRate: ResolveConversionRateService(
           getRateAt: getRateAt,
           canonicalBridgeAssetId: usd,
