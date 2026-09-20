@@ -164,8 +164,11 @@ Currency _currency(AssetId id) {
   );
 }
 
-AssetAmount _amount(AssetId assetId) {
-  return AssetAmount.outgoing(assetId: assetId, amount: Decimal.fromInt(10));
+AssetAmount _amount(AssetId assetId, {bool incoming = false}) {
+  final amount = Decimal.fromInt(10);
+  return incoming
+      ? AssetAmount.incoming(assetId: assetId, amount: amount)
+      : AssetAmount.outgoing(assetId: assetId, amount: amount);
 }
 
 Transaction _transaction({
@@ -194,6 +197,14 @@ Transaction _transaction({
         valuationAmount: _amount(valuation),
         role: LedgerEntryRole.primary,
       ),
+      if (kind == TransactionKind.transfer)
+        LedgerEntry(
+          accountId: AccountId.fromString('account-destination'),
+          transactionAmount: _amount(payment.assetId, incoming: true),
+          accountAmount: _amount(payment.assetId, incoming: true),
+          valuationAmount: _amount(valuation, incoming: true),
+          role: LedgerEntryRole.primary,
+        ),
     ],
     createdAt: DateTime.utc(2026),
     modifiedAt: DateTime.utc(2026),

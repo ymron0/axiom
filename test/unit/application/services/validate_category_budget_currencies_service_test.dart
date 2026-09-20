@@ -23,6 +23,10 @@ import '../../../mocks/asset_repository_mock.dart';
 import '../../../mocks/get_settings_use_case_mock.dart';
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(AssetId.fromString('fallback-asset'));
+  });
+
   late MockGetSettingsUseCase getSettings;
   late MockAssetRepository repository;
   late ValidateCategoryBudgetCurrenciesService service;
