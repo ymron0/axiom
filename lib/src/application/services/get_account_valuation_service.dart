@@ -1,41 +1,53 @@
 import 'package:axiom/src/application/failures/account_valuation_unavailable_failure.dart';
-import 'package:axiom/src/application/services/asset_valuation_service.dart';
-import 'package:axiom/src/application/services/get_account_balance_service.dart';
+import 'package:axiom/src/application/services/get_account_asset_balances_service.dart';
+import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
+import 'package:axiom/src/application/services/value_asset_amounts_service.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
-import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/clock.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/accounts/application/use_cases/get_account_by_id_use_case.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
-import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/custodians/domain/value_objects/account_valuation.dart';
-import 'package:decimal/decimal.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
 
-/// Derives one account's current balance and fiat valuation.
+/// Derives one account's current aggregate value.
 ///
-/// The account amount remains expressed in the account's denomination asset,
-/// which may be a Currency, CryptoAsset, StockAsset, or CommodityAsset.
+/// The account may hold several assets.
 ///
-/// The valuation amount is always expressed in the configured valuation
-/// Currency because conversion is delegated to [AssetValuationService].
+/// Every held asset is valued at the same current instant:
+///
+/// - once into the account's denomination asset; and
+/// - once into the user's configured valuation currency.
+///
+/// The returned [AccountValuation.accountAmount] therefore represents the
+/// complete current account position in the account denomination, rather than
+/// merely the historical sum of ledger-entry account amounts.
+///
+/// [AccountValuation.valuationAmount] represents that same position in the
+/// user's configured valuation currency.
 final class GetAccountValuationService {
   final GetAccountByIdUseCase _getAccountById;
-
-  final GetAccountBalanceService _getAccountBalance;
-  final AssetValuationService _assetValuation;
+  final GetAccountAssetBalancesService _getAccountAssetBalances;
+  final GetValuationCurrencyService _getValuationCurrency;
+  final ValueAssetAmountsService _valueAssetAmounts;
   final Clock _clock;
+
   /// Creates the account valuation workflow.
   const GetAccountValuationService({
     required GetAccountByIdUseCase getAccountById,
-    required GetAccountBalanceService getAccountBalance,
-    required AssetValuationService assetValuation,
+    required GetAccountAssetBalancesService getAccountAssetBalances,
+    required GetValuationCurrencyService getValuationCurrency,
+    required ValueAssetAmountsService valueAssetAmounts,
     required Clock clock,
   }) : _getAccountById = getAccountById, // ignore: prefer_initializing_formals
-       _getAccountBalance = // ignore: prefer_initializing_formals
-           getAccountBalance,
-       _assetValuation = assetValuation, // ignore: prefer_initializing_formals
+       _getAccountAssetBalances = // ignore: prefer_initializing_formals
+           getAccountAssetBalances,
+       _getValuationCurrency = // ignore: prefer_initializing_formals
+           getValuationCurrency,
+       _valueAssetAmounts = // ignore: prefer_initializing_formals
+           valueAssetAmounts,
        _clock = clock; // ignore: prefer_initializing_formals
 
   /// Derives the current [AccountValuation] for [accountId].
@@ -56,35 +68,58 @@ final class GetAccountValuationService {
       );
     }
 
-    final balanceResult = await _getAccountBalance(account.id);
+    final balancesResult = await _getAccountAssetBalances(account.id);
 
-    if (balanceResult case final Failure<BaseFailure> failure) {
+    if (balancesResult case final Failure<BaseFailure> failure) {
       return failure;
     }
 
-    final signedBalance = balanceResult.valueOrNull!;
+    final currencyResult = await _getValuationCurrency();
 
-    final accountAmount = _fromSignedAmount(
-      assetId: account.denominationAssetId,
-      signedAmount: signedBalance,
+    if (currencyResult case final Failure<BaseFailure> failure) {
+      return failure;
+    }
+
+    final assetBalances = balancesResult.valueOrNull!;
+    final valuationCurrency = currencyResult.valueOrNull!;
+    final valuationAt = _clock.nowUtc;
+
+    final denominationResult = await _valueAssetAmounts(
+      amounts: assetBalances,
+      targetAssetId: account.denominationAssetId,
+      at: valuationAt,
     );
 
-    final valuationResult = await _assetValuation(
-      amount: accountAmount,
-      at: _clock.nowUtc,
+    if (denominationResult case final Failure<BaseFailure> failure) {
+      return _translateValuationFailure(
+        accountId: account.id,
+        failure: failure,
+      );
+    }
+
+    final accountAmount = denominationResult.valueOrNull!;
+
+    if (valuationCurrency.id == account.denominationAssetId) {
+      return Success(
+        AccountValuation(
+          accountId: account.id,
+          custodianId: account.custodianId,
+          accountAmount: accountAmount,
+          valuationAmount: accountAmount,
+        ),
+      );
+    }
+
+    final valuationResult = await _valueAssetAmounts(
+      amounts: assetBalances,
+      targetAssetId: valuationCurrency.id,
+      at: valuationAt,
     );
 
     if (valuationResult case final Failure<BaseFailure> failure) {
-      return failure;
-    }
-
-    final valuationAmount = valuationResult.valueOrNull!;
-
-    if (valuationAmount.isUnknownAmount) {
-      return AccountValuationUnavailableFailure(
-        message:
-            'Account ${account.id.value} cannot currently be valued in the '
-            'configured valuation currency.',
+      return _translateValuationFailure(
+        accountId: account.id,
+        failure: failure,
       );
     }
 
@@ -93,19 +128,23 @@ final class GetAccountValuationService {
         accountId: account.id,
         custodianId: account.custodianId,
         accountAmount: accountAmount,
-        valuationAmount: valuationAmount,
+        valuationAmount: valuationResult.valueOrNull!,
       ),
     );
   }
 
-  AssetAmount _fromSignedAmount({
-    required AssetId assetId,
-    required Decimal signedAmount,
+  Result<AccountValuation, BaseFailure> _translateValuationFailure({
+    required AccountId accountId,
+    required Failure<BaseFailure> failure,
   }) {
-    if (signedAmount < Decimal.zero) {
-      return AssetAmount.outgoing(assetId: assetId, amount: signedAmount.abs());
+    if (failure is RateNotFoundFailure) {
+      return AccountValuationUnavailableFailure(
+        message:
+            'Account ${accountId.value} cannot currently be valued because '
+            'a required conversion rate is unavailable.',
+      );
     }
 
-    return AssetAmount.incoming(assetId: assetId, amount: signedAmount);
+    return failure;
   }
 }

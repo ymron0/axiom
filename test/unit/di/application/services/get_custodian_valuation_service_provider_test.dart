@@ -4,11 +4,11 @@ library;
 import 'package:axiom/src/application/di/services/get_account_valuation_service_provider.dart';
 import 'package:axiom/src/application/di/services/get_custodian_valuation_service_provider.dart';
 import 'package:axiom/src/application/di/services/get_valuation_currency_service_provider.dart';
-import 'package:axiom/src/application/services/asset_valuation_service.dart';
 import 'package:axiom/src/application/services/get_account_valuation_service.dart';
 import 'package:axiom/src/application/services/get_custodian_valuation_service.dart';
 import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/application/services/resolve_conversion_rate_service.dart';
+import 'package:axiom/src/application/services/value_asset_amounts_service.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/accounts/di/get_accounts_by_custodian_id_use_case_provider.dart';
@@ -20,7 +20,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
 
 import '../../../../mocks/asset_repository_mock.dart';
-import '../../../../mocks/get_account_balance_service_mock.dart';
+import '../../../../mocks/get_account_asset_balances_service_mock.dart';
 import '../../../../mocks/get_account_by_id_use_case_mock.dart';
 import '../../../../mocks/get_accounts_by_custodian_id_use_case_mock.dart';
 import '../../../../mocks/get_custodian_by_id_use_case_mock.dart';
@@ -64,9 +64,9 @@ GetValuationCurrencyService _valuationCurrency() {
 GetAccountValuationService _accountValuation() {
   return GetAccountValuationService(
     getAccountById: MockGetAccountByIdUseCase(),
-    getAccountBalance: MockGetAccountBalanceService(),
-    assetValuation: AssetValuationService(
-      getValuationCurrency: _valuationCurrency(),
+    getAccountAssetBalances: MockGetAccountAssetBalancesService(),
+    getValuationCurrency: _valuationCurrency(),
+    valueAssetAmounts: ValueAssetAmountsService(
       resolveConversionRate: ResolveConversionRateService(
         getRateAt: MockGetRateAtUseCase(),
         canonicalBridgeAssetId: AssetId.fromString('bridge'),
