@@ -6,7 +6,7 @@ import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/features/assets/data/repositories/sembast_asset_repository_impl.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
-import 'package:axiom/src/features/assets/data/failures/asset_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_repository_failure.dart';
 import 'package:axiom/src/features/assets/domain/repositories/asset_repository.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:sembast/sembast.dart';
@@ -497,7 +497,7 @@ void main() {
         final result = await repository.getById(AssetId.fromString(id));
 
         // Then
-        expect(result.failureOrNull, isA<AssetPersistenceFailure>());
+        expect(result.failureOrNull, isA<AssetRepositoryFailure>());
       });
     });
   });

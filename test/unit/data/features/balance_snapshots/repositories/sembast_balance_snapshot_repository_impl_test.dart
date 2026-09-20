@@ -10,7 +10,7 @@ import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/balance_snapshots/data/models/balance_snapshot_persistence_model.dart';
 import 'package:axiom/src/features/balance_snapshots/data/repositories/sembast_balance_snapshot_repository_impl.dart';
-import 'package:axiom/src/features/balance_snapshots/data/failures/balance_snapshot_persistence_failure.dart';
+import 'package:axiom/src/features/balance_snapshots/domain/failures/balance_snapshot_repository_failure.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/repositories/balance_snapshot_repository.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/value_objects/balance_snapshot.dart';
 import 'package:axiom/src/features/balance_snapshots/domain/value_objects/balance_snapshot_date_range.dart';
@@ -502,7 +502,7 @@ void main() {
           // Then
           expect(
             result.failureOrNull,
-            isA<BalanceSnapshotPersistenceFailure>(),
+            isA<BalanceSnapshotRepositoryFailure>(),
           );
         },
       );
@@ -539,7 +539,7 @@ void main() {
           // Then
           expect(
             result.failureOrNull,
-            isA<BalanceSnapshotPersistenceFailure>(),
+            isA<BalanceSnapshotRepositoryFailure>(),
           );
         },
       );
@@ -577,7 +577,7 @@ void main() {
           // Then
           expect(
             result.failureOrNull,
-            isA<BalanceSnapshotPersistenceFailure>(),
+            isA<BalanceSnapshotRepositoryFailure>(),
           );
         },
       );

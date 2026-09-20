@@ -14,7 +14,7 @@ import 'package:axiom/src/features/jars/domain/failures/jar_failure.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_not_archived_failure.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_not_deleted_failure.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_not_found_failure.dart';
-import 'package:axiom/src/features/jars/data/failures/jar_persistence_failure.dart';
+import 'package:axiom/src/features/jars/domain/failures/jar_repository_failure.dart';
 import 'package:axiom/src/features/jars/domain/repositories/jar_repository.dart';
 import 'package:sembast/sembast.dart';
 
@@ -59,7 +59,7 @@ import 'package:sembast/sembast.dart';
 ///
 /// ## Failure translation
 ///
-/// Expected persistence exceptions are translated to [JarPersistenceFailure]
+/// Expected persistence exceptions are translated to [JarRepositoryFailure]
 /// through [guardPersistenceOperation].
 ///
 /// Domain failures such as [JarNotFoundFailure] and
@@ -400,7 +400,7 @@ final class SembastJarRepositoryImpl implements JarRepository {
   ///
   /// Any malformed persisted record causes a persistence-record exception
   /// inside the persistence model, which the public operation guard translates
-  /// into [JarPersistenceFailure].
+  /// into [JarRepositoryFailure].
   static Future<List<Jar>> _loadAllJars(DatabaseClient databaseClient) async {
     final snapshots = await _store.find(databaseClient);
 
@@ -409,8 +409,8 @@ final class SembastJarRepositoryImpl implements JarRepository {
 
   /// Creates the feature-specific failure returned when persistence
   /// infrastructure cannot complete an operation.
-  static JarPersistenceFailure _persistenceFailure(String message) =>
-      JarPersistenceFailure(message: message);
+  static JarRepositoryFailure _persistenceFailure(String message) =>
+      JarRepositoryFailure(message: message);
 
   /// Creates a new jar snapshot differing in archive state and modification
   /// timestamp.

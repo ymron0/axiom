@@ -7,7 +7,7 @@ import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/features/rates/data/repositories/sembast_rate_repository_impl.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_already_exists_failure.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
-import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_repository_failure.dart';
 import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';
@@ -357,7 +357,7 @@ void main() {
       final result = await repository.getById(RateId.fromString(id));
 
       // Then
-      expect(result.failureOrNull, isA<RatePersistenceFailure>());
+      expect(result.failureOrNull, isA<RateRepositoryFailure>());
     });
   });
 }

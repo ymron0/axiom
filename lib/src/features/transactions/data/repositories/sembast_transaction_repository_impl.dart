@@ -9,7 +9,7 @@ import 'package:axiom/src/core/persistence/persistence_operation_guard.dart'
     as persistence;
 import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/features/transactions/data/failures/transaction_persistence_failure.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_repository_failure.dart';
 import 'package:axiom/src/features/transactions/data/models/transaction_persistence_model.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_already_deleted_failure.dart';
@@ -733,7 +733,7 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
     return persistence.guardPersistenceOperation<T, TransactionFailure>(
       operation: operation,
       persistenceFailure: (message) =>
-          TransactionPersistenceFailure(message: message),
+          TransactionRepositoryFailure(message: message),
       failureMessage: 'Transaction persistence operation failed.',
     );
   }

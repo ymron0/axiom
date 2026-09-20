@@ -11,7 +11,7 @@ import 'package:axiom/src/core/identity/ids/transaction_series_id.dart';
 import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/features/transactions/data/failures/transaction_series_persistence_failure.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_series_repository_failure.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction_series.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/recurrence_frequency.dart';
@@ -494,7 +494,7 @@ void main() {
       );
 
       // Then
-      expect(result.failureOrNull, isA<TransactionSeriesPersistenceFailure>());
+      expect(result.failureOrNull, isA<TransactionSeriesRepositoryFailure>());
     });
 
     test(
@@ -513,7 +513,7 @@ void main() {
         // Then
         expect(
           result.failureOrNull,
-          isA<TransactionSeriesPersistenceFailure>(),
+          isA<TransactionSeriesRepositoryFailure>(),
         );
       },
     );

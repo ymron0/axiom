@@ -49,7 +49,7 @@ import 'package:axiom/src/features/categories/domain/enums/category_kind.dart';
 /// Malformed records are converted into [PersistenceRecordException].
 ///
 /// Persistent repositories translate that internal exception into
-/// `CategoryPersistenceFailure`.
+/// `CategoryRepositoryFailure`.
 final class CategoryPersistenceModel {
   /// Persisted category name.
   static const String nameField = 'name';

@@ -7,7 +7,7 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_already_initialized_failure.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_failure.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
-import 'package:axiom/src/features/settings/data/failures/settings_persistence_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_repository_failure.dart';
 import 'package:axiom/src/features/settings/domain/repositories/settings_repository.dart';
 import 'package:sembast/sembast.dart';
 
@@ -29,7 +29,7 @@ import 'package:sembast/sembast.dart';
 /// - [update] returns [SettingsNotInitializedFailure] when the singleton record
 ///   does not exist.
 /// - persistence access and malformed-record failures are translated into
-///   [SettingsPersistenceFailure].
+///   [SettingsRepositoryFailure].
 ///
 /// Unexpected programmer errors are intentionally allowed to propagate.
 ///
@@ -127,7 +127,7 @@ final class SembastSettingsRepositoryImpl implements SettingsRepository {
   ///
   /// Malformed persistence data results in [PersistenceRecordException] from
   /// the persistence model. [guardPersistenceOperation] translates that
-  /// exception into [SettingsPersistenceFailure] before it can escape this
+  /// exception into [SettingsRepositoryFailure] before it can escape this
   /// repository.
   Settings _settingsFromRecord(Map<String, Object?> record) {
     return SettingsPersistenceModel.fromRecord(record).toEntity();
@@ -135,7 +135,7 @@ final class SembastSettingsRepositoryImpl implements SettingsRepository {
 
   /// Creates the feature-specific failure used for expected persistence
   /// infrastructure problems.
-  static SettingsPersistenceFailure _persistenceFailure(String message) {
-    return SettingsPersistenceFailure(message: message);
+  static SettingsRepositoryFailure _persistenceFailure(String message) {
+    return SettingsRepositoryFailure(message: message);
   }
 }

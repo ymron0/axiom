@@ -10,7 +10,7 @@ import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.da
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/jars/domain/value_objects/jar_target.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
-import 'package:axiom/src/features/settings/data/failures/settings_persistence_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_repository_failure.dart';
 import 'package:decimal/decimal.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
@@ -56,7 +56,7 @@ void main() {
     });
 
     test('propagates settings failures unchanged', () async {
-      const failure = SettingsPersistenceFailure(message: 'settings failed');
+      const failure = SettingsRepositoryFailure(message: 'settings failed');
       when(() => getSettings()).thenAnswer((_) async => failure);
 
       final result = await service([_target(valuationCurrencyId)]);

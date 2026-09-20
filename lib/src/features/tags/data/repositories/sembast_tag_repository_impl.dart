@@ -16,7 +16,7 @@ import 'package:axiom/src/features/tags/domain/failures/tag_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_name_already_exists_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_archived_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_found_failure.dart';
-import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/domain/failures/tag_repository_failure.dart';
 import 'package:axiom/src/features/tags/domain/repositories/tag_repository.dart';
 import 'package:axiom/src/features/tags/domain/validation/tag_name_normalization.dart';
 import 'package:sembast/sembast.dart';
@@ -33,7 +33,7 @@ import 'package:sembast/sembast.dart';
 /// lookup performs a fallback scan over legacy records lacking that field.
 ///
 /// A conflicting or inconsistent persisted name key is treated as corruption
-/// and translated to [TagPersistenceFailure].
+/// and translated to [TagRepositoryFailure].
 ///
 /// Tag deletion is physical. Cross-feature transaction usage validation occurs
 /// before [delete], outside this repository.
@@ -490,8 +490,8 @@ final class SembastTagRepositoryImpl implements TagRepository {
     return TagNotFoundFailure(message: 'Tag ID was not found: ${id.value}');
   }
 
-  static TagPersistenceFailure _persistenceFailure(String message) {
-    return TagPersistenceFailure(message: message);
+  static TagRepositoryFailure _persistenceFailure(String message) {
+    return TagRepositoryFailure(message: message);
   }
 
   static String _searchKey(String query) {

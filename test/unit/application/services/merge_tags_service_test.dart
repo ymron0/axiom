@@ -13,7 +13,7 @@ import 'package:axiom/src/features/tags/domain/failures/invalid_tag_merge_failur
 import 'package:axiom/src/features/tags/domain/failures/tag_in_use_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_assignable_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_found_failure.dart';
-import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/domain/failures/tag_repository_failure.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/get_transactions_by_tag_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/transactions_exist_by_tag_id_use_case.dart';
 import 'package:axiom/src/features/transactions/application/use_cases/update_transaction_use_case.dart';
@@ -85,7 +85,7 @@ void main() {
   });
 
   test('propagates source lookup failure', () async {
-    const failure = TagPersistenceFailure(message: 'failed');
+    const failure = TagRepositoryFailure(message: 'failed');
 
     when(
       () => tagRepository.getById(sourceId),
@@ -114,7 +114,7 @@ void main() {
 
   test('propagates target lookup failure', () async {
     final source = tagFixture(id: sourceId.value);
-    const failure = TagPersistenceFailure(message: 'target failed');
+    const failure = TagRepositoryFailure(message: 'target failed');
 
     when(
       () => tagRepository.getById(sourceId),
@@ -244,7 +244,7 @@ void main() {
     final source = tagFixture(id: sourceId.value);
     final target = tagFixture(id: targetId.value);
 
-    const failure = TagPersistenceFailure(message: 'archive failed');
+    const failure = TagRepositoryFailure(message: 'archive failed');
 
     when(
       () => tagRepository.getById(sourceId),

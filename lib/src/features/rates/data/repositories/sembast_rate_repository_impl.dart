@@ -10,7 +10,7 @@ import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_already_exists_failure.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_failure.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
-import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_repository_failure.dart';
 import 'package:axiom/src/features/rates/domain/repositories/rate_repository.dart';
 import 'package:sembast/sembast.dart';
 
@@ -59,7 +59,7 @@ import 'package:sembast/sembast.dart';
 /// ## Failure translation
 ///
 /// Expected persistence exceptions are translated into
-/// [RatePersistenceFailure] by [guardPersistenceOperation].
+/// [RateRepositoryFailure] by [guardPersistenceOperation].
 ///
 /// Programmer errors and violated internal assumptions are deliberately
 /// allowed to propagate.
@@ -333,8 +333,8 @@ final class SembastRateRepositoryImpl implements RateRepository {
 
   /// Creates the feature-specific failure returned when persistence
   /// infrastructure cannot complete an operation.
-  static RatePersistenceFailure _persistenceFailure(String message) =>
-      RatePersistenceFailure(message: message);
+  static RateRepositoryFailure _persistenceFailure(String message) =>
+      RateRepositoryFailure(message: message);
 
   /// Reconstructs a domain rate from its record key and persisted value.
   static Rate _rateFromRecord({

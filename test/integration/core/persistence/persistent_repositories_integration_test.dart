@@ -13,23 +13,23 @@ import 'package:axiom/src/core/persistence/database_schema.dart';
 import 'package:axiom/src/core/persistence/sembast_record_keys.dart';
 import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/features/accounts/data/repositories/sembast_account_repository_impl.dart';
-import 'package:axiom/src/features/accounts/data/failures/account_persistence_failure.dart';
+import 'package:axiom/src/features/accounts/domain/failures/account_repository_failure.dart';
 import 'package:axiom/src/features/assets/data/repositories/sembast_asset_repository_impl.dart';
-import 'package:axiom/src/features/assets/data/failures/asset_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_repository_failure.dart';
 import 'package:axiom/src/features/categories/data/repositories/sembast_category_repository_impl.dart';
-import 'package:axiom/src/features/categories/data/failures/category_persistence_failure.dart';
+import 'package:axiom/src/features/categories/domain/failures/category_repository_failure.dart';
 import 'package:axiom/src/features/custodians/data/repositories/sembast_custodian_repository_impl.dart';
-import 'package:axiom/src/features/custodians/data/failures/custodian_persistence_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_repository_failure.dart';
 import 'package:axiom/src/features/jars/data/repositories/sembast_jar_repository_impl.dart';
-import 'package:axiom/src/features/jars/data/failures/jar_persistence_failure.dart';
+import 'package:axiom/src/features/jars/domain/failures/jar_repository_failure.dart';
 import 'package:axiom/src/features/merchants/data/repositories/sembast_merchant_repository_impl.dart';
-import 'package:axiom/src/features/merchants/data/failures/merchant_persistence_failure.dart';
+import 'package:axiom/src/features/merchants/domain/failures/merchant_repository_failure.dart';
 import 'package:axiom/src/features/rates/data/repositories/sembast_rate_repository_impl.dart';
-import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_repository_failure.dart';
 import 'package:axiom/src/features/settings/data/repositories/sembast_settings_repository_impl.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
-import 'package:axiom/src/features/settings/data/failures/settings_persistence_failure.dart';
-import 'package:axiom/src/features/transactions/data/failures/transaction_persistence_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_repository_failure.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_repository_failure.dart';
 import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';
@@ -346,13 +346,13 @@ void main() {
 
         expect(assetResult.isFailure, isTrue);
         expect(assetResult.valueOrNull, isNull);
-        expect(assetResult.failureOrNull, isA<AssetPersistenceFailure>());
+        expect(assetResult.failureOrNull, isA<AssetRepositoryFailure>());
 
         final settingsResult = await repositories.settings.get();
 
         expect(settingsResult.isFailure, isTrue);
         expect(settingsResult.valueOrNull, isNull);
-        expect(settingsResult.failureOrNull, isA<SettingsPersistenceFailure>());
+        expect(settingsResult.failureOrNull, isA<SettingsRepositoryFailure>());
 
         final rateResult = await repositories.rates.getById(
           RateId.fromString(corruptRateId),
@@ -360,7 +360,7 @@ void main() {
 
         expect(rateResult.isFailure, isTrue);
         expect(rateResult.valueOrNull, isNull);
-        expect(rateResult.failureOrNull, isA<RatePersistenceFailure>());
+        expect(rateResult.failureOrNull, isA<RateRepositoryFailure>());
 
         final merchantResult = await repositories.merchants.getById(
           MerchantId.fromString(corruptMerchantId),
@@ -368,7 +368,7 @@ void main() {
 
         expect(merchantResult.isFailure, isTrue);
         expect(merchantResult.valueOrNull, isNull);
-        expect(merchantResult.failureOrNull, isA<MerchantPersistenceFailure>());
+        expect(merchantResult.failureOrNull, isA<MerchantRepositoryFailure>());
 
         final transactionResult = await repositories.transactions.getById(
           TransactionId.fromString(corruptTransactionId),
@@ -378,7 +378,7 @@ void main() {
         expect(transactionResult.valueOrNull, isNull);
         expect(
           transactionResult.failureOrNull,
-          isA<TransactionPersistenceFailure>(),
+          isA<TransactionRepositoryFailure>(),
         );
 
         final accountResult = await repositories.accounts.getById(
@@ -387,7 +387,7 @@ void main() {
 
         expect(accountResult.isFailure, isTrue);
         expect(accountResult.valueOrNull, isNull);
-        expect(accountResult.failureOrNull, isA<AccountPersistenceFailure>());
+        expect(accountResult.failureOrNull, isA<AccountRepositoryFailure>());
 
         final custodianResult = await repositories.custodians.getById(
           CustodianId.fromString(corruptCustodianId),
@@ -397,7 +397,7 @@ void main() {
         expect(custodianResult.valueOrNull, isNull);
         expect(
           custodianResult.failureOrNull,
-          isA<CustodianPersistenceFailure>(),
+          isA<CustodianRepositoryFailure>(),
         );
 
         final categoryResult = await repositories.categories.getById(
@@ -406,7 +406,7 @@ void main() {
 
         expect(categoryResult.isFailure, isTrue);
         expect(categoryResult.valueOrNull, isNull);
-        expect(categoryResult.failureOrNull, isA<CategoryPersistenceFailure>());
+        expect(categoryResult.failureOrNull, isA<CategoryRepositoryFailure>());
 
         final jarResult = await repositories.jars.getById(
           JarId.fromString(corruptJarId),
@@ -414,7 +414,7 @@ void main() {
 
         expect(jarResult.isFailure, isTrue);
         expect(jarResult.valueOrNull, isNull);
-        expect(jarResult.failureOrNull, isA<JarPersistenceFailure>());
+        expect(jarResult.failureOrNull, isA<JarRepositoryFailure>());
 
         // Repository-level corruption must not cause database replacement or
         // lifecycle shutdown.

@@ -3,7 +3,7 @@ library;
 
 import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
-import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_repository_failure.dart';
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/application/services/resolve_conversion_rate_service.dart';
@@ -186,7 +186,7 @@ void main() {
     });
 
     test('propagates non-not-found failures unchanged', () async {
-      const failure = RatePersistenceFailure(message: 'storage failure');
+      const failure = RateRepositoryFailure(message: 'storage failure');
       when(
         () => getRateAt(
           baseAssetId: eur,

@@ -8,7 +8,7 @@ import 'package:axiom/src/features/settings/data/repositories/sembast_settings_r
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_already_initialized_failure.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
-import 'package:axiom/src/features/settings/data/failures/settings_persistence_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_repository_failure.dart';
 import 'package:axiom/src/features/settings/domain/repositories/settings_repository.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';
@@ -138,7 +138,7 @@ void main() {
       final result = await repository.get();
 
       // Then
-      expect(result.failureOrNull, isA<SettingsPersistenceFailure>());
+      expect(result.failureOrNull, isA<SettingsRepositoryFailure>());
     });
   });
 }

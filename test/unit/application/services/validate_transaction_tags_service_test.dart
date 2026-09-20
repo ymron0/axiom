@@ -9,7 +9,7 @@ import 'package:axiom/src/features/tags/application/use_cases/get_tags_by_ids_us
 import 'package:axiom/src/features/tags/domain/entities/tag.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_assignable_failure.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_not_found_failure.dart';
-import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/domain/failures/tag_repository_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -154,7 +154,7 @@ void main() {
   });
 
   test('repository failures are propagated', () async {
-    const failure = TagPersistenceFailure(message: 'lookup failed');
+    const failure = TagRepositoryFailure(message: 'lookup failed');
 
     when(() => repository.getByIds(any())).thenAnswer((_) async => failure);
 

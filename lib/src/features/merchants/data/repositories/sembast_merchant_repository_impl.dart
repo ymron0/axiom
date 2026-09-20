@@ -14,7 +14,7 @@ import 'package:axiom/src/features/merchants/domain/failures/merchant_already_ex
 import 'package:axiom/src/features/merchants/domain/failures/merchant_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_not_archived_failure.dart';
 import 'package:axiom/src/features/merchants/domain/failures/merchant_not_found_failure.dart';
-import 'package:axiom/src/features/merchants/data/failures/merchant_persistence_failure.dart';
+import 'package:axiom/src/features/merchants/domain/failures/merchant_repository_failure.dart';
 import 'package:axiom/src/features/merchants/domain/repositories/merchant_repository.dart';
 import 'package:sembast/sembast.dart';
 
@@ -43,7 +43,7 @@ import 'package:sembast/sembast.dart';
 /// merchant-domain failures.
 ///
 /// Persistence infrastructure errors are translated into
-/// [MerchantPersistenceFailure].
+/// [MerchantRepositoryFailure].
 ///
 /// Programmer errors and caller-supplied domain invariant violations are not
 /// swallowed by this repository.
@@ -462,7 +462,7 @@ final class SembastMerchantRepositoryImpl implements MerchantRepository {
   }
 
   /// Creates the feature-specific failure used for infrastructure errors.
-  static MerchantPersistenceFailure _persistenceFailure(String message) {
-    return MerchantPersistenceFailure(message: message);
+  static MerchantRepositoryFailure _persistenceFailure(String message) {
+    return MerchantRepositoryFailure(message: message);
   }
 }

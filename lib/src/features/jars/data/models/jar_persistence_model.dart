@@ -74,7 +74,7 @@ import 'package:axiom/src/features/jars/domain/value_objects/jar_target.dart';
 /// domain invariants produce [PersistenceRecordException].
 ///
 /// Persistent repositories translate that exception into
-/// `JarPersistenceFailure` through the common persistence-operation guard.
+/// `JarRepositoryFailure` through the common persistence-operation guard.
 final class JarPersistenceModel {
   /// Field containing the jar name.
   ///

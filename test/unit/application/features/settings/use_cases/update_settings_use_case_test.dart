@@ -6,7 +6,7 @@ import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/settings/application/use_cases/update_settings_use_case.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
-import 'package:axiom/src/features/settings/data/failures/settings_persistence_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_repository_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -61,7 +61,7 @@ void main() {
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('failed-settings-update'),
       );
-      const failure = SettingsPersistenceFailure(message: 'update failed');
+      const failure = SettingsRepositoryFailure(message: 'update failed');
       when(() => repository.update(settings)).thenAnswer((_) async => failure);
 
       // When

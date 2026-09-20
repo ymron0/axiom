@@ -15,7 +15,7 @@ import 'package:axiom/src/features/categories/domain/failures/category_already_e
 import 'package:axiom/src/features/categories/domain/failures/category_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_archived_failure.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_found_failure.dart';
-import 'package:axiom/src/features/categories/data/failures/category_persistence_failure.dart';
+import 'package:axiom/src/features/categories/domain/failures/category_repository_failure.dart';
 import 'package:axiom/src/features/categories/domain/repositories/category_repository.dart';
 import 'package:sembast/sembast.dart';
 
@@ -71,7 +71,7 @@ import 'package:sembast/sembast.dart';
 /// ## Failure translation
 ///
 /// Expected persistence infrastructure exceptions and malformed persisted
-/// records are translated to [CategoryPersistenceFailure] through
+/// records are translated to [CategoryRepositoryFailure] through
 /// [guardPersistenceOperation].
 ///
 /// Domain failures remain explicit typed result values.
@@ -572,7 +572,7 @@ final class SembastCategoryRepositoryImpl implements CategoryRepository {
   ///
   /// Any malformed persisted category or nested budget produces
   /// `PersistenceRecordException`, which the public persistence-operation guard
-  /// translates into [CategoryPersistenceFailure].
+  /// translates into [CategoryRepositoryFailure].
   static Future<List<Category>> _loadAllCategories(
     DatabaseClient databaseClient,
   ) async {
@@ -583,8 +583,8 @@ final class SembastCategoryRepositoryImpl implements CategoryRepository {
 
   /// Creates the feature-specific failure returned when persistence
   /// infrastructure cannot complete an operation.
-  static CategoryPersistenceFailure _persistenceFailure(String message) {
-    return CategoryPersistenceFailure(message: message);
+  static CategoryRepositoryFailure _persistenceFailure(String message) {
+    return CategoryRepositoryFailure(message: message);
   }
 
   /// Creates a category snapshot differing in archive state and modification

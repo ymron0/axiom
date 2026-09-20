@@ -14,7 +14,7 @@ import 'package:axiom/src/features/custodians/domain/failures/custodian_already_
 import 'package:axiom/src/features/custodians/domain/failures/custodian_already_exists_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_archived_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_found_failure.dart';
-import 'package:axiom/src/features/custodians/data/failures/custodian_persistence_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_repository_failure.dart';
 import 'package:axiom/src/features/custodians/domain/repositories/custodian_repository.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';
@@ -309,7 +309,7 @@ void main() {
       final result = await repository.getById(CustodianId.fromString(id));
 
       // Then
-      expect(result.failureOrNull, isA<CustodianPersistenceFailure>());
+      expect(result.failureOrNull, isA<CustodianRepositoryFailure>());
     });
   });
 }

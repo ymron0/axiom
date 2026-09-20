@@ -54,7 +54,7 @@ import 'package:axiom/src/features/accounts/domain/enums/account_kind.dart';
 /// produce [PersistenceRecordException].
 ///
 /// Persistent repository implementations translate that internal exception into
-/// [AccountPersistenceFailure] through the common persistence-operation guard.
+/// [AccountRepositoryFailure] through the common persistence-operation guard.
 final class AccountPersistenceModel {
   /// Field containing the account name.
   ///

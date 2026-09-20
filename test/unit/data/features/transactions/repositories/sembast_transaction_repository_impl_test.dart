@@ -10,7 +10,7 @@ import 'package:axiom/src/core/identity/ids/transaction_id.dart';
 import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/features/transactions/data/failures/transaction_persistence_failure.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_repository_failure.dart';
 import 'package:axiom/src/features/transactions/data/repositories/sembast_transaction_repository_impl.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
@@ -1510,7 +1510,7 @@ void main() {
           final result = await repository.getById(TransactionId.fromString(id));
 
           // Then
-          expect(result.failureOrNull, isA<TransactionPersistenceFailure>());
+          expect(result.failureOrNull, isA<TransactionRepositoryFailure>());
         },
       );
     });

@@ -14,7 +14,7 @@ import 'package:axiom/src/features/accounts/domain/failures/account_already_exis
 import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_archived_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
-import 'package:axiom/src/features/accounts/data/failures/account_persistence_failure.dart';
+import 'package:axiom/src/features/accounts/domain/failures/account_repository_failure.dart';
 import 'package:axiom/src/features/accounts/domain/repositories/account_repository.dart';
 import 'package:sembast/sembast.dart';
 
@@ -50,7 +50,7 @@ import 'package:sembast/sembast.dart';
 /// ## Failure translation
 ///
 /// Expected persistence exceptions are translated to
-/// [AccountPersistenceFailure] through [guardPersistenceOperation].
+/// [AccountRepositoryFailure] through [guardPersistenceOperation].
 ///
 /// Domain failures such as [AccountNotFoundFailure] and
 /// [AccountAlreadyExistsFailure] remain explicit typed results.
@@ -415,7 +415,7 @@ final class SembastAccountRepositoryImpl implements AccountRepository {
   ///
   /// Any malformed persisted record causes [PersistenceRecordException] inside
   /// the persistence model, which the public operation guard translates into
-  /// [AccountPersistenceFailure].
+  /// [AccountRepositoryFailure].
   static Future<List<Account>> _loadAllAccounts(
     DatabaseClient databaseClient,
   ) async {
@@ -426,8 +426,8 @@ final class SembastAccountRepositoryImpl implements AccountRepository {
 
   /// Creates the feature-specific failure returned when persistence
   /// infrastructure cannot complete an operation.
-  static AccountPersistenceFailure _persistenceFailure(String message) =>
-      AccountPersistenceFailure(message: message);
+  static AccountRepositoryFailure _persistenceFailure(String message) =>
+      AccountRepositoryFailure(message: message);
 
   /// Creates a new account snapshot differing in archive state and modification
   /// timestamp.

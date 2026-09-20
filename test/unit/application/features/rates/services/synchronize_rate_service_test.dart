@@ -7,7 +7,7 @@ import 'package:axiom/src/core/repositories/batch_lookup.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_ids_use_case.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
-import 'package:axiom/src/features/assets/data/failures/asset_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_repository_failure.dart';
 import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/features/rates/application/failures/rate_synchronization_conflict_failure.dart';
 import 'package:axiom/src/features/rates/application/models/rate_cache_entry.dart';
@@ -18,7 +18,7 @@ import 'package:axiom/src/features/rates/application/services/synchronize_rate_s
 import 'package:axiom/src/features/rates/data/cache/in_memory_latest_rate_cache.dart';
 import 'package:axiom/src/features/rates/domain/entities/rate.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
-import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_repository_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:decimal/decimal.dart';
 import 'package:test/test.dart';
@@ -419,7 +419,7 @@ void main() {
         ),
       );
 
-      const sourceFailure = RatePersistenceFailure(
+      const sourceFailure = RateRepositoryFailure(
         message: 'simulated source failure',
       );
 
@@ -445,7 +445,7 @@ void main() {
       // Given
       stubSource(observation());
 
-      const failure = RatePersistenceFailure(message: 'database unavailable');
+      const failure = RateRepositoryFailure(message: 'database unavailable');
 
       when(
         () => rateRepository.getLatestByPair(
@@ -543,7 +543,7 @@ void main() {
 
     test('propagates asset lookup failure without calling the source', () async {
       // Given
-      const failure = AssetPersistenceFailure(message: 'asset lookup failed');
+      const failure = AssetRepositoryFailure(message: 'asset lookup failed');
 
       when(
         () => assetRepository.getByIds(any()),
@@ -577,7 +577,7 @@ void main() {
         (_) async => const RateNotFoundFailure(message: 'missing'),
       );
 
-      const failure = RatePersistenceFailure(message: 'create failed');
+      const failure = RateRepositoryFailure(message: 'create failed');
 
       when(() => rateRepository.create(any())).thenAnswer((_) async => failure);
 

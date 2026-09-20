@@ -52,7 +52,7 @@ import 'package:axiom/src/features/custodians/domain/enums/custodian_kind.dart';
 /// invariants produce [PersistenceRecordException].
 ///
 /// Persistent repository implementations translate that internal exception into
-/// [CustodianPersistenceFailure] through the common persistence-operation
+/// [CustodianRepositoryFailure] through the common persistence-operation
 /// guard.
 final class CustodianPersistenceModel {
   /// Field containing the custodian name.

@@ -12,7 +12,7 @@ import 'package:axiom/src/features/custodians/domain/failures/custodian_already_
 import 'package:axiom/src/features/custodians/domain/failures/custodian_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_archived_failure.dart';
 import 'package:axiom/src/features/custodians/domain/failures/custodian_not_found_failure.dart';
-import 'package:axiom/src/features/custodians/data/failures/custodian_persistence_failure.dart';
+import 'package:axiom/src/features/custodians/domain/failures/custodian_repository_failure.dart';
 import 'package:axiom/src/features/custodians/domain/repositories/custodian_repository.dart';
 import 'package:axiom/src/features/custodians/data/models/custodian_persistence_model.dart';
 import 'package:sembast/sembast.dart';
@@ -51,7 +51,7 @@ import 'package:sembast/sembast.dart';
 /// ## Failure translation
 ///
 /// Expected persistence exceptions are translated to
-/// [CustodianPersistenceFailure] through [guardPersistenceOperation].
+/// [CustodianRepositoryFailure] through [guardPersistenceOperation].
 ///
 /// Domain failures such as [CustodianNotFoundFailure] and
 /// [CustodianAlreadyExistsFailure] remain explicit typed results.
@@ -392,7 +392,7 @@ final class SembastCustodianRepositoryImpl implements CustodianRepository {
   ///
   /// Any malformed persisted record causes [PersistenceRecordException] inside
   /// the persistence model, which the public operation guard translates into
-  /// [CustodianPersistenceFailure].
+  /// [CustodianRepositoryFailure].
   static Future<List<Custodian>> _loadAllCustodians(
     DatabaseClient databaseClient,
   ) async {
@@ -403,8 +403,8 @@ final class SembastCustodianRepositoryImpl implements CustodianRepository {
 
   /// Creates the feature-specific failure returned when persistence
   /// infrastructure cannot complete an operation.
-  static CustodianPersistenceFailure _persistenceFailure(String message) =>
-      CustodianPersistenceFailure(message: message);
+  static CustodianRepositoryFailure _persistenceFailure(String message) =>
+      CustodianRepositoryFailure(message: message);
 
   /// Creates a new custodian snapshot differing in archive state and
   /// modification timestamp.

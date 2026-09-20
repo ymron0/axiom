@@ -10,7 +10,7 @@ import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_already_exists_failure.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_failure.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
-import 'package:axiom/src/features/assets/data/failures/asset_persistence_failure.dart';
+import 'package:axiom/src/features/assets/domain/failures/asset_repository_failure.dart';
 import 'package:axiom/src/features/assets/domain/repositories/asset_repository.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_code.dart';
 import 'package:sembast/sembast.dart';
@@ -27,7 +27,7 @@ import 'package:sembast/sembast.dart';
 /// validation and mutation occur atomically.
 ///
 /// Expected persistence exceptions are translated into
-/// [AssetPersistenceFailure] by [guardPersistenceOperation]. Programmer errors
+/// [AssetRepositoryFailure] by [guardPersistenceOperation]. Programmer errors
 /// and violated internal assumptions are deliberately allowed to propagate.
 final class SembastAssetRepositoryImpl implements AssetRepository {
   static final StoreRef<String, PersistenceRecord> _store =
@@ -403,7 +403,7 @@ final class SembastAssetRepositoryImpl implements AssetRepository {
 
   /// Creates the feature-specific failure returned when persistence
   /// infrastructure cannot complete an operation.
-  static AssetPersistenceFailure _persistenceFailure(String message) {
-    return AssetPersistenceFailure(message: message);
+  static AssetRepositoryFailure _persistenceFailure(String message) {
+    return AssetRepositoryFailure(message: message);
   }
 }

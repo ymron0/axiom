@@ -6,7 +6,7 @@ import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/features/tags/data/models/tag_persistence_model.dart';
 import 'package:axiom/src/features/tags/data/repositories/sembast_tag_repository_impl.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_name_already_exists_failure.dart';
-import 'package:axiom/src/features/tags/data/failures/tag_persistence_failure.dart';
+import 'package:axiom/src/features/tags/domain/failures/tag_repository_failure.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';
 
@@ -76,7 +76,7 @@ void main() {
 
     final result = await repository.getById(tag.id);
 
-    expect(result.failureOrNull, isA<TagPersistenceFailure>());
+    expect(result.failureOrNull, isA<TagRepositoryFailure>());
   });
 
   test('duplicate persisted name index is treated as corruption', () async {
@@ -94,7 +94,7 @@ void main() {
 
     final result = await repository.getByName('business');
 
-    expect(result.failureOrNull, isA<TagPersistenceFailure>());
+    expect(result.failureOrNull, isA<TagRepositoryFailure>());
   });
 
   test('update ignores own indexed identity during uniqueness check', () async {

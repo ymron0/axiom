@@ -8,7 +8,7 @@ import 'package:axiom/src/core/persistence/persistence_operation_guard.dart';
 import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/core/ports/clock/clock_factory.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/features/transactions/data/failures/transaction_series_persistence_failure.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_series_repository_failure.dart';
 import 'package:axiom/src/features/transactions/data/models/transaction_series_persistence_model.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction_series.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_series_already_archived_failure.dart';
@@ -57,7 +57,7 @@ import 'package:sembast/sembast.dart';
 /// ## Failure translation
 ///
 /// Storage exceptions and malformed persisted records are translated into
-/// [TransactionSeriesPersistenceFailure].
+/// [TransactionSeriesRepositoryFailure].
 ///
 /// Domain lifecycle and identity conditions remain explicit typed failures.
 ///
@@ -511,10 +511,10 @@ final class SembastTransactionSeriesRepositoryImpl
     return snapshots.map(_seriesFromSnapshot).toList(growable: false);
   }
 
-  static TransactionSeriesPersistenceFailure _persistenceFailure(
+  static TransactionSeriesRepositoryFailure _persistenceFailure(
     String message,
   ) {
-    return TransactionSeriesPersistenceFailure(message: message);
+    return TransactionSeriesRepositoryFailure(message: message);
   }
 
   static TransactionSeriesNotFoundFailure _notFound(TransactionSeriesId id) {

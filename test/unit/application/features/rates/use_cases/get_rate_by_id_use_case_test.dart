@@ -10,7 +10,7 @@ import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_id
 import 'package:axiom/src/features/rates/application/services/validate_rate_assets_service.dart';
 import 'package:axiom/src/features/rates/application/use_cases/get_rate_by_id_use_case.dart';
 import 'package:axiom/src/features/rates/domain/failures/rate_not_found_failure.dart';
-import 'package:axiom/src/features/rates/data/failures/rate_persistence_failure.dart';
+import 'package:axiom/src/features/rates/domain/failures/rate_repository_failure.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -102,7 +102,7 @@ void main() {
 
     test('propagates another repository failure unchanged', () async {
       // Given
-      const failure = RatePersistenceFailure(message: 'storage failure');
+      const failure = RateRepositoryFailure(message: 'storage failure');
       when(() => repository.getById(rateId)).thenAnswer((_) async => failure);
 
       // When
