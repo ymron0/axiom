@@ -7,7 +7,6 @@ import 'package:test/test.dart';
 void main() {
   group('TransactionKindDomain', () {
     test('supports splits for expense and income', () {
-      // Given / When / Then
       for (final kind in [TransactionKind.expense, TransactionKind.income]) {
         expect(
           kind.supportsSplits,
@@ -17,11 +16,14 @@ void main() {
       }
     });
 
-    test('does not support splits for transfers and balance corrections', () {
-      // Given / When / Then
+    test('does not support splits for other transaction kinds', () {
       for (final kind in [
         TransactionKind.transfer,
         TransactionKind.balanceCorrection,
+        TransactionKind.buy,
+        TransactionKind.sell,
+        TransactionKind.dividend,
+        TransactionKind.reward,
       ]) {
         expect(
           kind.supportsSplits,

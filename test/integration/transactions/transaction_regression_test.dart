@@ -168,34 +168,63 @@ void main() {
 }
 
 List<LedgerEntry> _ledgerEntriesFor(TransactionKind kind) {
-  final outgoing = _amount(incoming: false);
-  final incoming = _amount(incoming: true);
+  final cashId = AssetId.fromString('asset-eur');
+  final stockId = AssetId.fromString('asset-stock');
+
+  final cashOutgoing = _amount(assetId: cashId, incoming: false);
+
+  final cashIncoming = _amount(assetId: cashId, incoming: true);
+
+  final stockOutgoing = _amount(assetId: stockId, incoming: false);
+
+  final stockIncoming = _amount(assetId: stockId, incoming: true);
 
   return switch (kind) {
-    TransactionKind.expense => [_entry('account-expense', outgoing)],
-    TransactionKind.income => [_entry('account-income', incoming)],
+    TransactionKind.expense => [
+      _entry('account-expense', cashOutgoing, valuationAmount: cashOutgoing),
+    ],
+    TransactionKind.income => [
+      _entry('account-income', cashIncoming, valuationAmount: cashIncoming),
+    ],
     TransactionKind.balanceCorrection => [
-      _entry('account-correction', outgoing),
+      _entry('account-correction', cashOutgoing, valuationAmount: cashOutgoing),
     ],
     TransactionKind.transfer => [
-      _entry('account-from', outgoing),
-      _entry('account-to', incoming),
+      _entry('account-from', cashOutgoing, valuationAmount: cashOutgoing),
+      _entry('account-to', cashIncoming, valuationAmount: cashIncoming),
+    ],
+    TransactionKind.buy => [
+      _entry('account-cash', cashOutgoing, valuationAmount: cashOutgoing),
+      _entry('account-stock', stockIncoming, valuationAmount: cashIncoming),
+    ],
+    TransactionKind.sell => [
+      _entry('account-stock', stockOutgoing, valuationAmount: cashOutgoing),
+      _entry('account-cash', cashIncoming, valuationAmount: cashIncoming),
+    ],
+    TransactionKind.dividend => [
+      _entry('account-dividend', cashIncoming, valuationAmount: cashIncoming),
+    ],
+    TransactionKind.reward => [
+      _entry('account-reward', stockIncoming, valuationAmount: cashIncoming),
     ],
   };
 }
 
-LedgerEntry _entry(String accountId, AssetAmount amount) {
+LedgerEntry _entry(
+  String accountId,
+  AssetAmount amount, {
+  required AssetAmount valuationAmount,
+}) {
   return LedgerEntry(
     accountId: AccountId.fromString(accountId),
     transactionAmount: amount,
     accountAmount: amount,
-    valuationAmount: amount,
+    valuationAmount: valuationAmount,
     role: LedgerEntryRole.primary,
   );
 }
 
-AssetAmount _amount({required bool incoming}) {
-  final assetId = AssetId.fromString('asset-eur');
+AssetAmount _amount({required AssetId assetId, required bool incoming}) {
   final amount = Decimal.fromInt(10);
 
   return incoming
@@ -212,15 +241,25 @@ ValidateTransactionAssetSemanticsService _assetValidator(
   when(() => settingsRepository.get()).thenAnswer(
     (_) async => Success(Settings(valuationCurrencyId: valuationCurrencyId)),
   );
+
   when(() => assetRepository.getById(any())).thenAnswer((invocation) async {
     final assetId = invocation.positionalArguments.single as AssetId;
-    return Success(currencyFixture(id: assetId.value));
+
+    return Success(currencyFixture(id: assetId.value, code: 'EUR'));
   });
+
   when(() => assetRepository.getByIds(any())).thenAnswer((invocation) async {
     final ids = invocation.positionalArguments.single as List<AssetId>;
+
     return Success(
       BatchLookup(
-        found: [for (final id in ids) currencyFixture(id: id.value)],
+        found: [
+          for (final id in ids)
+            if (id.value == 'asset-stock')
+              stockAssetFixture(id: id.value)
+            else
+              currencyFixture(id: id.value, code: 'EUR'),
+        ],
         missing: const [],
       ),
     );

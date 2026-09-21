@@ -20,19 +20,37 @@ enum TransactionKind {
 
   /// Manual increase or decrease aligning an account with an observed balance.
   balanceCorrection,
+
+  /// Acquisition of a non-cash asset in exchange for a settlement asset.
+  buy,
+
+  /// Disposal of a non-cash asset in exchange for a settlement asset.
+  sell,
+
+  /// Distribution received from an investment.
+  ///
+  /// The received asset may itself be cash or another asset.
+  dividend,
+
+  /// Reward received independently of an ordinary income payment.
+  ///
+  /// Examples include staking rewards and other asset rewards.
+  reward,
 }
 
 /// Domain policies associated with a [TransactionKind].
 extension TransactionKindDomain on TransactionKind {
   /// Whether transactions of this kind support allocation splits.
   ///
-  /// Expense and income transactions may allocate their economic amount across
-  /// categories, or jars.
-  ///
-  /// Transfers and balance corrections do not represent allocatable spending or
-  /// income and therefore do not support splits.
+  /// Existing category/jar allocation semantics remain limited to expense and
+  /// income transactions.
   bool get supportsSplits => switch (this) {
     TransactionKind.expense || TransactionKind.income => true,
-    TransactionKind.transfer || TransactionKind.balanceCorrection => false,
+    TransactionKind.transfer ||
+    TransactionKind.balanceCorrection ||
+    TransactionKind.buy ||
+    TransactionKind.sell ||
+    TransactionKind.dividend ||
+    TransactionKind.reward => false,
   };
 }

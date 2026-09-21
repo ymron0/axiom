@@ -6,24 +6,21 @@ import 'package:axiom/src/core/persistence/mapping/persistence_record_reader.dar
 import 'package:axiom/src/features/assets/data/models/asset_amount_persistence_model.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
+import 'package:decimal/decimal.dart';
 
 /// Persistence representation of a [LedgerEntry].
 ///
-/// The three monetary representations are stored as nested
-/// [AssetAmountPersistenceModel] records. The account and role are encoded as
-/// primitive persistence values and domain relationships are revalidated when
-/// the model is converted back to a [LedgerEntry].
+/// Percentage metadata is optional so records written before percentage-fee
+/// support remain valid without migration.
 final class LedgerEntryPersistenceModel {
   /// Creates a ledger-entry persistence model.
-  ///
-  /// This constructor performs structural assignment only. Ledger-entry
-  /// invariants are revalidated when [toEntity] reconstructs the domain value.
   const LedgerEntryPersistenceModel({
     required this.accountId,
     required this.transactionAmount,
     required this.accountAmount,
     required this.valuationAmount,
     required this.role,
+    this.feePercentage,
   });
 
   static const String _accountIdField = 'accountId';
@@ -31,23 +28,27 @@ final class LedgerEntryPersistenceModel {
   static const String _accountAmountField = 'accountAmount';
   static const String _valuationAmountField = 'valuationAmount';
   static const String _roleField = 'role';
+  static const String _feePercentageField = 'feePercentage';
 
   /// Serialized identifier of the affected account.
   final String accountId;
 
-  /// Persisted amount in the transaction's currency.
+  /// Persisted transaction amount.
   final AssetAmountPersistenceModel transactionAmount;
 
-  /// Persisted balance impact in the affected account's currency.
+  /// Persisted account amount.
   final AssetAmountPersistenceModel accountAmount;
 
-  /// Persisted value in the configured valuation currency.
+  /// Persisted valuation amount.
   final AssetAmountPersistenceModel valuationAmount;
 
-  /// Persisted economic role of this ledger entry.
+  /// Persisted ledger-entry role.
   final LedgerEntryRole role;
 
-  /// Creates a persistence model from the valid domain [entry].
+  /// Optional percentage metadata for a percentage fee.
+  final Decimal? feePercentage;
+
+  /// Creates a persistence model from [entry].
   factory LedgerEntryPersistenceModel.fromEntity(LedgerEntry entry) {
     return LedgerEntryPersistenceModel(
       accountId: entry.accountId.value,
@@ -61,17 +62,11 @@ final class LedgerEntryPersistenceModel {
         entry.valuationAmount,
       ),
       role: entry.role,
+      feePercentage: entry.feePercentage,
     );
   }
 
   /// Reconstructs a persistence model from [record].
-  ///
-  /// [path] identifies this model's location in the containing persisted
-  /// structure and is included in structural error paths.
-  ///
-  /// Throws [PersistenceRecordException] when a required field or nested
-  /// amount is missing, has the wrong type, contains an invalid decimal, or
-  /// contains an unsupported enum value.
   factory LedgerEntryPersistenceModel.fromRecord(
     PersistenceRecord record, {
     required String path,
@@ -98,14 +93,12 @@ final class LedgerEntryPersistenceModel {
           field: _roleField,
           values: LedgerEntryRole.values,
         ),
+        feePercentage: _readOptionalDecimal(reader, _feePercentageField),
       );
     });
   }
 
-  /// Converts this model to its nested persistence record representation.
-  ///
-  /// Decimal values are serialized by the nested amount models as exact
-  /// base-10 strings. The role is serialized using [Enum.name].
+  /// Converts this model into its persistence representation.
   PersistenceRecord toRecord() {
     return <String, Object?>{
       _accountIdField: accountId,
@@ -113,13 +106,11 @@ final class LedgerEntryPersistenceModel {
       _accountAmountField: accountAmount.toRecord(),
       _valuationAmountField: valuationAmount.toRecord(),
       _roleField: role.name,
+      if (feePercentage != null) _feePercentageField: feePercentage.toString(),
     };
   }
 
-  /// Reconstructs the domain [LedgerEntry] represented by this model.
-  ///
-  /// Throws [ArgumentError] when the persisted account identifier is invalid
-  /// or the reconstructed entry violates its domain invariants.
+  /// Reconstructs the domain ledger entry.
   LedgerEntry toEntity() {
     return LedgerEntry(
       accountId: AccountId.fromString(accountId),
@@ -127,6 +118,27 @@ final class LedgerEntryPersistenceModel {
       accountAmount: accountAmount.toEntity(),
       valuationAmount: valuationAmount.toEntity(),
       role: role,
+      feePercentage: feePercentage,
     );
+  }
+
+  static Decimal? _readOptionalDecimal(
+    PersistenceRecordReader reader,
+    String field,
+  ) {
+    final rawValue = reader.optionalString(field);
+
+    if (rawValue == null) {
+      return null;
+    }
+
+    try {
+      return Decimal.parse(rawValue);
+    } on FormatException {
+      throw PersistenceRecordException(
+        field: field,
+        reason: 'Expected a valid decimal string.',
+      );
+    }
   }
 }

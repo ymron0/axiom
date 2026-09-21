@@ -1,7 +1,9 @@
-import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
+import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
+import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:decimal/decimal.dart';
 
 part 'ledger_entry.mapper.dart';
 
@@ -9,132 +11,83 @@ part 'ledger_entry.mapper.dart';
 ///
 /// A ledger entry associates a transaction amount with exactly one affected
 /// account and records that amount in the transaction, account, and valuation
-/// currencies. Account balances are derived from ledger entries rather than
-/// stored directly on accounts.
+/// representations.
 ///
-/// [transactionAmount] describes the amount in the currency actually used for
-/// the payment. [accountAmount] describes its effect in the currency of the
-/// affected account.
+/// [transactionAmount] preserves the asset and quantity involved in the
+/// financial event.
 ///
-/// [valuationAmount] describes the same value in the user's configured
-/// valuation currency. It exists so ledger entries can be compared and
-/// aggregated across transactions and accounts using different currencies.
+/// [accountAmount] describes the resulting account balance impact.
 ///
-/// For example, a USD 100 purchase affecting an EUR account while CHF is the
-/// valuation currency can be represented as:
+/// [valuationAmount] represents the same economic impact in the user's
+/// configured valuation currency.
 ///
-/// ```text
-/// LedgerEntry.transactionAmount:  USD 100
-/// LedgerEntry.accountAmount:      EUR 85.20
-/// LedgerEntry.valuationAmount:    CHF 79.40
-/// ```
+/// ## Fee semantics
+///
+/// Fees are ordinary ledger impacts with [LedgerEntryRole.fee].
+///
+/// A fixed fee is represented by a fee entry with [feePercentage] equal to
+/// `null`. The asset stored in [transactionAmount] is the asset actually used
+/// to pay the fee and may be any supported asset.
+///
+/// A percentage fee additionally stores the percentage originally entered by
+/// the user in [feePercentage]. The ledger amounts remain the authoritative
+/// resolved monetary impact. This is necessary because percentage fees may
+/// require rounding, account conversion, or valuation conversion before being
+/// persisted.
+///
+/// A percentage value uses percentage units:
+///
+/// - `1` means 1%;
+/// - `0.25` means 0.25%;
+/// - `12.5` means 12.5%.
+///
+/// Fee ledger entries are always outgoing.
 ///
 /// ## Invariants
 ///
-/// - [accountId] is a valid [AccountId].
-/// - All three amounts satisfy the invariants enforced by [AssetAmount].
-/// - All three amounts have the same direction.
-/// - When [transactionAmount] and either [accountAmount] or [valuationAmount]
-///   use the same asset, their quantities are identical.
-/// - [accountAmount] must use the asset denominating the affected account.
-///   Because account denomination is external context, that invariant is
-///   enforced by the transaction construction/aggregate boundary rather than
-///   by this value object itself.
-/// - [valuationAmount] must use the app's configured valuation asset. Because the
-///   configured valuation asset is external context, that invariant is
-///   enforced by the transaction construction/aggregate boundary rather than
-///   by this value object itself.
-///
-/// ## Semantics
-///
-/// [transactionAmount] preserves the amount and currency used for the payment.
-/// [accountAmount] is the corresponding account-currency balance impact. An
-/// incoming amount increases the affected account balance; an outgoing amount
-/// decreases it.
-///
-/// [valuationAmount] is the valuation-currency equivalent of the same value. It
-/// does not describe an additional balance movement.
-///
-/// [role] describes the economic purpose of the entry within its transaction,
-/// such as the primary account impact or a fee.
-///
-/// ## Contract
-///
-/// This is a pure domain value object. It describes an account impact but does
-/// not calculate, store, cache, snapshot, or persist account balances.
-///
-/// ```dart
-/// final entry = LedgerEntry(
-///   accountId: AccountId.fromString('account-123'),
-///   transactionAmount: AssetAmount.outgoing(
-///     assetId: usdAssetId,
-///     amount: Decimal.parse('100.00'),
-///   ),
-///   accountAmount: AssetAmount.outgoing(
-///     assetId: eurAssetId,
-///     amount: Decimal.parse('85.20'),
-///   ),
-///   valuationAmount: AssetAmount.outgoing(
-///     assetId: chfAssetId,
-///     amount: Decimal.parse('79.40'),
-///   ),
-///   role: LedgerEntryRole.primary,
-/// );
-/// ```
-@MappableClass()
+/// - [accountId] is valid.
+/// - All monetary amounts satisfy [AssetAmount] invariants.
+/// - All three monetary representations have the same direction.
+/// - Equal assets must carry equal quantities.
+/// - A fee entry is outgoing.
+/// - [feePercentage] may only be supplied for a fee entry.
+/// - [feePercentage], when supplied, is greater than zero.
+@MappableClass(includeCustomMappers: [DecimalMapper()])
 final class LedgerEntry with LedgerEntryMappable {
-  /// The account whose balance is affected by this ledger entry.
+  /// Account affected by this entry.
   final AccountId accountId;
 
-  /// The amount in the currency actually used for the payment.
-  ///
-  /// This currency may differ from both the affected account's currency and the
-  /// user's valuation currency.
+  /// Amount in the asset directly involved in this ledger movement.
   final AssetAmount transactionAmount;
 
-  /// The balance impact in the currency of the account identified by
-  /// [accountId].
-  ///
-  /// The account's denomination is external context. Validation that this
-  /// amount uses the account's asset belongs to the domain boundary that can
-  /// access the corresponding account.
+  /// Balance impact in the affected account's representation.
   final AssetAmount accountAmount;
 
-  /// The economic value of [transactionAmount] in the user's valuation
-  /// currency.
-  ///
-  /// This represents the same value, not a second balance movement.
-  ///
-  /// The configured valuation asset is not stored on this value object.
-  /// Validation that this amount uses that asset must therefore be performed
-  /// by the transaction aggregate or other domain boundary that has access to
-  /// the configured valuation asset identifier.
+  /// Economic value in the configured valuation currency.
   final AssetAmount valuationAmount;
 
-  /// The economic purpose of this ledger entry within its transaction.
-  ///
-  /// The role distinguishes the transaction's primary account movement from
-  /// other supported ledger impacts, such as fees.
+  /// Economic purpose of this entry.
   final LedgerEntryRole role;
 
-  /// Creates a ledger entry describing one account-balance impact.
+  /// Percentage originally used to express this fee.
   ///
-  /// The contained [AssetAmount] instances are already responsible for their
-  /// own quantity invariants. This constructor therefore validates only
-  /// relationships between the three amounts that are specific to a ledger
-  /// entry.
+  /// `null` means either:
   ///
-  /// Throws an [ArgumentError] if:
+  /// - this is not a fee entry; or
+  /// - this is a fixed-amount fee.
   ///
-  /// - the amounts do not all have the same direction; or
-  /// - [transactionAmount] shares an asset with [accountAmount] or
-  ///   [valuationAmount], but their quantities differ.
+  /// The resolved [transactionAmount], [accountAmount], and [valuationAmount]
+  /// remain authoritative for financial calculations.
+  final Decimal? feePercentage;
+
+  /// Creates a ledger entry.
   LedgerEntry({
     required this.accountId,
     required this.transactionAmount,
     required this.accountAmount,
     required this.valuationAmount,
     required this.role,
+    this.feePercentage,
   }) {
     _validateDirection(
       transactionAmount: transactionAmount,
@@ -147,13 +100,88 @@ final class LedgerEntry with LedgerEntryMappable {
       accountAmount: accountAmount,
       valuationAmount: valuationAmount,
     );
+
+    _validateFeeSemantics();
   }
 
-  /// Ensures all representations describe the same direction of economic
-  /// movement.
+  /// Creates a fixed-amount fee.
   ///
-  /// The account and valuation amounts represent the value of
-  /// [transactionAmount], so none can have an opposing direction.
+  /// [transactionAmount] may use any supported asset.
+  factory LedgerEntry.fixedFee({
+    required AccountId accountId,
+    required AssetAmount transactionAmount,
+    required AssetAmount accountAmount,
+    required AssetAmount valuationAmount,
+  }) {
+    return LedgerEntry(
+      accountId: accountId,
+      transactionAmount: transactionAmount,
+      accountAmount: accountAmount,
+      valuationAmount: valuationAmount,
+      role: LedgerEntryRole.fee,
+    );
+  }
+
+  /// Creates a fee that was entered as a percentage.
+  ///
+  /// The supplied monetary amounts are the already-resolved financial impact.
+  /// [percentage] preserves how the fee was expressed by the user.
+  factory LedgerEntry.percentageFee({
+    required AccountId accountId,
+    required AssetAmount transactionAmount,
+    required AssetAmount accountAmount,
+    required AssetAmount valuationAmount,
+    required Decimal percentage,
+  }) {
+    return LedgerEntry(
+      accountId: accountId,
+      transactionAmount: transactionAmount,
+      accountAmount: accountAmount,
+      valuationAmount: valuationAmount,
+      role: LedgerEntryRole.fee,
+      feePercentage: percentage,
+    );
+  }
+
+  /// Whether this is a fee originally expressed as a percentage.
+  bool get isPercentageFee =>
+      role == LedgerEntryRole.fee && feePercentage != null;
+
+  /// Whether this is a fee expressed directly as an asset amount.
+  bool get isFixedFee => role == LedgerEntryRole.fee && feePercentage == null;
+
+  void _validateFeeSemantics() {
+    if (feePercentage != null && role != LedgerEntryRole.fee) {
+      throw ArgumentError.value(
+        feePercentage,
+        'feePercentage',
+        'A fee percentage may only be attached to a fee ledger entry.',
+      );
+    }
+
+    if (role != LedgerEntryRole.fee) {
+      return;
+    }
+
+    if (!transactionAmount.isOutgoing) {
+      throw ArgumentError.value(
+        transactionAmount,
+        'transactionAmount',
+        'A fee ledger entry must be outgoing.',
+      );
+    }
+
+    final percentage = feePercentage;
+
+    if (percentage != null && percentage <= Decimal.zero) {
+      throw ArgumentError.value(
+        percentage,
+        'feePercentage',
+        'Fee percentage must be greater than zero.',
+      );
+    }
+  }
+
   static void _validateDirection({
     required AssetAmount transactionAmount,
     required AssetAmount accountAmount,
@@ -178,22 +206,12 @@ final class LedgerEntry with LedgerEntryMappable {
     }
   }
 
-  /// Ensures identical assets cannot represent different quantities.
-  ///
-  /// If the transaction amount uses the same asset as the account or valuation
-  /// amount, no conversion exists between that pair and their quantities must
-  /// therefore be identical.
-  ///
-  /// This also naturally requires unknown amounts to agree: two `-1` values
-  /// are valid, whereas an unknown amount paired with a known quantity for the
-  /// same asset is rejected.
   static void _validateSameAssetAmount({
     required AssetAmount transactionAmount,
     required AssetAmount accountAmount,
     required AssetAmount valuationAmount,
   }) {
-    final usesAccountAsset =
-        transactionAmount.assetId == accountAmount.assetId;
+    final usesAccountAsset = transactionAmount.assetId == accountAmount.assetId;
 
     if (usesAccountAsset && transactionAmount.amount != accountAmount.amount) {
       throw ArgumentError.value(

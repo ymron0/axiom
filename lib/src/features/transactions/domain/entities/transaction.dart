@@ -58,9 +58,14 @@ part 'transaction.mapper.dart';
 /// - Ledger entries satisfy the structural rules associated with [kind].
 /// - Expense transactions contain exactly one outgoing primary ledger entry.
 /// - Income transactions contain exactly one incoming primary ledger entry.
+/// - Dividend transactions contain exactly one incoming primary ledger entry.
+/// - Reward transactions contain exactly one incoming primary ledger entry.
 /// - Balance corrections contain exactly one primary ledger entry.
-/// - Transfers contain exactly two primary ledger entries, one incoming and one
-///   outgoing.
+/// - Transfers contain exactly two opposing primary ledger entries.
+/// - Buy transactions contain one incoming and one outgoing primary entry.
+/// - Sell transactions contain one incoming and one outgoing primary entry.
+/// - Buy/sell concrete asset eligibility is validated at the application
+///   boundary where concrete Asset instances are available.
 /// - Splits are only permitted for transaction kinds that support allocation.
 /// - When splits exist, every split's transaction and valuation amounts use the
 ///   same assets and directions as the corresponding primary ledger amounts.
@@ -363,8 +368,9 @@ final class Transaction extends AuditedEntity<TransactionId>
 
   /// Validates ledger-entry structure against the transaction kind.
   ///
-  /// Individual ledger-entry invariants are owned by [LedgerEntry]. This method
-  /// validates only rules requiring knowledge of the transaction as a whole.
+  /// Concrete asset-type semantics for buy and sell transactions require asset
+  /// lookup and are therefore validated by
+  /// `ValidateTransactionAssetSemanticsService`.
   void _validateLedgerEntries() {
     if (ledgerEntries.isEmpty) {
       throw ArgumentError.value(
@@ -385,7 +391,9 @@ final class Transaction extends AuditedEntity<TransactionId>
           direction: AssetAmountDirection.outgoing,
         );
 
-      case TransactionKind.income:
+      case TransactionKind.income ||
+          TransactionKind.dividend ||
+          TransactionKind.reward:
         _requireSinglePrimaryEntry(
           primaryEntries,
           direction: AssetAmountDirection.incoming,
@@ -394,7 +402,9 @@ final class Transaction extends AuditedEntity<TransactionId>
       case TransactionKind.balanceCorrection:
         _requirePrimaryEntryCount(primaryEntries, 1);
 
-      case TransactionKind.transfer:
+      case TransactionKind.transfer ||
+          TransactionKind.buy ||
+          TransactionKind.sell:
         _requireOpposingPrimaryEntries(primaryEntries);
     }
   }

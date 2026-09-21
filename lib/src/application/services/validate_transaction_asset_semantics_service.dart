@@ -1,4 +1,5 @@
 import 'package:axiom/src/application/failures/invalid_payment_asset_failure.dart';
+import 'package:axiom/src/application/failures/invalid_trade_asset_failure.dart';
 import 'package:axiom/src/application/failures/invalid_valuation_currency_failure.dart';
 import 'package:axiom/src/application/services/get_valuation_currency_service.dart';
 import 'package:axiom/src/core/failures/base_failure.dart';
@@ -8,26 +9,27 @@ import 'package:axiom/src/features/assets/application/use_cases/get_assets_by_id
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/failures/referenced_asset_not_found_failure.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
+import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
 
 /// Validates transaction asset relationships requiring application context.
 ///
-/// The Transaction aggregate contains typed Asset IDs but cannot know which
-/// concrete Asset instances those IDs represent.
-///
-/// This service therefore validates:
+/// This service validates:
 ///
 /// - every referenced asset exists;
-/// - valuation amounts use the configured fiat valuation Currency; and
-/// - expense/income payment amounts use payment-enabled assets.
+/// - valuation amounts use the configured valuation currency;
+/// - expense/income primary payment amounts use payment-enabled assets;
+/// - fees may use any existing asset;
+/// - buys acquire a non-cash asset using a payment-enabled settlement asset;
+/// - sells dispose of a non-cash asset for a payment-enabled settlement asset.
 ///
-/// Internal transfers and balance corrections are deliberately not subject to
-/// payment eligibility. A StockAsset or non-payment-enabled CryptoAsset may
-/// therefore still be moved between accounts or corrected.
+/// Dividend and reward transactions deliberately accept any received asset.
 final class ValidateTransactionAssetSemanticsService {
   final GetAssetsByIdsUseCase _getAssetsByIds;
 
   final GetValuationCurrencyService _getValuationCurrency;
+
   /// Creates the validator.
   const ValidateTransactionAssetSemanticsService({
     required GetAssetsByIdsUseCase getAssetsByIds,
@@ -88,10 +90,20 @@ final class ValidateTransactionAssetSemanticsService {
       }
     }
 
+    if (_isTrade(transaction.kind)) {
+      final tradeResult = _validateTradeAssets(
+        transaction: transaction,
+        assetsById: assetsById,
+      );
+
+      if (tradeResult case final Failure<BaseFailure> failure) {
+        return failure;
+      }
+    }
+
     return const Success(null);
   }
 
-  /// Collects every Asset ID referenced by monetary transaction state.
   List<AssetId> _collectReferencedAssetIds(Transaction transaction) {
     final ids = <AssetId>{};
 
@@ -115,19 +127,27 @@ final class ValidateTransactionAssetSemanticsService {
     return kind == TransactionKind.expense || kind == TransactionKind.income;
   }
 
+  bool _isTrade(TransactionKind kind) {
+    return kind == TransactionKind.buy || kind == TransactionKind.sell;
+  }
+
+  /// Validates ordinary payment transactions.
+  ///
+  /// Only primary entries are checked. Fee entries are deliberately excluded,
+  /// allowing fees to be charged in any supported asset.
   Result<void, BaseFailure> _validatePaymentAssets({
     required Transaction transaction,
     required Map<AssetId, Asset> assetsById,
   }) {
     final paymentAssetIds = {
       for (final entry in transaction.ledgerEntries)
-        entry.transactionAmount.assetId,
+        if (entry.role == LedgerEntryRole.primary)
+          entry.transactionAmount.assetId,
     };
 
     for (final assetId in paymentAssetIds) {
       final asset = assetsById[assetId];
 
-      // Missing assets have already been rejected by the batch lookup.
       if (asset == null) {
         return ReferencedAssetNotFoundFailure(
           message: 'Payment asset was not found: ${assetId.value}.',
@@ -139,6 +159,96 @@ final class ValidateTransactionAssetSemanticsService {
           message: 'Asset ${asset.code.value} is not enabled for payments.',
         );
       }
+    }
+
+    return const Success(null);
+  }
+
+  Result<void, BaseFailure> _validateTradeAssets({
+    required Transaction transaction,
+    required Map<AssetId, Asset> assetsById,
+  }) {
+    final primaryEntries = transaction.ledgerEntries
+        .where((entry) => entry.role == LedgerEntryRole.primary)
+        .toList(growable: false);
+
+    // Transaction aggregate validation guarantees two opposing primary entries.
+    final tradedEntry = switch (transaction.kind) {
+      TransactionKind.buy => primaryEntries.singleWhere(
+        (entry) => entry.transactionAmount.isIncoming,
+      ),
+      TransactionKind.sell => primaryEntries.singleWhere(
+        (entry) => entry.transactionAmount.isOutgoing,
+      ),
+      _ => throw StateError(
+        'Trade validation requires a buy or sell transaction.',
+      ),
+    };
+
+    final settlementEntry = switch (transaction.kind) {
+      TransactionKind.buy => primaryEntries.singleWhere(
+        (entry) => entry.transactionAmount.isOutgoing,
+      ),
+      TransactionKind.sell => primaryEntries.singleWhere(
+        (entry) => entry.transactionAmount.isIncoming,
+      ),
+      _ => throw StateError(
+        'Trade validation requires a buy or sell transaction.',
+      ),
+    };
+
+    return _validateTradePair(
+      tradedEntry: tradedEntry,
+      settlementEntry: settlementEntry,
+      assetsById: assetsById,
+    );
+  }
+
+  Result<void, BaseFailure> _validateTradePair({
+    required LedgerEntry tradedEntry,
+    required LedgerEntry settlementEntry,
+    required Map<AssetId, Asset> assetsById,
+  }) {
+    final tradedAssetId = tradedEntry.transactionAmount.assetId;
+    final settlementAssetId = settlementEntry.transactionAmount.assetId;
+
+    final tradedAsset = assetsById[tradedAssetId];
+    final settlementAsset = assetsById[settlementAssetId];
+
+    if (tradedAsset == null) {
+      return ReferencedAssetNotFoundFailure(
+        message: 'Traded asset was not found: ${tradedAssetId.value}.',
+      );
+    }
+
+    if (settlementAsset == null) {
+      return ReferencedAssetNotFoundFailure(
+        message: 'Settlement asset was not found: ${settlementAssetId.value}.',
+      );
+    }
+
+    if (tradedAssetId == settlementAssetId) {
+      return InvalidTradeAssetFailure(
+        message:
+            'A buy or sell transaction cannot trade an asset against itself: '
+            '${tradedAsset.code.value}.',
+      );
+    }
+
+    if (tradedAsset is Currency) {
+      return InvalidTradeAssetFailure(
+        message:
+            'Buy and sell transactions require a non-cash traded asset; '
+            '${tradedAsset.code.value} is a currency.',
+      );
+    }
+
+    if (!settlementAsset.paymentEnabled) {
+      return InvalidPaymentAssetFailure(
+        message:
+            'Trade settlement asset ${settlementAsset.code.value} is not '
+            'enabled for payments.',
+      );
     }
 
     return const Success(null);

@@ -512,12 +512,12 @@ Transaction _transaction({
   final direction = switch (kind) {
     TransactionKind.expense => AssetAmountDirection.outgoing,
     TransactionKind.income => AssetAmountDirection.incoming,
-    TransactionKind.transfer => throw ArgumentError.value(
-      kind,
-      'kind',
-      'This test helper supports allocation-capable transaction kinds only.',
-    ),
-    TransactionKind.balanceCorrection => throw ArgumentError.value(
+    TransactionKind.transfer ||
+    TransactionKind.balanceCorrection ||
+    TransactionKind.buy ||
+    TransactionKind.sell ||
+    TransactionKind.dividend ||
+    TransactionKind.reward => throw ArgumentError.value(
       kind,
       'kind',
       'This test helper supports allocation-capable transaction kinds only.',
