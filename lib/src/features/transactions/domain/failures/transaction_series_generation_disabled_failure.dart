@@ -5,11 +5,13 @@ import 'package:dart_mappable/dart_mappable.dart';
 part 'transaction_series_generation_disabled_failure.mapper.dart';
 
 /// Indicates that planned occurrences cannot be generated from a transaction
-/// series because its lifecycle state disables generation.
+/// series because its current state disables generation.
 ///
-/// Archived and deleted transaction series retain their recurrence definition
-/// for historical purposes, but neither participates in normal future
-/// occurrence generation.
+/// Paused, archived, and deleted transaction series do not participate in
+/// normal future occurrence generation.
+///
+/// Their recurrence definitions remain available according to their respective
+/// persistence and lifecycle semantics.
 @MappableClass()
 final class TransactionSeriesGenerationDisabledFailure
     extends Failure<TransactionSeriesGenerationDisabledFailure>
@@ -20,8 +22,7 @@ final class TransactionSeriesGenerationDisabledFailure
     : super(message);
 
   /// Stable identifier for this failure kind.
-  static const typeId =
-      'transactions.transactionSeriesGenerationDisabled';
+  static const typeId = 'transactions.transactionSeriesGenerationDisabled';
 
   @override
   TransactionSeriesGenerationDisabledFailure get failureOrNull => this;

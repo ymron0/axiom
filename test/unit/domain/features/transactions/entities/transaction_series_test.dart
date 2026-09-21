@@ -437,17 +437,11 @@ void main() {
 
       test('rejects amount termination for transfer series', () {
         // Given
-        final template = _template(
-          'transfer',
-          kind: TransactionKind.transfer,
-        );
+        final template = _template('transfer', kind: TransactionKind.transfer);
 
         // When
         TransactionSeries construct() {
-          return _series(
-            template: template,
-            recurrenceRule: _amountRule(),
-          );
+          return _series(template: template, recurrenceRule: _amountRule());
         }
 
         // Then
@@ -471,10 +465,7 @@ void main() {
 
         // When
         TransactionSeries construct() {
-          return _series(
-            template: template,
-            recurrenceRule: _amountRule(),
-          );
+          return _series(template: template, recurrenceRule: _amountRule());
         }
 
         // Then
@@ -495,10 +486,7 @@ void main() {
 
         // When
         TransactionSeries construct() {
-          return _series(
-            template: template,
-            recurrenceRule: _amountRule(),
-          );
+          return _series(template: template, recurrenceRule: _amountRule());
         }
 
         // Then
@@ -523,10 +511,7 @@ void main() {
 
         // When
         TransactionSeries construct() {
-          return _series(
-            template: template,
-            recurrenceRule: _amountRule(),
-          );
+          return _series(template: template, recurrenceRule: _amountRule());
         }
 
         // Then
@@ -550,10 +535,7 @@ void main() {
 
         // When
         TransactionSeries construct() {
-          return _series(
-            template: template,
-            recurrenceRule: _amountRule(),
-          );
+          return _series(template: template, recurrenceRule: _amountRule());
         }
 
         // Then
@@ -577,10 +559,7 @@ void main() {
 
         // When
         TransactionSeries construct() {
-          return _series(
-            template: template,
-            recurrenceRule: _amountRule(),
-          );
+          return _series(template: template, recurrenceRule: _amountRule());
         }
 
         // Then
@@ -607,10 +586,7 @@ void main() {
 
         // When
         TransactionSeries construct() {
-          return _series(
-            template: template,
-            recurrenceRule: _amountRule(),
-          );
+          return _series(template: template, recurrenceRule: _amountRule());
         }
 
         // Then
@@ -634,10 +610,7 @@ void main() {
 
         // When
         TransactionSeries construct() {
-          return _series(
-            template: template,
-            recurrenceRule: _amountRule(),
-          );
+          return _series(template: template, recurrenceRule: _amountRule());
         }
 
         // Then
@@ -1071,6 +1044,79 @@ void main() {
         expect(series.isGenerationEnabled, isFalse);
       });
     });
+
+    group('pause', () {
+      test('rejects pausing a deleted series', () {
+        // Given
+        final deletedAt = DateTime.utc(2026, 2, 1);
+        final series = _series(deletedAt: deletedAt, modifiedAt: deletedAt);
+
+        // When
+        TransactionSeries action() {
+          return series.pause(modifiedAt: DateTime.utc(2026, 2, 2));
+        }
+
+        // Then
+        expect(
+          action,
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              'A deleted transaction series cannot be paused.',
+            ),
+          ),
+        );
+      });
+    });
+
+    group('resume', () {
+      test('rejects resuming an archived series', () {
+        // Given
+        final archivedAt = DateTime.utc(2026, 2, 1);
+        final series = _series(archivedAt: archivedAt, modifiedAt: archivedAt);
+
+        // When
+        TransactionSeries action() {
+          return series.resume(modifiedAt: DateTime.utc(2026, 2, 2));
+        }
+
+        // Then
+        expect(
+          action,
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              'An archived transaction series cannot be resumed.',
+            ),
+          ),
+        );
+      });
+
+      test('rejects resuming a deleted series', () {
+        // Given
+        final deletedAt = DateTime.utc(2026, 2, 1);
+        final series = _series(deletedAt: deletedAt, modifiedAt: deletedAt);
+
+        // When
+        TransactionSeries action() {
+          return series.resume(modifiedAt: DateTime.utc(2026, 2, 2));
+        }
+
+        // Then
+        expect(
+          action,
+          throwsA(
+            isA<StateError>().having(
+              (error) => error.message,
+              'message',
+              'A deleted transaction series cannot be resumed.',
+            ),
+          ),
+        );
+      });
+    });
   });
 }
 
@@ -1155,9 +1201,7 @@ RecurrenceRule _amountRule([RecurrenceAmountEnd? amountEnd]) {
 
 RecurrenceAmountEnd _amountEnd({bool outgoing = true}) {
   return RecurrenceAmountEnd(
-    targetAmount: outgoing
-        ? _outgoingAmount('300')
-        : _incomingAmount('300'),
+    targetAmount: outgoing ? _outgoingAmount('300') : _incomingAmount('300'),
     completion: RecurrenceAmountCompletion.exactTarget,
   );
 }

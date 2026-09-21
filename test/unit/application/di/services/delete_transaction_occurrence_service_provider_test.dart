@@ -16,8 +16,9 @@ import 'package:axiom/src/features/transactions/application/use_cases/update_tra
 import 'package:axiom/src/features/transactions/di/create_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/delete_transaction_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/get_transaction_by_id_use_case_provider.dart';
+import 'package:axiom/src/features/transactions/di/get_transaction_series_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/di/restore_transaction_use_case_provider.dart';
-import 'package:axiom/src/features/transactions/di/transaction_series_use_case_providers.dart';
+import 'package:axiom/src/features/transactions/di/update_transaction_series_use_case_provider.dart';
 import 'package:axiom/src/features/transactions/domain/services/resize_planned_transaction_template_service.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:test/test.dart';
@@ -75,4 +76,3 @@ void main() {
     });
   });
 }
-

@@ -5,10 +5,14 @@ import 'package:axiom/src/features/transactions/domain/entities/transaction_seri
 import 'package:axiom/src/features/transactions/domain/failures/transaction_series_failure.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_series_repository.dart';
 
-/// Reactivates an archived transaction series.
+/// Removes archival state from an archived transaction series.
 ///
-/// Reactivation affects only future generation eligibility. It does not create,
-/// restore, or alter ordinary transactions.
+/// Unarchiving does not resume the series.
+///
+/// Because archival automatically pauses a series, the resulting unarchived
+/// series remains paused until explicitly resumed.
+///
+/// Existing transactions are not created, restored, deleted, or modified.
 final class UnarchiveTransactionSeriesUseCase {
   final TransactionSeriesRepository _repository;
   final Clock _clock;

@@ -26,10 +26,18 @@ import 'package:axiom/src/features/transactions/domain/entities/transaction_seri
 /// - recurrence rule;
 /// - recurrence termination conditions;
 /// - amount-based termination configuration;
-/// - recurrence exceptions; and
-/// - replacement transaction templates.
+/// - recurrence exceptions;
+/// - replacement transaction templates; and
+/// - pause state.
 ///
 /// Generated transactions are deliberately not stored here.
+///
+/// ## Backwards compatibility
+///
+/// Persistence records created before pause support do not contain `isPaused`.
+///
+/// Such active records are interpreted as unpaused. Archived legacy records are
+/// interpreted as paused because archival always implies pause.
 ///
 /// ## Lifecycle
 ///
@@ -48,6 +56,7 @@ final class TransactionSeriesPersistenceModel {
   static const String _templateField = 'template';
   static const String _recurrenceRuleField = 'recurrenceRule';
   static const String _exceptionsField = 'exceptions';
+  static const String _isPausedField = 'isPaused';
   static const String _archivedAtField = 'archivedAt';
   static const String _deletedAtField = 'deletedAt';
   static const String _createdAtField = 'createdAt';
@@ -65,6 +74,9 @@ final class TransactionSeriesPersistenceModel {
 
   /// Persisted recurrence exceptions.
   final List<RecurrenceExceptionPersistenceModel> exceptions;
+
+  /// Whether normal future occurrence generation is paused.
+  final bool isPaused;
 
   /// Optional archival timestamp.
   final DateTime? archivedAt;
@@ -88,6 +100,7 @@ final class TransactionSeriesPersistenceModel {
     required this.template,
     required this.recurrenceRule,
     required List<RecurrenceExceptionPersistenceModel> exceptions,
+    required this.isPaused,
     required this.archivedAt,
     required this.deletedAt,
     required this.createdAt,
@@ -111,15 +124,14 @@ final class TransactionSeriesPersistenceModel {
 
     return TransactionSeriesPersistenceModel._(
       id: series.id.value,
-      template: TransactionTemplatePersistenceModel.fromEntity(
-        series.template,
-      ),
+      template: TransactionTemplatePersistenceModel.fromEntity(series.template),
       recurrenceRule: RecurrenceRulePersistenceModel.fromEntity(
         series.recurrenceRule,
       ),
       exceptions: series.exceptions
           .map(RecurrenceExceptionPersistenceModel.fromEntity)
           .toList(growable: false),
+      isPaused: series.isPaused,
       archivedAt: series.archivedAt,
       deletedAt: null,
       createdAt: series.createdAt,
@@ -137,6 +149,7 @@ final class TransactionSeriesPersistenceModel {
   }) {
     final reader = PersistenceRecordReader(record);
     final rawExceptions = reader.requiredList(_exceptionsField);
+    final archivedAt = readOptionalUtcDateTime(reader, _archivedAtField);
 
     return TransactionSeriesPersistenceModel._(
       id: recordKey,
@@ -158,7 +171,8 @@ final class TransactionSeriesPersistenceModel {
             path: '$_exceptionsField[$index]',
           ),
       ],
-      archivedAt: readOptionalUtcDateTime(reader, _archivedAtField),
+      isPaused: reader.optionalBool(_isPausedField) ?? archivedAt != null,
+      archivedAt: archivedAt,
       deletedAt: readOptionalUtcDateTime(reader, _deletedAtField),
       createdAt: readPersistenceDateTime(reader, _createdAtField),
       modifiedAt: readPersistenceDateTime(reader, _modifiedAtField),
@@ -174,6 +188,7 @@ final class TransactionSeriesPersistenceModel {
       _exceptionsField: exceptions
           .map((exception) => exception.toRecord())
           .toList(growable: false),
+      _isPausedField: isPaused,
       _archivedAtField: archivedAt?.toUtc().toIso8601String(),
       _deletedAtField: deletedAt?.toUtc().toIso8601String(),
       _createdAtField: createdAt.toUtc().toIso8601String(),
@@ -203,6 +218,7 @@ final class TransactionSeriesPersistenceModel {
         exceptions: exceptions
             .map((exception) => exception.toEntity())
             .toList(growable: false),
+        isPaused: isPaused,
         archivedAt: archivedAt,
         deletedAt: null,
         createdAt: createdAt,

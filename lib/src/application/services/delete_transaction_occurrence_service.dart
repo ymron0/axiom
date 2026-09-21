@@ -38,6 +38,9 @@ import 'package:axiom/src/features/transactions/domain/value_objects/recurrence_
 ///
 /// The normal future-generation workflow creates that appended occurrence when
 /// it enters the configured generation horizon.
+///
+/// Series lifecycle state, including pause state, is preserved when recurrence
+/// exceptions are updated.
 final class DeleteTransactionOccurrenceService {
   final GetTransactionByIdUseCase _getTransactionById;
   final GetTransactionSeriesByIdUseCase _getSeriesById;
@@ -258,6 +261,7 @@ final class DeleteTransactionOccurrenceService {
       template: series.template,
       recurrenceRule: series.recurrenceRule,
       exceptions: exceptions,
+      isPaused: series.isPaused,
       archivedAt: series.archivedAt,
       deletedAt: series.deletedAt,
       createdAt: series.createdAt,

@@ -8,7 +8,6 @@ import 'package:axiom/src/core/persistence/persistence_operation_guard.dart';
 import 'package:axiom/src/core/persistence/sembast_stores.dart';
 import 'package:axiom/src/core/ports/clock/clock_factory.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/features/transactions/domain/failures/transaction_series_repository_failure.dart';
 import 'package:axiom/src/features/transactions/data/models/transaction_series_persistence_model.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction_series.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_series_already_archived_failure.dart';
@@ -18,6 +17,7 @@ import 'package:axiom/src/features/transactions/domain/failures/transaction_seri
 import 'package:axiom/src/features/transactions/domain/failures/transaction_series_not_archived_failure.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_series_not_deleted_failure.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_series_not_found_failure.dart';
+import 'package:axiom/src/features/transactions/domain/failures/transaction_series_repository_failure.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_series_repository.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_template.dart';
 import 'package:sembast/sembast.dart';
@@ -31,19 +31,24 @@ import 'package:sembast/sembast.dart';
 ///
 /// This repository stores only recurrence definitions.
 ///
-/// Generated transactions remain ordinary transactions and are not stored,
-/// linked, deleted, or restored through this repository.
+/// Generated transactions remain independently persisted transactions and are
+/// not created, deleted, or restored through this repository.
 ///
 /// ## Lifecycle
 ///
-/// Active and archived series are persisted.
+/// Active, paused, and archived series are persisted.
+///
+/// Archiving always pauses a series.
+///
+/// Unarchiving removes archival state but preserves pause state. Explicit resume
+/// is therefore required before generation becomes enabled again.
 ///
 /// Deletion is physical. [delete] removes the persisted record and returns a
 /// caller-owned snapshot carrying a deletion timestamp.
 ///
 /// [restore] clears that deletion timestamp before reinserting the series.
 ///
-/// Existing archival state is retained during delete and restore.
+/// Existing pause and archival state are retained during delete and restore.
 ///
 /// ## Reference queries
 ///
@@ -527,6 +532,9 @@ final class SembastTransactionSeriesRepositoryImpl
 
   /// Creates a series snapshot differing in archival state and modification
   /// timestamp.
+  ///
+  /// Archiving always pauses the resulting series. Removing archival state
+  /// preserves the existing pause state.
   static TransactionSeries _withArchivedAt(
     TransactionSeries series, {
     required DateTime? archivedAt,
@@ -537,6 +545,7 @@ final class SembastTransactionSeriesRepositoryImpl
       template: series.template,
       recurrenceRule: series.recurrenceRule,
       exceptions: series.exceptions,
+      isPaused: archivedAt != null || series.isPaused,
       archivedAt: archivedAt,
       deletedAt: series.deletedAt,
       createdAt: series.createdAt,
@@ -548,6 +557,8 @@ final class SembastTransactionSeriesRepositoryImpl
   /// Creates a series snapshot differing only in deletion state.
   ///
   /// Physical deletion does not modify [TransactionSeries.modifiedAt].
+  ///
+  /// Pause state is preserved through deletion and restoration.
   static TransactionSeries _withDeletedAt(
     TransactionSeries series,
     DateTime? deletedAt,
@@ -557,6 +568,7 @@ final class SembastTransactionSeriesRepositoryImpl
       template: series.template,
       recurrenceRule: series.recurrenceRule,
       exceptions: series.exceptions,
+      isPaused: series.isPaused,
       archivedAt: series.archivedAt,
       deletedAt: deletedAt,
       createdAt: series.createdAt,

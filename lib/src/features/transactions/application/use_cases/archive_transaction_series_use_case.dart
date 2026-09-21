@@ -7,9 +7,11 @@ import 'package:axiom/src/features/transactions/domain/repositories/transaction_
 
 /// Archives a persisted transaction series.
 ///
-/// Archiving disables normal future occurrence generation while preserving the
-/// recurrence definition and all ordinary transactions previously generated
-/// from it.
+/// Archiving automatically pauses the series and disables normal future
+/// occurrence generation.
+///
+/// The recurrence definition and transactions already generated from the series
+/// remain untouched.
 final class ArchiveTransactionSeriesUseCase {
   final TransactionSeriesRepository _repository;
   final Clock _clock;

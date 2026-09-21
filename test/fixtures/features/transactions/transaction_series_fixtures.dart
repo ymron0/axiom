@@ -10,6 +10,7 @@ import 'transaction_fixtures.dart';
 /// Creates a valid transaction-series snapshot for tests.
 TransactionSeries transactionSeriesFixture({
   required String id,
+  bool isPaused = false,
   DateTime? archivedAt,
   DateTime? deletedAt,
   DateTime? modifiedAt,
@@ -33,6 +34,7 @@ TransactionSeries transactionSeriesFixture({
       startsOn: CalendarDate(2026, 1, 1),
       frequency: RecurrenceFrequency.monthly,
     ),
+    isPaused: isPaused,
     archivedAt: archivedAt,
     deletedAt: deletedAt,
     createdAt: createdAt,
