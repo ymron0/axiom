@@ -5,6 +5,7 @@ import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
 import 'package:axiom/src/features/settings/data/models/settings_persistence_model.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/enums/planned_transaction_generation_horizon.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -12,6 +13,8 @@ void main() {
     test('round-trips settings', () {
       final settings = Settings(
         valuationCurrencyId: AssetId.fromString('EUR'),
+        plannedTransactionGenerationHorizon:
+            PlannedTransactionGenerationHorizon.oneYear,
         allowOverbudgetTransactions: false,
         allowNegativeJarBalances: false,
       );
@@ -20,6 +23,7 @@ void main() {
 
       expect(model.toRecord(), <String, Object?>{
         'valuationCurrencyId': 'EUR',
+        'plannedTransactionGenerationHorizon': 'oneYear',
         'allowOverbudgetTransactions': false,
         'allowNegativeJarBalances': false,
       });
@@ -30,16 +34,23 @@ void main() {
       );
     });
 
-    test('defaults legacy records to permissive transaction policies', () {
-      final entity = SettingsPersistenceModel.fromRecord(
-        const <String, Object?>{'valuationCurrencyId': 'CHF'},
-      ).toEntity();
+    test(
+      'defaults legacy records to two-year generation and permissive policies',
+      () {
+        final entity = SettingsPersistenceModel.fromRecord(
+          const <String, Object?>{'valuationCurrencyId': 'CHF'},
+        ).toEntity();
 
-      expect(entity.allowOverbudgetTransactions, isTrue);
-      expect(entity.allowNegativeJarBalances, isTrue);
-    });
+        expect(
+          entity.plannedTransactionGenerationHorizon,
+          PlannedTransactionGenerationHorizon.twoYears,
+        );
+        expect(entity.allowOverbudgetTransactions, isTrue);
+        expect(entity.allowNegativeJarBalances, isTrue);
+      },
+    );
 
-    test('defaults only the missing jar policy for intermediate records', () {
+    test('defaults only missing fields for intermediate records', () {
       final entity = SettingsPersistenceModel.fromRecord(
         const <String, Object?>{
           'valuationCurrencyId': 'CHF',
@@ -47,8 +58,32 @@ void main() {
         },
       ).toEntity();
 
+      expect(
+        entity.plannedTransactionGenerationHorizon,
+        PlannedTransactionGenerationHorizon.twoYears,
+      );
       expect(entity.allowOverbudgetTransactions, isFalse);
       expect(entity.allowNegativeJarBalances, isTrue);
+    });
+
+    test('rejects unsupported generation horizon', () {
+      expect(
+        () => SettingsPersistenceModel.fromRecord(const <String, Object?>{
+          'valuationCurrencyId': 'CHF',
+          'plannedTransactionGenerationHorizon': 'tenYears',
+        }),
+        throwsA(isA<PersistenceRecordException>()),
+      );
+    });
+
+    test('rejects invalid generation horizon types', () {
+      expect(
+        () => SettingsPersistenceModel.fromRecord(const <String, Object?>{
+          'valuationCurrencyId': 'CHF',
+          'plannedTransactionGenerationHorizon': 2,
+        }),
+        throwsA(isA<PersistenceRecordException>()),
+      );
     });
 
     test('rejects invalid overbudget setting types', () {

@@ -1,4 +1,5 @@
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
+import 'package:axiom/src/features/settings/domain/enums/planned_transaction_generation_horizon.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'settings.mapper.dart';
@@ -11,6 +12,17 @@ part 'settings.mapper.dart';
 ///
 /// Budget enforcement and negative-jar-balance enforcement are configurable
 /// independently from their underlying domain definitions.
+///
+/// ## Planned transaction generation
+///
+/// [plannedTransactionGenerationHorizon] controls how far ahead recurring
+/// transaction occurrences should normally be materialized.
+///
+/// It affects generated planned transactions only. It does not shorten,
+/// truncate, or otherwise modify the underlying transaction series.
+///
+/// Regardless of this preference, occurrence generation has an absolute
+/// rolling maximum of two years from the current calendar date.
 ///
 /// ## Overbudget transaction semantics
 ///
@@ -60,12 +72,22 @@ class Settings with SettingsMappable {
   /// Creates application settings.
   const Settings({
     required this.valuationCurrencyId,
+    this.plannedTransactionGenerationHorizon =
+        PlannedTransactionGenerationHorizon.twoYears,
     this.allowOverbudgetTransactions = true,
     this.allowNegativeJarBalances = true,
   });
 
   /// Identifier of the currency used as the application's valuation currency.
   final AssetId valuationCurrencyId;
+
+  /// Preferred horizon for materializing planned recurring transactions.
+  ///
+  /// This does not affect the duration of the underlying transaction series.
+  ///
+  /// The generation workflow independently enforces a maximum rolling horizon
+  /// of two years.
+  final PlannedTransactionGenerationHorizon plannedTransactionGenerationHorizon;
 
   /// Whether transactions may worsen category spending beyond budget limits.
   ///

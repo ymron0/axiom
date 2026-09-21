@@ -1,8 +1,10 @@
 import 'package:axiom/src/core/identity/ids/asset_id.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
+import 'package:axiom/src/core/persistence/mapping/persistence_record_helpers.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_reader.dart';
 import 'package:axiom/src/features/settings/domain/entities/settings.dart';
+import 'package:axiom/src/features/settings/domain/enums/planned_transaction_generation_horizon.dart';
 
 /// Persistence representation of [Settings].
 ///
@@ -13,9 +15,16 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 /// introduced may not contain those fields. Missing policy fields are
 /// interpreted as `true` so upgrades preserve the historically permissive
 /// behavior.
+///
+/// Existing records created before planned transaction generation preferences
+/// were introduced default to [PlannedTransactionGenerationHorizon.twoYears].
 final class SettingsPersistenceModel {
   /// Persisted field containing the valuation currency identifier.
   static const String valuationCurrencyIdField = 'valuationCurrencyId';
+
+  /// Persisted field containing the planned transaction generation horizon.
+  static const String plannedTransactionGenerationHorizonField =
+      'plannedTransactionGenerationHorizon';
 
   /// Persisted field controlling whether transactions may exceed budgets.
   static const String allowOverbudgetTransactionsField =
@@ -28,12 +37,16 @@ final class SettingsPersistenceModel {
   /// Creates a persistence model from validated persistence values.
   const SettingsPersistenceModel._({
     required this.valuationCurrencyId,
+    required this.plannedTransactionGenerationHorizon,
     required this.allowOverbudgetTransactions,
     required this.allowNegativeJarBalances,
   });
 
   /// String representation of the configured valuation currency identifier.
   final String valuationCurrencyId;
+
+  /// Preferred horizon for planned transaction materialization.
+  final PlannedTransactionGenerationHorizon plannedTransactionGenerationHorizon;
 
   /// Whether overbudget transactions are allowed.
   final bool allowOverbudgetTransactions;
@@ -45,6 +58,8 @@ final class SettingsPersistenceModel {
   factory SettingsPersistenceModel.fromEntity(Settings settings) {
     return SettingsPersistenceModel._(
       valuationCurrencyId: settings.valuationCurrencyId.value,
+      plannedTransactionGenerationHorizon:
+          settings.plannedTransactionGenerationHorizon,
       allowOverbudgetTransactions: settings.allowOverbudgetTransactions,
       allowNegativeJarBalances: settings.allowNegativeJarBalances,
     );
@@ -52,12 +67,21 @@ final class SettingsPersistenceModel {
 
   /// Reconstructs a persistence model from an untrusted persisted [record].
   ///
-  /// Older settings records that do not contain policy fields default those
-  /// policies to `true`.
+  /// Older settings records that do not contain transaction-policy fields
+  /// default those policies to `true`.
   ///
-  /// If a policy field exists, it must contain a valid boolean.
+  /// Older records without a planned-generation horizon default to two years.
   factory SettingsPersistenceModel.fromRecord(PersistenceRecord record) {
     final reader = PersistenceRecordReader(record);
+
+    final plannedTransactionGenerationHorizon =
+        reader.contains(plannedTransactionGenerationHorizonField)
+        ? readPersistenceEnum<PlannedTransactionGenerationHorizon>(
+            reader: reader,
+            field: plannedTransactionGenerationHorizonField,
+            values: PlannedTransactionGenerationHorizon.values,
+          )
+        : PlannedTransactionGenerationHorizon.twoYears;
 
     final allowOverbudgetTransactions =
         reader.contains(allowOverbudgetTransactionsField)
@@ -71,6 +95,7 @@ final class SettingsPersistenceModel {
 
     return SettingsPersistenceModel._(
       valuationCurrencyId: reader.requiredString(valuationCurrencyIdField),
+      plannedTransactionGenerationHorizon: plannedTransactionGenerationHorizon,
       allowOverbudgetTransactions: allowOverbudgetTransactions,
       allowNegativeJarBalances: allowNegativeJarBalances,
     );
@@ -80,6 +105,8 @@ final class SettingsPersistenceModel {
   PersistenceRecord toRecord() {
     return <String, Object?>{
       valuationCurrencyIdField: valuationCurrencyId,
+      plannedTransactionGenerationHorizonField:
+          plannedTransactionGenerationHorizon.name,
       allowOverbudgetTransactionsField: allowOverbudgetTransactions,
       allowNegativeJarBalancesField: allowNegativeJarBalances,
     };
@@ -93,6 +120,8 @@ final class SettingsPersistenceModel {
     try {
       return Settings(
         valuationCurrencyId: AssetId.fromString(valuationCurrencyId),
+        plannedTransactionGenerationHorizon:
+            plannedTransactionGenerationHorizon,
         allowOverbudgetTransactions: allowOverbudgetTransactions,
         allowNegativeJarBalances: allowNegativeJarBalances,
       );

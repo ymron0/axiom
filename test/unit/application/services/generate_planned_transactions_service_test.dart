@@ -10,6 +10,7 @@ import 'package:axiom/src/core/identity/ids/transaction_series_id.dart';
 import 'package:axiom/src/core/ports/clock/fixed_clock.dart';
 import 'package:axiom/src/features/assets/domain/enums/asset_amount_direction.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
+import 'package:axiom/src/features/settings/domain/enums/planned_transaction_generation_horizon.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction_series.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
 import 'package:axiom/src/features/transactions/domain/enums/recurrence_amount_completion.dart';
@@ -530,6 +531,166 @@ void main() {
         ),
       );
     });
+
+    test('never generates beyond the rolling two-year hard cap', () {
+      // Given
+      final cappedService = GeneratePlannedTransactionsService(
+        clock: FixedClock(DateTime.utc(2026, 9, 21)),
+        resizeTemplate: const ResizePlannedTransactionTemplateService(),
+      );
+
+      final series = _series(
+        recurrenceRule: RecurrenceRule(
+          startsOn: CalendarDate(2026, 9, 21),
+          frequency: RecurrenceFrequency.monthly,
+        ),
+      );
+
+      // When
+      final result = cappedService(
+        series: series,
+        scheduledFrom: CalendarDate(2026, 9, 21),
+        scheduledUntil: CalendarDate(2036, 1, 1),
+        generationHorizon: PlannedTransactionGenerationHorizon.twoYears,
+      );
+
+      // Then
+      final transactions = result.valueOrNull!;
+
+      expect(transactions, hasLength(25));
+      expect(transactions.first.effectiveAt, DateTime.utc(2026, 9, 21));
+      expect(transactions.last.effectiveAt, DateTime.utc(2028, 9, 21));
+
+      expect(
+        transactions.any(
+          (transaction) =>
+              transaction.effectiveAt.isAfter(DateTime.utc(2028, 9, 21)),
+        ),
+        isFalse,
+      );
+    });
+
+    test('one-year preference generates through the one-year anniversary', () {
+      // Given
+      final horizonService = GeneratePlannedTransactionsService(
+        clock: FixedClock(DateTime.utc(2026, 9, 21)),
+        resizeTemplate: const ResizePlannedTransactionTemplateService(),
+      );
+
+      final series = _series(
+        recurrenceRule: RecurrenceRule(
+          startsOn: CalendarDate(2026, 9, 21),
+          frequency: RecurrenceFrequency.monthly,
+        ),
+      );
+
+      // When
+      final result = horizonService(
+        series: series,
+        scheduledFrom: CalendarDate(2026, 9, 21),
+        scheduledUntil: CalendarDate(2036, 1, 1),
+        generationHorizon: PlannedTransactionGenerationHorizon.oneYear,
+      );
+
+      // Then
+      final transactions = result.valueOrNull!;
+
+      expect(transactions, hasLength(13));
+      expect(transactions.first.effectiveAt, DateTime.utc(2026, 9, 21));
+      expect(transactions.last.effectiveAt, DateTime.utc(2027, 9, 21));
+    });
+
+    test(
+      'next-occurrence preference generates only one eligible occurrence',
+      () {
+        // Given
+        final horizonService = GeneratePlannedTransactionsService(
+          clock: FixedClock(DateTime.utc(2026, 9, 21)),
+          resizeTemplate: const ResizePlannedTransactionTemplateService(),
+        );
+
+        final series = _series(
+          recurrenceRule: RecurrenceRule(
+            startsOn: CalendarDate(2026, 10, 1),
+            frequency: RecurrenceFrequency.monthly,
+          ),
+        );
+
+        // When
+        final result = horizonService(
+          series: series,
+          scheduledFrom: CalendarDate(2026, 9, 21),
+          scheduledUntil: CalendarDate(2036, 1, 1),
+          generationHorizon: PlannedTransactionGenerationHorizon.nextOccurrence,
+        );
+
+        // Then
+        final transactions = result.valueOrNull!;
+
+        expect(transactions, hasLength(1));
+        expect(transactions.single.effectiveAt, DateTime.utc(2026, 10, 1));
+      },
+    );
+
+    test('next-occurrence preference skips skipped occurrences', () {
+      // Given
+      final horizonService = GeneratePlannedTransactionsService(
+        clock: FixedClock(DateTime.utc(2026, 9, 21)),
+        resizeTemplate: const ResizePlannedTransactionTemplateService(),
+      );
+
+      final series = _series(
+        recurrenceRule: RecurrenceRule(
+          startsOn: CalendarDate(2026, 10, 1),
+          frequency: RecurrenceFrequency.monthly,
+        ),
+        exceptions: [
+          RecurrenceException.skip(scheduledOn: CalendarDate(2026, 10, 1)),
+        ],
+      );
+
+      // When
+      final result = horizonService(
+        series: series,
+        scheduledFrom: CalendarDate(2026, 9, 21),
+        scheduledUntil: CalendarDate(2036, 1, 1),
+        generationHorizon: PlannedTransactionGenerationHorizon.nextOccurrence,
+      );
+
+      // Then
+      final transactions = result.valueOrNull!;
+
+      expect(transactions, hasLength(1));
+      expect(transactions.single.effectiveAt, DateTime.utc(2026, 11, 1));
+    });
+
+    test(
+      'returns no transactions when requested range starts beyond hard cap',
+      () {
+        // Given
+        final cappedService = GeneratePlannedTransactionsService(
+          clock: FixedClock(DateTime.utc(2026, 9, 21)),
+          resizeTemplate: const ResizePlannedTransactionTemplateService(),
+        );
+
+        final series = _series(
+          recurrenceRule: RecurrenceRule(
+            startsOn: CalendarDate(2026, 1, 1),
+            frequency: RecurrenceFrequency.monthly,
+          ),
+        );
+
+        // When
+        final result = cappedService(
+          series: series,
+          scheduledFrom: CalendarDate(2029, 1, 1),
+          scheduledUntil: CalendarDate(2030, 1, 1),
+        );
+
+        // Then
+        expect(result.valueOrNull, isEmpty);
+      },
+    );
   });
 }
 
