@@ -4,7 +4,7 @@ import 'package:axiom/src/features/merchants/domain/failures/merchant_failure.da
 import 'package:axiom/src/features/merchants/domain/repositories/merchant_repository.dart';
 
 /// Retrieves all active persisted merchants.
-final class GetMerchantsUseCase {
+class GetMerchantsUseCase {
   /// Creates a use case backed by [repository].
   GetMerchantsUseCase(this._repository);
 
