@@ -137,6 +137,6 @@ String _uniqueRootPath() {
 
   return p.join(
     Directory.systemTemp.path,
-    'axiom-sembast-database-provider-${DateTime.now().microsecondsSinceEpoch}-$_rootPathCounter',
+    'test-sembast-database-provider-${DateTime.now().microsecondsSinceEpoch}-$_rootPathCounter',
   );
 }

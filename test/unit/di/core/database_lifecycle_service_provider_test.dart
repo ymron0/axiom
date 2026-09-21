@@ -118,7 +118,7 @@ ProviderContainer _createContainer({required String rootPath}) {
 String _uniqueRootPath() {
   return p.join(
     Directory.systemTemp.path,
-    'axiom-database-lifecycle-service-provider-${DateTime.now().microsecondsSinceEpoch}',
+    'test-database-lifecycle-service-provider-${DateTime.now().microsecondsSinceEpoch}',
   );
 }
 

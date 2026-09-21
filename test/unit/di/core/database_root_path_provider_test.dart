@@ -23,7 +23,7 @@ void main() {
 
     test('returns the overridden root path exactly', () {
       // Given
-      const path = r'D:\axiom-data\database';
+      const path = r'D:\test-data\database';
       final container = ProviderContainer(
         overrides: [databaseRootPathProvider.overrideWithValue(path)],
       );
@@ -38,7 +38,7 @@ void main() {
 
     test('returns the configured value on repeated reads', () {
       // Given
-      const path = r'D:\axiom-data\database';
+      const path = r'D:\test-data\database';
       final container = ProviderContainer(
         overrides: [databaseRootPathProvider.overrideWithValue(path)],
       );
@@ -55,8 +55,8 @@ void main() {
 
     test('allows different containers to provide different root paths', () {
       // Given
-      const firstPath = r'D:\axiom-data\first-database';
-      const secondPath = r'D:\axiom-data\second-database';
+      const firstPath = r'D:\test-data\first-database';
+      const secondPath = r'D:\test-data\second-database';
       final firstContainer = ProviderContainer(
         overrides: [databaseRootPathProvider.overrideWithValue(firstPath)],
       );
