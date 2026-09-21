@@ -12,4 +12,3 @@ transactionSeriesExistByMerchantIdUseCase(Ref ref) {
     repository: ref.watch(transactionSeriesRepositoryProvider),
   );
 }
-

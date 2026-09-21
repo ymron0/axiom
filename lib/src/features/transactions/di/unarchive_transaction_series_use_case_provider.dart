@@ -13,4 +13,3 @@ UnarchiveTransactionSeriesUseCase unarchiveTransactionSeriesUseCase(Ref ref) {
     clock: ref.watch(clockProvider),
   );
 }
-

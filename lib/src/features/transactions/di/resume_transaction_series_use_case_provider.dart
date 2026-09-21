@@ -13,4 +13,3 @@ ResumeTransactionSeriesUseCase resumeTransactionSeriesUseCase(Ref ref) {
     clock: ref.watch(clockProvider),
   );
 }
-

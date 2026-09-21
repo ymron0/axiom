@@ -13,4 +13,3 @@ TransactionSeriesExistByJarIdUseCase transactionSeriesExistByJarIdUseCase(
     repository: ref.watch(transactionSeriesRepositoryProvider),
   );
 }
-

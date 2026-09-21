@@ -13,4 +13,3 @@ GetArchivedTransactionSeriesUseCase getArchivedTransactionSeriesUseCase(
     repository: ref.watch(transactionSeriesRepositoryProvider),
   );
 }
-

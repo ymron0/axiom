@@ -11,4 +11,3 @@ DeleteTransactionSeriesUseCase deleteTransactionSeriesUseCase(Ref ref) {
     repository: ref.watch(transactionSeriesRepositoryProvider),
   );
 }
-

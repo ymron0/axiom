@@ -24,11 +24,12 @@ void main() {
       addTearDown(container.dispose);
 
       // When
-      final useCase = container.read(getArchivedTransactionSeriesUseCaseProvider);
+      final useCase = container.read(
+        getArchivedTransactionSeriesUseCaseProvider,
+      );
 
       // Then
       expect(useCase, isA<GetArchivedTransactionSeriesUseCase>());
     });
   });
 }
-

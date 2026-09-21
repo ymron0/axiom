@@ -11,4 +11,3 @@ GetTransactionSeriesUseCase getTransactionSeriesUseCase(Ref ref) {
     repository: ref.watch(transactionSeriesRepositoryProvider),
   );
 }
-
