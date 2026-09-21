@@ -1,7 +1,7 @@
-import 'package:axiom/src/core/domain/mappers/decimal_mapper.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
 import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/fee_expression.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:decimal/decimal.dart';
 
@@ -25,21 +25,22 @@ part 'ledger_entry.mapper.dart';
 ///
 /// Fees are ordinary ledger impacts with [LedgerEntryRole.fee].
 ///
-/// A fixed fee is represented by a fee entry with [feePercentage] equal to
-/// `null`. The asset stored in [transactionAmount] is the asset actually used
-/// to pay the fee and may be any supported asset.
+/// Every fee has an explicit [feeExpression] describing how the fee was
+/// originally entered:
 ///
-/// A percentage fee additionally stores the percentage originally entered by
-/// the user in [feePercentage]. The ledger amounts remain the authoritative
-/// resolved monetary impact. This is necessary because percentage fees may
-/// require rounding, account conversion, or valuation conversion before being
-/// persisted.
+/// - [PercentageFeeExpression] for percentage fees;
+/// - [AssetAmountFeeExpression] for fees entered directly as an asset amount.
 ///
-/// A percentage value uses percentage units:
+/// The expression is metadata describing the original user input.
 ///
-/// - `1` means 1%;
-/// - `0.25` means 0.25%;
-/// - `12.5` means 12.5%.
+/// The resolved [transactionAmount], [accountAmount], and [valuationAmount]
+/// remain authoritative for financial calculations.
+///
+/// For an [AssetAmountFeeExpression], the expression amount must exactly match
+/// [transactionAmount].
+///
+/// Percentage fees may resolve to a monetary amount requiring rounding,
+/// account conversion, or valuation conversion.
 ///
 /// Fee ledger entries are always outgoing.
 ///
@@ -50,9 +51,10 @@ part 'ledger_entry.mapper.dart';
 /// - All three monetary representations have the same direction.
 /// - Equal assets must carry equal quantities.
 /// - A fee entry is outgoing.
-/// - [feePercentage] may only be supplied for a fee entry.
-/// - [feePercentage], when supplied, is greater than zero.
-@MappableClass(includeCustomMappers: [DecimalMapper()])
+/// - A fee entry always has a fee expression.
+/// - A non-fee entry never has a fee expression.
+/// - An asset-amount fee expression exactly matches [transactionAmount].
+@MappableClass()
 final class LedgerEntry with LedgerEntryMappable {
   /// Account affected by this entry.
   final AccountId accountId;
@@ -69,26 +71,29 @@ final class LedgerEntry with LedgerEntryMappable {
   /// Economic purpose of this entry.
   final LedgerEntryRole role;
 
-  /// Percentage originally used to express this fee.
+  /// How this fee was originally expressed by the user.
   ///
-  /// `null` means either:
-  ///
-  /// - this is not a fee entry; or
-  /// - this is a fixed-amount fee.
-  ///
-  /// The resolved [transactionAmount], [accountAmount], and [valuationAmount]
-  /// remain authoritative for financial calculations.
-  final Decimal? feePercentage;
+  /// This is always non-null for fee entries and always null for non-fee
+  /// entries.
+  final FeeExpression? feeExpression;
 
   /// Creates a ledger entry.
+  ///
+  /// For backward source compatibility, directly constructing a fee entry
+  /// without [feeExpression] interprets [transactionAmount] as the original
+  /// asset-amount fee expression.
   LedgerEntry({
     required this.accountId,
     required this.transactionAmount,
     required this.accountAmount,
     required this.valuationAmount,
     required this.role,
-    this.feePercentage,
-  }) {
+    FeeExpression? feeExpression,
+  }) : feeExpression = _resolveFeeExpression(
+         role: role,
+         transactionAmount: transactionAmount,
+         feeExpression: feeExpression,
+       ) {
     _validateDirection(
       transactionAmount: transactionAmount,
       accountAmount: accountAmount,
@@ -101,13 +106,18 @@ final class LedgerEntry with LedgerEntryMappable {
       valuationAmount: valuationAmount,
     );
 
-    _validateFeeSemantics();
+    _validateFeeExpression();
   }
 
-  /// Creates a fixed-amount fee.
+  /// Creates a fee expressed directly as an asset amount.
   ///
-  /// [transactionAmount] may use any supported asset.
-  factory LedgerEntry.fixedFee({
+  /// [transactionAmount] represents both:
+  ///
+  /// - the original fee expression; and
+  /// - the resolved transaction-asset impact.
+  ///
+  /// The fee asset may be any supported asset.
+  factory LedgerEntry.assetAmountFee({
     required AccountId accountId,
     required AssetAmount transactionAmount,
     required AssetAmount accountAmount,
@@ -119,6 +129,22 @@ final class LedgerEntry with LedgerEntryMappable {
       accountAmount: accountAmount,
       valuationAmount: valuationAmount,
       role: LedgerEntryRole.fee,
+      feeExpression: AssetAmountFeeExpression(amount: transactionAmount),
+    );
+  }
+
+  /// Compatibility alias for [LedgerEntry.assetAmountFee].
+  factory LedgerEntry.fixedFee({
+    required AccountId accountId,
+    required AssetAmount transactionAmount,
+    required AssetAmount accountAmount,
+    required AssetAmount valuationAmount,
+  }) {
+    return LedgerEntry.assetAmountFee(
+      accountId: accountId,
+      transactionAmount: transactionAmount,
+      accountAmount: accountAmount,
+      valuationAmount: valuationAmount,
     );
   }
 
@@ -139,28 +165,89 @@ final class LedgerEntry with LedgerEntryMappable {
       accountAmount: accountAmount,
       valuationAmount: valuationAmount,
       role: LedgerEntryRole.fee,
-      feePercentage: percentage,
+      feeExpression: PercentageFeeExpression(percentage: percentage),
     );
   }
 
   /// Whether this is a fee originally expressed as a percentage.
-  bool get isPercentageFee =>
-      role == LedgerEntryRole.fee && feePercentage != null;
+  bool get isPercentageFee => feeExpression is PercentageFeeExpression;
 
-  /// Whether this is a fee expressed directly as an asset amount.
-  bool get isFixedFee => role == LedgerEntryRole.fee && feePercentage == null;
+  /// Whether this is a fee originally expressed as an asset amount.
+  bool get isAssetAmountFee => feeExpression is AssetAmountFeeExpression;
 
-  void _validateFeeSemantics() {
-    if (feePercentage != null && role != LedgerEntryRole.fee) {
-      throw ArgumentError.value(
-        feePercentage,
-        'feePercentage',
-        'A fee percentage may only be attached to a fee ledger entry.',
-      );
-    }
+  /// Compatibility alias for [isAssetAmountFee].
+  bool get isFixedFee => isAssetAmountFee;
+
+  /// Percentage originally used to express this fee.
+  ///
+  /// Returns null when the fee was expressed as an asset amount or when this
+  /// is not a fee entry.
+  ///
+  /// This getter exists for compatibility with existing callers. New code
+  /// should generally inspect [feeExpression] directly.
+  Decimal? get feePercentage {
+    return switch (feeExpression) {
+      PercentageFeeExpression(:final percentage) => percentage,
+      _ => null,
+    };
+  }
+
+  /// Asset amount originally used to express this fee.
+  ///
+  /// Returns null when the fee was expressed as a percentage or when this is
+  /// not a fee entry.
+  AssetAmount? get feeAssetAmount {
+    return switch (feeExpression) {
+      AssetAmountFeeExpression(:final amount) => amount,
+      _ => null,
+    };
+  }
+
+  void _validateFeeExpression() {
+    final expression = feeExpression;
 
     if (role != LedgerEntryRole.fee) {
       return;
+    }
+
+    if (expression == null) {
+      // coverage:ignore-start
+      throw StateError('A fee ledger entry must have a fee expression.');
+      // coverage:ignore-end
+    }
+
+    if (expression case AssetAmountFeeExpression(:final amount)) {
+      final matchesTransactionAmount =
+          amount.assetId == transactionAmount.assetId &&
+          amount.amount == transactionAmount.amount &&
+          amount.direction == transactionAmount.direction;
+
+      if (!matchesTransactionAmount) {
+        throw ArgumentError.value(
+          expression,
+          'feeExpression',
+          'An asset-amount fee expression must exactly match the fee '
+              'transaction amount.',
+        );
+      }
+    }
+  }
+
+  static FeeExpression? _resolveFeeExpression({
+    required LedgerEntryRole role,
+    required AssetAmount transactionAmount,
+    required FeeExpression? feeExpression,
+  }) {
+    if (role != LedgerEntryRole.fee) {
+      if (feeExpression != null) {
+        throw ArgumentError.value(
+          feeExpression,
+          'feeExpression',
+          'A fee expression may only be attached to a fee ledger entry.',
+        );
+      }
+
+      return null;
     }
 
     if (!transactionAmount.isOutgoing) {
@@ -171,15 +258,7 @@ final class LedgerEntry with LedgerEntryMappable {
       );
     }
 
-    final percentage = feePercentage;
-
-    if (percentage != null && percentage <= Decimal.zero) {
-      throw ArgumentError.value(
-        percentage,
-        'feePercentage',
-        'Fee percentage must be greater than zero.',
-      );
-    }
+    return feeExpression ?? AssetAmountFeeExpression(amount: transactionAmount);
   }
 
   static void _validateDirection({
