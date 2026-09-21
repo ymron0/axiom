@@ -8,6 +8,7 @@ import 'package:axiom/src/features/settings/domain/failures/settings_already_ini
 import 'package:axiom/src/features/settings/domain/failures/settings_failure.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_repository_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_valuation_currency_change_not_allowed_failure.dart';
 import 'package:axiom/src/features/settings/domain/repositories/settings_repository.dart';
 import 'package:sembast/sembast.dart';
 
@@ -28,6 +29,8 @@ import 'package:sembast/sembast.dart';
 ///   record already exists.
 /// - [update] returns [SettingsNotInitializedFailure] when the singleton record
 ///   does not exist.
+/// - [update] returns [SettingsValuationCurrencyChangeNotAllowedFailure] when
+///   the requested update changes the configured valuation currency.
 /// - persistence access and malformed-record failures are translated into
 ///   [SettingsRepositoryFailure].
 ///
@@ -110,6 +113,17 @@ final class SembastSettingsRepositoryImpl implements SettingsRepository {
               if (existingRecord == null) {
                 return const SettingsNotInitializedFailure(
                   message: 'Settings have not been initialized.',
+                );
+              }
+
+              final existingSettings = _settingsFromRecord(existingRecord);
+
+              if (settings.valuationCurrencyId !=
+                  existingSettings.valuationCurrencyId) {
+                return const SettingsValuationCurrencyChangeNotAllowedFailure(
+                  message:
+                      'Valuation currency cannot be changed after settings '
+                      'initialization. An application reset is required.',
                 );
               }
 

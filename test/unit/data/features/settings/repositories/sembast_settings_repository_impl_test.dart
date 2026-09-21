@@ -9,6 +9,7 @@ import 'package:axiom/src/features/settings/domain/entities/settings.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_already_initialized_failure.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_not_initialized_failure.dart';
 import 'package:axiom/src/features/settings/domain/failures/settings_repository_failure.dart';
+import 'package:axiom/src/features/settings/domain/failures/settings_valuation_currency_change_not_allowed_failure.dart';
 import 'package:axiom/src/features/settings/domain/repositories/settings_repository.dart';
 import 'package:sembast/sembast.dart';
 import 'package:test/test.dart';
@@ -19,7 +20,10 @@ void main() {
   late Database database;
   late SettingsRepository repository;
 
-  Settings settings(String assetId, {bool allowOverbudgetTransactions = true}) {
+  Settings settings(
+    String assetId, {
+    bool allowOverbudgetTransactions = true,
+  }) {
     return Settings(
       valuationCurrencyId: AssetId.fromString(assetId),
       allowOverbudgetTransactions: allowOverbudgetTransactions,
@@ -125,6 +129,38 @@ void main() {
       expect(stored.valuationCurrencyId, AssetId.fromString('asset-chf'));
       expect(stored.allowOverbudgetTransactions, isFalse);
     });
+
+    test(
+      'rejects changing the valuation currency and preserves settings',
+      () async {
+        await repository.create(
+          settings(
+            'asset-chf',
+            allowOverbudgetTransactions: true,
+          ),
+        );
+
+        final replacement = settings(
+          'asset-usd',
+          allowOverbudgetTransactions: false,
+        );
+
+        final result = await repository.update(replacement);
+
+        expect(
+          result.failureOrNull,
+          isA<SettingsValuationCurrencyChangeNotAllowedFailure>(),
+        );
+
+        final stored = (await repository.get()).valueOrNull!;
+
+        expect(
+          stored.valuationCurrencyId,
+          AssetId.fromString('asset-chf'),
+        );
+        expect(stored.allowOverbudgetTransactions, isTrue);
+      },
+    );
 
     test('allows exactly one concurrent initialization', () async {
       final first = settings('asset-chf');
