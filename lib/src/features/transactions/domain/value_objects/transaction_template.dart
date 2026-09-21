@@ -8,6 +8,7 @@ import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.da
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_template_instantiation_failure.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_occurrence_origin.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
@@ -16,15 +17,15 @@ part 'transaction_template.mapper.dart';
 /// Reusable transaction data owned by a recurring transaction series.
 ///
 /// A template describes the financial shape to use when creating an occurrence.
+///
 /// It is not itself a financial event and therefore deliberately does not own:
 ///
 /// - transaction identity;
 /// - an effective instant;
 /// - transaction lifecycle state;
 /// - audit metadata;
-/// - deletion state;
-/// - transaction-series identity; or
-/// - occurrence-generation metadata.
+/// - deletion state; or
+/// - occurrence origin.
 ///
 /// Those values belong to the materialized [Transaction] or the generation
 /// workflow.
@@ -44,17 +45,12 @@ part 'transaction_template.mapper.dart';
 /// invalid template shape into a
 /// [TransactionTemplateInstantiationFailure].
 ///
-/// Individual [LedgerEntry] and [TransactionSplit] instances still enforce
-/// their own local invariants when they are created.
-///
 /// ## Monetary semantics
 ///
 /// Monetary values are copied exactly from the template into an occurrence.
-/// This domain type does not retrieve exchange rates or revalue amounts.
 ///
 /// A workflow that needs occurrence-date-specific FX valuation must supply a
-/// template whose ledger and split values have already been resolved for that
-/// occurrence before materialization.
+/// template whose values have already been resolved before materialization.
 ///
 /// ## Immutability
 ///
@@ -84,11 +80,6 @@ final class TransactionTemplate with TransactionTemplateMappable {
   final List<LedgerEntry> ledgerEntries;
 
   /// Creates a reusable transaction template.
-  ///
-  /// Optional text is normalized through the shared transaction text rules.
-  ///
-  /// Transaction-wide financial invariants are intentionally evaluated during
-  /// [instantiate], where they are translated into a typed failure.
   @MappableConstructor()
   TransactionTemplate({
     required this.kind,
@@ -104,23 +95,17 @@ final class TransactionTemplate with TransactionTemplateMappable {
        splits = List.unmodifiable(splits),
        ledgerEntries = List.unmodifiable(ledgerEntries);
 
-  /// Materializes this template as an ordinary transaction.
+  /// Materializes this template as a transaction.
   ///
-  /// [effectiveAt] belongs to the individual occurrence and is therefore
-  /// supplied here instead of being stored on the template.
-  ///
-  /// [state] also belongs to the individual transaction lifecycle. Recurring
-  /// workflows normally create planned transactions, so [state] defaults to
-  /// [TransactionState.planned].
-  ///
-  /// No transaction-series identifier or recurrence metadata is written to the
-  /// resulting [Transaction].
+  /// [effectiveAt], [state], and [recurrenceOrigin] belong to the materialized
+  /// transaction rather than the reusable template.
   ///
   /// Returns [TransactionTemplateInstantiationFailure] when the template does
   /// not satisfy the aggregate invariants owned by [Transaction].
   Result<Transaction, TransactionTemplateInstantiationFailure> instantiate({
     required DateTime effectiveAt,
     TransactionState state = TransactionState.planned,
+    TransactionOccurrenceOrigin? recurrenceOrigin,
     Clock? clock,
   }) {
     try {
@@ -131,6 +116,7 @@ final class TransactionTemplate with TransactionTemplateMappable {
         description: description,
         note: note,
         state: state,
+        recurrenceOrigin: recurrenceOrigin,
         tagIds: tagIds,
         splits: splits,
         ledgerEntries: ledgerEntries,

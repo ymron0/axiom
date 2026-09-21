@@ -173,17 +173,34 @@ final class TransactionSeries extends AuditedEntity<TransactionSeriesId>
   /// Monetary termination rule configured for this series, when any.
   RecurrenceAmountEnd? get amountEnd => recurrenceRule.end?.amount;
 
-  /// Whether the underlying recurrence rule schedules an occurrence on [date].
+  /// Number of recurrence slots added because skipped occurrences explicitly
+  /// requested compensation at the end of the series.
+  int get additionalOccurrenceCount {
+    return exceptions
+        .where((exception) => exception.isSkipped && exception.extendsSeries)
+        .length;
+  }
+
+  /// Returns the scheduled recurrence date at [index], including any recurrence
+  /// extension caused by compensating skipped occurrences.
+  CalendarDate? scheduledOccurrenceAt(int index) {
+    return recurrenceRule.occurrenceAt(
+      index,
+      additionalOccurrences: additionalOccurrenceCount,
+    );
+  }
+
+  /// Whether the series schedules an occurrence on [date].
   ///
-  /// Exceptions, archival, deletion, and amount progress are deliberately
-  /// ignored.
+  /// Compensating extension slots are included.
   bool definesOccurrenceOn(CalendarDate date) {
-    return recurrenceRule.occursOn(date);
+    return recurrenceRule.occursOn(
+      date,
+      additionalOccurrences: additionalOccurrenceCount,
+    );
   }
 
   /// Returns the exception attached to the original scheduled date.
-  ///
-  /// Returns `null` when that recurrence slot has no exception.
   RecurrenceException? exceptionFor(CalendarDate scheduledOn) {
     for (final exception in exceptions) {
       if (exception.scheduledOn.compareTo(scheduledOn) == 0) {
@@ -209,7 +226,7 @@ final class TransactionSeries extends AuditedEntity<TransactionSeriesId>
   ({CalendarDate date, TransactionTemplate template})? resolveOccurrenceAt(
     int index,
   ) {
-    final scheduledOn = recurrenceRule.occurrenceAt(index);
+    final scheduledOn = scheduledOccurrenceAt(index);
 
     if (scheduledOn == null) {
       return null;
@@ -293,9 +310,15 @@ final class TransactionSeries extends AuditedEntity<TransactionSeriesId>
 
   void _validateExceptions() {
     final scheduledDates = <String>{};
+    final extensionCount = exceptions
+        .where((exception) => exception.isSkipped && exception.extendsSeries)
+        .length;
 
     for (final exception in exceptions) {
-      if (!recurrenceRule.occursOn(exception.scheduledOn)) {
+      if (!recurrenceRule.occursOn(
+        exception.scheduledOn,
+        additionalOccurrences: extensionCount,
+      )) {
         throw ArgumentError.value(
           exception,
           'exceptions',

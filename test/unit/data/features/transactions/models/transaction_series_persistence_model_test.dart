@@ -77,6 +77,10 @@ void main() {
             replacementOn: CalendarDate(2026, 2, 2),
             replacementTemplate: replacementTemplate,
           ),
+          RecurrenceException.skip(
+            scheduledOn: CalendarDate(2026, 3, 1),
+            extendsSeries: true,
+          ),
         ],
         archivedAt: archivedAt,
         createdAt: DateTime.utc(2026, 1, 1),
@@ -114,13 +118,15 @@ void main() {
         RecurrenceAmountCompletion.exactTarget,
       );
 
-      expect(restored.exceptions, hasLength(1));
-      expect(restored.exceptions.single.scheduledOn.toString(), '2026-02-01');
-      expect(restored.exceptions.single.replacementOn.toString(), '2026-02-02');
+      expect(restored.exceptions, hasLength(2));
+      expect(restored.exceptions.first.scheduledOn.toString(), '2026-02-01');
+      expect(restored.exceptions.first.replacementOn.toString(), '2026-02-02');
       expect(
-        restored.exceptions.single.replacementTemplate?.merchantId,
+        restored.exceptions.first.replacementTemplate?.merchantId,
         MerchantId.fromString('merchant-replacement'),
       );
+      expect(restored.exceptions.last.scheduledOn.toString(), '2026-03-01');
+      expect(restored.exceptions.last.extendsSeries, isTrue);
 
       expect(restored.archivedAt, archivedAt);
       expect(restored.entityVersion, 3);
@@ -212,9 +218,7 @@ void main() {
       final series = _series(
         id: 'invalid-exception-date',
         exceptions: [
-          RecurrenceException.skip(
-            scheduledOn: CalendarDate(2026, 1, 1),
-          ),
+          RecurrenceException.skip(scheduledOn: CalendarDate(2026, 1, 1)),
         ],
       );
 
@@ -247,7 +251,6 @@ void main() {
         ),
       );
     });
-
   });
 }
 

@@ -9,66 +9,55 @@ import 'package:axiom/src/features/transactions/domain/entities/transaction_seri
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_series_generation_disabled_failure.dart';
 import 'package:axiom/src/features/transactions/domain/services/resize_planned_transaction_template_service.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_occurrence_origin.dart';
 import 'package:decimal/decimal.dart';
 
-/// Materializes recurrence occurrences as ordinary planned transactions.
+/// Materializes recurrence occurrences as planned transactions.
 ///
-/// Generated transactions deliberately contain no transaction-series identity
-/// or recurrence metadata. The series remains only the definition used to
-/// derive those transactions.
+/// Generated transactions retain the minimum recurrence metadata needed to
+/// identify their owning series and original scheduled recurrence slot.
 ///
 /// ## Range semantics
 ///
 /// [scheduledFrom] is inclusive and [scheduledUntil] is exclusive.
 ///
-/// The range applies to the original recurrence slots produced by the series
-/// recurrence rule. A recurrence exception may move the effective transaction
-/// date outside this range; the occurrence still belongs to the selected
-/// scheduled slot and is therefore generated.
+/// The range applies to the original scheduled recurrence slot. A recurrence
+/// exception may move the effective transaction date outside this range; the
+/// transaction still belongs to the original selected recurrence slot.
 ///
 /// ## Generation horizon
 ///
-/// Generated planned transactions are subject to a rolling maximum horizon of
-/// two calendar years from the current local calendar date.
-///
-/// For example, when the current date is September 21, 2026, an occurrence
-/// scheduled on September 21, 2028 may be generated, but an occurrence
-/// scheduled on September 22, 2028 may not.
+/// Generated transactions are subject to a rolling maximum horizon of two
+/// calendar years from the current local calendar date.
 ///
 /// [generationHorizon] may further restrict generation to:
 ///
 /// - the next eligible occurrence;
 /// - one rolling calendar year; or
-/// - the maximum two rolling calendar years.
+/// - two rolling calendar years.
 ///
-/// The horizon limits materialization only. It never changes or truncates the
-/// underlying [TransactionSeries].
+/// The generation horizon never truncates or modifies the underlying series.
 ///
-/// [scheduledUntil] remains a caller-requested upper bound. The effective
-/// generation boundary is always the earliest applicable boundary.
+/// ## Skipped occurrences
+///
+/// Skipped occurrences materialize no transaction.
+///
+/// A skipped occurrence configured to extend the series increases the number
+/// of available recurrence slots through [TransactionSeries.scheduledOccurrenceAt].
 ///
 /// ## Amount termination
 ///
-/// Cumulative amount progress is evaluated from recurrence index zero, even
-/// when [scheduledFrom] starts later. This is necessary because the amount
-/// available for a final occurrence depends on all earlier recurrence slots.
+/// Amount progress is evaluated from recurrence index zero, even when
+/// [scheduledFrom] starts later.
 ///
 /// Skipped occurrences contribute no amount progress.
 ///
-/// Replacement occurrences contribute the primary amount of their resolved
-/// replacement template.
-///
-/// Exact-target completion resizes the final occurrence through
+/// Exact-target completion may resize the final occurrence through
 /// [ResizePlannedTransactionTemplateService].
 ///
 /// ## Persistence
 ///
 /// This service does not persist generated transactions.
-///
-/// Re-running generation creates new ordinary transaction identities. Because
-/// those transactions intentionally contain no recurrence identity, callers
-/// must decide when a generated batch is persisted and must not treat repeated
-/// generation as an idempotent persistence operation.
 final class GeneratePlannedTransactionsService {
   static const int _maximumGenerationHorizonYears = 2;
 
@@ -83,20 +72,6 @@ final class GeneratePlannedTransactionsService {
        _resizeTemplate = resizeTemplate; // ignore: prefer_initializing_formals
 
   /// Generates planned transactions for the requested scheduled range.
-  ///
-  /// [generationHorizon] should normally come from the current application
-  /// settings.
-  ///
-  /// Even when [generationHorizon] is [PlannedTransactionGenerationHorizon.twoYears],
-  /// generation can never exceed two rolling calendar years from today.
-  ///
-  /// Returns [TransactionSeriesGenerationDisabledFailure] when [series] is
-  /// archived or deleted.
-  ///
-  /// Template materialization failures are propagated unchanged.
-  ///
-  /// Throws [ArgumentError] when [scheduledUntil] is not after
-  /// [scheduledFrom].
   Result<List<Transaction>, BaseFailure> call({
     required TransactionSeries series,
     required CalendarDate scheduledFrom,
@@ -145,7 +120,7 @@ final class GeneratePlannedTransactionsService {
     var occurrenceIndex = 0;
 
     while (true) {
-      final scheduledOn = series.recurrenceRule.occurrenceAt(occurrenceIndex);
+      final scheduledOn = series.scheduledOccurrenceAt(occurrenceIndex);
 
       if (scheduledOn == null ||
           !scheduledOn.isBefore(effectiveScheduledUntil)) {
@@ -190,6 +165,10 @@ final class GeneratePlannedTransactionsService {
         final materialized = occurrenceTemplate.instantiate(
           effectiveAt: resolvedOccurrence.date.toDateTimeUtc(),
           state: TransactionState.planned,
+          recurrenceOrigin: TransactionOccurrenceOrigin(
+            seriesId: series.id,
+            scheduledOn: scheduledOn,
+          ),
           clock: _clock,
         );
 

@@ -12,6 +12,7 @@ import 'package:axiom/src/features/transactions/domain/enums/ledger_entry_role.d
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/ledger_entry.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_occurrence_origin.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_split.dart';
 import 'package:dart_mappable/dart_mappable.dart';
@@ -114,11 +115,16 @@ part 'transaction.mapper.dart';
 ///
 /// ## Recurrence
 ///
-/// Recurrence is deliberately not represented by this aggregate.
+/// Recurrence rules and recurrence exceptions remain owned by
+/// `TransactionSeries`.
 ///
-/// Recurrence rules, transaction-series membership, and series exceptions
-/// belong to the separate transaction-series model and are outside this
-/// aggregate's responsibilities.
+/// A generated transaction may retain [recurrenceOrigin] solely to identify
+/// the series and original scheduled recurrence slot that produced it.
+///
+/// This metadata allows occurrence-specific operations such as deletion,
+/// skipping, regeneration, and compensation at the end of a finite series.
+///
+/// Ordinary transactions have no recurrence origin.
 ///
 /// Invalid aggregate states are rejected during construction.
 @MappableClass()
@@ -158,6 +164,16 @@ final class Transaction extends AuditedEntity<TransactionId>
   /// economic value this transaction reduces. Offset transactions remain
   /// ordinary transactions with their own ledger entries and effective time.
   final TransactionOffset? offset;
+
+  /// Original recurrence slot from which this transaction was generated.
+  ///
+  /// `null` means this transaction is not a generated transaction-series
+  /// occurrence.
+  ///
+  /// This value does not make the transaction part of the series aggregate.
+  /// It provides only the minimum origin information required for later
+  /// occurrence-specific operations.
+  final TransactionOccurrenceOrigin? recurrenceOrigin;
 
   /// {@macro deletable.deleted_at}
   @override
@@ -221,6 +237,7 @@ final class Transaction extends AuditedEntity<TransactionId>
     String? note,
     required this.state,
     this.offset,
+    this.recurrenceOrigin,
     this.deletedAt,
     List<TagId> tagIds = const [],
     required List<TransactionSplit> splits,
@@ -257,6 +274,7 @@ final class Transaction extends AuditedEntity<TransactionId>
     String? note,
     required TransactionState state,
     TransactionOffset? offset,
+    TransactionOccurrenceOrigin? recurrenceOrigin,
     List<TagId> tagIds = const [],
     required List<TransactionSplit> splits,
     required List<LedgerEntry> ledgerEntries,
@@ -274,6 +292,7 @@ final class Transaction extends AuditedEntity<TransactionId>
       note: note,
       state: state,
       offset: offset,
+      recurrenceOrigin: recurrenceOrigin,
       tagIds: tagIds,
       splits: splits,
       ledgerEntries: ledgerEntries,

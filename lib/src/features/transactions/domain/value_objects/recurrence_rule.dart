@@ -6,76 +6,6 @@ import 'package:dart_mappable/dart_mappable.dart';
 part 'recurrence_rule.mapper.dart';
 
 /// Defines the calendar recurrence of a transaction series.
-///
-/// A recurrence rule determines scheduled calendar dates only.
-///
-/// It does not:
-///
-/// - create transactions;
-/// - own transaction identity;
-/// - evaluate cumulative monetary progress;
-/// - attach recurrence metadata to generated transactions.
-///
-/// ## Anchoring
-///
-/// [startsOn] is occurrence index `0`.
-///
-/// [interval] counts units of [frequency].
-///
-/// For example:
-///
-/// ```text
-/// daily   + interval 2 = every second day
-/// weekly  + interval 2 = every second week
-/// monthly + interval 3 = every third month
-/// yearly  + interval 2 = every second year
-/// ```
-///
-/// ## Monthly semantics
-///
-/// Monthly recurrence remains anchored to the original [startsOn] day.
-///
-/// When the target month does not contain that day, the occurrence is clamped
-/// to the final calendar day of the target month. The original anchor remains
-/// unchanged for later months.
-///
-/// For example:
-///
-/// ```text
-/// 2026-01-31
-/// 2026-02-28
-/// 2026-03-31
-/// 2026-04-30
-/// ```
-///
-/// ## Yearly semantics
-///
-/// Yearly recurrence keeps the original month and day.
-///
-/// An unavailable day is clamped to the final day of that month.
-///
-/// A recurrence beginning on February 29 therefore occurs on February 28
-/// during non-leap years and returns to February 29 in later leap years.
-///
-/// ## Termination
-///
-/// [end] may contain calendar-date, occurrence-count, cumulative-amount
-/// conditions, or a combination.
-///
-/// This class can enforce only date and count conditions because those values
-/// depend exclusively on calendar recurrence state.
-///
-/// Amount termination depends on cumulative monetary progress and is evaluated
-/// separately by the occurrence-generation workflow.
-///
-/// Consequently, an amount-only recurrence still produces an unbounded
-/// calendar sequence through [occurrenceAt]; generation stops once its amount
-/// target is reached.
-///
-/// ## Invariants
-///
-/// - [interval] is at least one.
-/// - [end.until], when supplied, cannot precede [startsOn].
 @MappableClass()
 final class RecurrenceRule with RecurrenceRuleMappable {
   /// First scheduled occurrence date.
@@ -84,18 +14,13 @@ final class RecurrenceRule with RecurrenceRuleMappable {
   /// Calendar unit in which the recurrence advances.
   final RecurrenceFrequency frequency;
 
-  /// Number of [frequency] units between consecutive scheduled occurrences.
+  /// Number of frequency units between occurrences.
   final int interval;
 
-  /// Optional recurrence termination conditions.
+  /// Optional termination conditions.
   final RecurrenceEnd? end;
 
   /// Creates a recurrence rule.
-  ///
-  /// Throws an [ArgumentError] when:
-  ///
-  /// - [interval] is less than one; or
-  /// - an inclusive recurrence end date precedes [startsOn].
   @MappableConstructor()
   RecurrenceRule({
     required this.startsOn,
@@ -122,15 +47,14 @@ final class RecurrenceRule with RecurrenceRuleMappable {
     }
   }
 
-  /// Returns the scheduled occurrence at zero-based [index].
+  /// Returns the occurrence at zero-based [index].
   ///
-  /// Returns `null` when [index] exceeds a configured date or count boundary.
+  /// [additionalOccurrences] extends configured count/date recurrence
+  /// boundaries by that many recurrence slots.
   ///
-  /// An amount-based termination condition is deliberately not evaluated here.
-  /// The caller must evaluate cumulative amount progress separately.
-  ///
-  /// Throws a [RangeError] when [index] is negative.
-  CalendarDate? occurrenceAt(int index) {
+  /// It is used for skipped occurrences that explicitly request compensation at
+  /// the end of the series.
+  CalendarDate? occurrenceAt(int index, {int additionalOccurrences = 0}) {
     if (index < 0) {
       throw RangeError.range(
         index,
@@ -141,51 +65,65 @@ final class RecurrenceRule with RecurrenceRuleMappable {
       );
     }
 
-    final candidate = _candidateAt(index);
+    if (additionalOccurrences < 0) {
+      throw RangeError.range(
+        additionalOccurrences,
+        0,
+        null,
+        'additionalOccurrences',
+        'Additional occurrences cannot be negative.',
+      );
+    }
 
-    if (end != null && !end!.allows(date: candidate, occurrenceIndex: index)) {
+    final candidate = _candidateAt(index);
+    final configuredEnd = end;
+
+    if (configuredEnd == null) {
+      return candidate;
+    }
+
+    final count = configuredEnd.count;
+
+    if (count != null && index >= count + additionalOccurrences) {
       return null;
+    }
+
+    final until = configuredEnd.until;
+
+    if (until != null) {
+      final lastOriginalIndex = _lastIndexOnOrBefore(until);
+
+      if (index > lastOriginalIndex + additionalOccurrences) {
+        return null;
+      }
     }
 
     return candidate;
   }
 
   /// Whether [date] is a scheduled calendar occurrence.
-  ///
-  /// Amount-based termination is deliberately ignored because this method has
-  /// no cumulative financial context.
-  bool occursOn(CalendarDate date) {
+  bool occursOn(CalendarDate date, {int additionalOccurrences = 0}) {
     if (date.isBefore(startsOn)) {
       return false;
     }
 
     final index = _firstIndexOnOrAfter(date);
-    final candidate = occurrenceAt(index);
+
+    final candidate = occurrenceAt(
+      index,
+      additionalOccurrences: additionalOccurrences,
+    );
 
     return candidate != null && candidate.compareTo(date) == 0;
   }
 
-  /// Returns the first scheduled occurrence on or after [date].
-  ///
-  /// Returns `null` when a date or count end condition prevents another
-  /// occurrence.
-  ///
-  /// Amount-based termination is deliberately not evaluated.
+  /// Returns the first occurrence on or after [date].
   CalendarDate? nextOnOrAfter(CalendarDate date) {
     final index = _firstIndexOnOrAfter(date);
     return occurrenceAt(index);
   }
 
-  /// Returns scheduled occurrences inside the half-open range `[from, until)`.
-  ///
-  /// Date and count termination conditions are honored.
-  ///
-  /// Amount termination is deliberately not evaluated because this operation
-  /// has no cumulative monetary progress.
-  ///
-  /// The returned collection is immutable.
-  ///
-  /// Throws an [ArgumentError] when [until] is not after [from].
+  /// Returns scheduled occurrences inside `[from, until)`.
   List<CalendarDate> occurrencesBetween({
     required CalendarDate from,
     required CalendarDate until,
@@ -281,6 +219,17 @@ final class RecurrenceRule with RecurrenceRuleMappable {
     final candidate = _candidateAt(approximateIndex);
 
     return candidate.isBefore(date) ? approximateIndex + 1 : approximateIndex;
+  }
+
+  int _lastIndexOnOrBefore(CalendarDate date) {
+    final firstOnOrAfter = _firstIndexOnOrAfter(date);
+    final candidate = _candidateAt(firstOnOrAfter);
+
+    if (candidate.isOnOrBefore(date)) {
+      return firstOnOrAfter;
+    }
+
+    return firstOnOrAfter - 1;
   }
 
   int _approximateDayIndex(CalendarDate date, {required int daysPerInterval}) {

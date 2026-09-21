@@ -61,6 +61,21 @@ void main() {
       );
     });
 
+    test('rejects negative additional occurrences', () {
+      final rule = _daily();
+
+      expect(
+        () => rule.occurrenceAt(0, additionalOccurrences: -1),
+        throwsA(
+          isA<RangeError>().having(
+            (error) => error.name,
+            'name',
+            'additionalOccurrences',
+          ),
+        ),
+      );
+    });
+
     test('calculates daily recurrence using the configured interval', () {
       final rule = RecurrenceRule(
         startsOn: CalendarDate(2026, 1, 1),
@@ -218,6 +233,21 @@ void main() {
       expect(rule.occurrenceAt(2)?.toString(), '2026-01-03');
       expect(rule.occurrenceAt(3), isNull);
     });
+
+    test(
+      'until date between occurrences terminates recurrence after the prior occurrence',
+      () {
+        final rule = RecurrenceRule(
+          startsOn: CalendarDate(2026, 1, 1),
+          frequency: RecurrenceFrequency.daily,
+          interval: 2,
+          end: RecurrenceEnd(until: CalendarDate(2026, 1, 4)),
+        );
+
+        expect(rule.occurrenceAt(1)?.toString(), '2026-01-03');
+        expect(rule.occurrenceAt(2), isNull);
+      },
+    );
 
     test('both termination conditions stop at whichever is reached first', () {
       final rule = RecurrenceRule(

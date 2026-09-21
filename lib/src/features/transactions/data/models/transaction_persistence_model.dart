@@ -1,6 +1,8 @@
+import 'package:axiom/src/core/domain/value_objects/calendar_date.dart';
 import 'package:axiom/src/core/identity/ids/merchant_id.dart';
 import 'package:axiom/src/core/identity/ids/tag_id.dart';
 import 'package:axiom/src/core/identity/ids/transaction_id.dart';
+import 'package:axiom/src/core/identity/ids/transaction_series_id.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_exception.dart';
 import 'package:axiom/src/core/persistence/mapping/persistence_record_helpers.dart';
@@ -11,6 +13,7 @@ import 'package:axiom/src/features/transactions/domain/entities/transaction.dart
 import 'package:axiom/src/features/transactions/domain/enums/transaction_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_offset_kind.dart';
 import 'package:axiom/src/features/transactions/domain/enums/transaction_state.dart';
+import 'package:axiom/src/features/transactions/domain/value_objects/transaction_occurrence_origin.dart';
 import 'package:axiom/src/features/transactions/domain/value_objects/transaction_offset.dart';
 
 /// Persistence representation of one [Transaction] aggregate.
@@ -18,20 +21,16 @@ import 'package:axiom/src/features/transactions/domain/value_objects/transaction
 /// The Sembast record key contains the transaction identifier and is therefore
 /// intentionally not duplicated in [toRecord].
 ///
-/// Offset relationships are stored using two nullable primitive fields:
+/// Offset relationships use two nullable primitive fields.
 ///
-/// - the referenced original transaction identifier; and
-/// - the offset kind.
+/// Generated recurrence occurrences similarly use two optional fields:
 ///
-/// Both fields must either be present together or absent together.
+/// - transaction-series identifier; and
+/// - original scheduled recurrence date.
 ///
-/// Tag references are stored as serialized [TagId] values in [tagIdsField].
+/// Each relationship must either have both fields present or both absent.
 ///
-/// Older transaction records created before tag support may omit
-/// [tagIdsField]. Such records are reconstructed with no tags.
-///
-/// Older transaction records that contain neither offset field also remain
-/// valid and are reconstructed as transactions without an offset relationship.
+/// Existing records without recurrence-origin fields remain valid.
 final class TransactionPersistenceModel {
   /// Persistence field containing transaction insertion order.
   static const String persistenceOrderField = 'persistenceOrder';
@@ -40,7 +39,6 @@ final class TransactionPersistenceModel {
   static const String tagIdsField = 'tagIds';
 
   static const String _kindField = 'kind';
-
   static const String _merchantIdField = 'merchantId';
   static const String _effectiveAtField = 'effectiveAt';
   static const String _descriptionField = 'description';
@@ -48,11 +46,14 @@ final class TransactionPersistenceModel {
   static const String _stateField = 'state';
   static const String _offsetOfTransactionIdField = 'offsetOfTransactionId';
   static const String _offsetKindField = 'offsetKind';
+  static const String _recurrenceSeriesIdField = 'recurrenceSeriesId';
+  static const String _recurrenceScheduledOnField = 'recurrenceScheduledOn';
   static const String _splitsField = 'splits';
   static const String _ledgerEntriesField = 'ledgerEntries';
   static const String _createdAtField = 'createdAt';
   static const String _modifiedAtField = 'modifiedAt';
   static const String _entityVersionField = 'entityVersion';
+
   /// Identifier represented by the Sembast record key.
   final String id;
 
@@ -82,6 +83,12 @@ final class TransactionPersistenceModel {
 
   /// Economic meaning of the offset relationship.
   final TransactionOffsetKind? offsetKind;
+
+  /// Owning transaction-series identifier for a generated occurrence.
+  final String? recurrenceSeriesId;
+
+  /// Original recurrence slot of a generated occurrence.
+  final CalendarDate? recurrenceScheduledOn;
 
   /// Serialized reusable metadata tag identities.
   final List<String> tagIds;
@@ -133,6 +140,8 @@ final class TransactionPersistenceModel {
       state: transaction.state,
       offsetOfTransactionId: transaction.offset?.originalTransactionId.value,
       offsetKind: transaction.offset?.kind,
+      recurrenceSeriesId: transaction.recurrenceOrigin?.seriesId.value,
+      recurrenceScheduledOn: transaction.recurrenceOrigin?.scheduledOn,
       tagIds: transaction.tagIds
           .map((tagId) => tagId.value)
           .toList(growable: false),
@@ -188,6 +197,27 @@ final class TransactionPersistenceModel {
       }
     }
 
+    final recurrenceSeriesId = reader.optionalString(_recurrenceSeriesIdField);
+
+    final rawRecurrenceScheduledOn = reader.optionalString(
+      _recurrenceScheduledOnField,
+    );
+
+    if ((recurrenceSeriesId == null) != (rawRecurrenceScheduledOn == null)) {
+      throw const PersistenceRecordException(
+        reason:
+            'Persisted transaction recurrence series identifier and scheduled '
+            'date must either both be present or both be absent.',
+      );
+    }
+
+    final recurrenceScheduledOn = rawRecurrenceScheduledOn == null
+        ? null
+        : readCalendarDate(
+            rawRecurrenceScheduledOn,
+            field: _recurrenceScheduledOnField,
+          );
+
     final tagIds = <String>[
       for (var index = 0; index < rawTagIds.length; index++)
         _readTagId(rawTagIds[index], index: index),
@@ -212,6 +242,8 @@ final class TransactionPersistenceModel {
       ),
       offsetOfTransactionId: offsetOfTransactionId,
       offsetKind: offsetKind,
+      recurrenceSeriesId: recurrenceSeriesId,
+      recurrenceScheduledOn: recurrenceScheduledOn,
       tagIds: tagIds,
       splits: <TransactionSplitPersistenceModel>[
         for (var index = 0; index < rawSplits.length; index++)
@@ -250,6 +282,8 @@ final class TransactionPersistenceModel {
     required this.state,
     required this.offsetOfTransactionId,
     required this.offsetKind,
+    required this.recurrenceSeriesId,
+    required this.recurrenceScheduledOn,
     required List<String> tagIds,
     required List<TransactionSplitPersistenceModel> splits,
     required List<LedgerEntryPersistenceModel> ledgerEntries,
@@ -272,6 +306,13 @@ final class TransactionPersistenceModel {
               kind: offsetKind!,
             );
 
+      final recurrenceOrigin = recurrenceSeriesId == null
+          ? null
+          : TransactionOccurrenceOrigin(
+              seriesId: TransactionSeriesId.fromString(recurrenceSeriesId!),
+              scheduledOn: recurrenceScheduledOn!,
+            );
+
       return Transaction(
         id: TransactionId.fromString(id),
         kind: kind,
@@ -281,6 +322,7 @@ final class TransactionPersistenceModel {
         note: note,
         state: state,
         offset: offset,
+        recurrenceOrigin: recurrenceOrigin,
         deletedAt: null,
         tagIds: tagIds.map(TagId.fromString).toList(growable: false),
         splits: splits.map((split) => split.toEntity()).toList(growable: false),
@@ -318,6 +360,10 @@ final class TransactionPersistenceModel {
       _stateField: state.name,
       _offsetOfTransactionIdField: offsetOfTransactionId,
       _offsetKindField: offsetKind?.name,
+      if (recurrenceSeriesId != null)
+        _recurrenceSeriesIdField: recurrenceSeriesId,
+      if (recurrenceScheduledOn != null)
+        _recurrenceScheduledOnField: recurrenceScheduledOn.toString(),
       tagIdsField: List<String>.unmodifiable(tagIds),
       _splitsField: splits
           .map((split) => split.toRecord())

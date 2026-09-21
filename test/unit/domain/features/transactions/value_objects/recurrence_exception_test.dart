@@ -249,6 +249,28 @@ void main() {
           same(replacementTemplate),
         );
       });
+
+      test('rejects a replacement exception that extends the series', () {
+        // When
+        RecurrenceException construct() {
+          return RecurrenceException(
+            scheduledOn: CalendarDate(2026, 10, 1),
+            kind: RecurrenceExceptionKind.replacement,
+            replacementOn: CalendarDate(2026, 10, 2),
+            extendsSeries: true,
+          );
+        }
+
+        // Then
+        expect(
+          construct,
+          throwsA(
+            isA<ArgumentError>()
+                .having((error) => error.name, 'name', 'extendsSeries')
+                .having((error) => error.invalidValue, 'invalidValue', isTrue),
+          ),
+        );
+      });
     });
   });
 }
