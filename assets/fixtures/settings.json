@@ -1,0 +1,6 @@
+{
+  "valuationCurrencyId": "asset-chf",
+  "plannedTransactionGenerationHorizon": "twoYears",
+  "allowOverbudgetTransactions": true,
+  "allowNegativeJarBalances": true
+}

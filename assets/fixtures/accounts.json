@@ -1,0 +1,36 @@
+[
+  {
+    "id": "account-raiffeisen-checking",
+    "name": "Raiffeisen Checking",
+    "custodianId": "custodian-raiffeisen",
+    "denominationAssetId": "asset-chf",
+    "kind": "checking",
+    "reference": null,
+    "logo": null,
+    "icon": "accountBalanceWallet",
+    "color": "red",
+    "sortOrder": 0,
+    "archivedAt": null,
+    "deletedAt": null,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "modifiedAt": "2026-01-01T00:00:00.000Z",
+    "entityVersion": 1
+  },
+  {
+    "id": "account-neon-checking",
+    "name": "neon Checking",
+    "custodianId": "custodian-neon",
+    "denominationAssetId": "asset-chf",
+    "kind": "checking",
+    "reference": null,
+    "logo": null,
+    "icon": "accountBalanceWallet",
+    "color": "violet",
+    "sortOrder": 1,
+    "archivedAt": null,
+    "deletedAt": null,
+    "createdAt": "2026-01-01T00:00:00.000Z",
+    "modifiedAt": "2026-01-01T00:00:00.000Z",
+    "entityVersion": 1
+  }
+]
