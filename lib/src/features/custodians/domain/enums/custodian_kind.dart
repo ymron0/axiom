@@ -9,4 +9,11 @@ part 'custodian_kind.mapper.dart';
 /// Custodian kind is descriptive metadata used for presentation, filtering,
 /// grouping, and future custodian-specific behavior.
 @MappableEnum()
-enum CustodianKind { bank, broker, exchange, selfCustody }
+enum CustodianKind {
+  bank,
+  broker,
+  creditProvider,
+  digitalWallet,
+  exchange,
+  selfCustody,
+}

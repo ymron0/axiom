@@ -15,7 +15,7 @@ enum AccountKind {
   checking,
   creditCard,
   cryptoWallet,
+  digitalWallet,
   investment,
-  onlineWallet,
   savings,
 }
