@@ -2,13 +2,34 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "axiom",
+            "name": "axiom - memory",
             "request": "launch",
             "type": "dart",
             "flutterMode": "debug",
             "toolArgs": [
                 "--dart-define=DEBUG_NOW=2026-01-01T08:05:00",
                 "--dart-define=DATABASE_STORAGE=memory"
+            ]
+        },
+        {
+            "name": "axiom - persist",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "debug",
+            "toolArgs": [
+                "--dart-define=DEBUG_NOW=2026-01-01T08:05:00",
+                "--dart-define=DATABASE_STORAGE=persistent"
+            ]
+        },
+        {
+            "name": "axiom - persist with fixtures reset",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "debug",
+            "toolArgs": [
+                "--dart-define=DEBUG_NOW=2026-01-01T08:05:00",
+                "--dart-define=DATABASE_STORAGE=persistent",
+                "--dart-define=RELOAD_FIXTURES=true"
             ]
         },
         {

@@ -77,12 +77,34 @@ is no runtime setting for changing the clock.
 
 ## Database storage
 
-The application uses persistent database storage by default. For local
-development, select in-memory storage with:
+The application supports persistent and in-memory database storage.
+
+### In-memory storage
+
+Use an in-memory database for local development:
 
 ```bash
 flutter run --dart-define=DATABASE_STORAGE=memory
 ```
 
-In-memory data is discarded when the application stops. Memory storage is not
-allowed in release builds.
+The database starts empty on every run and development fixtures are loaded automatically. All data is discarded when the application stops. Memory storage is not allowed in release builds.
+
+### Persistent storage
+
+Use the persistent database without modifying existing data:
+
+```bash
+flutter run --dart-define=DATABASE_STORAGE=persistent
+```
+
+Persistent storage is the default database mode.
+
+### Persistent storage with fixture reload
+
+To delete the current development data and reload the fixtures from `assets/fixtures/`, run:
+
+```bash
+flutter run --dart-define=DATABASE_STORAGE=persistent --dart-define=RELOAD_FIXTURES=true
+```
+
+Fixture reload is intended for non-release development builds only.

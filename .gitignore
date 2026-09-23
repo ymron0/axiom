@@ -29,5 +29,6 @@
 *.mapper.dart
 *.gr.dart
 
-# Temporary and development files
+# Fixtures and development files
+assets/fixtures/
 dev/
