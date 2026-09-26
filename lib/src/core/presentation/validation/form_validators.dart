@@ -1,4 +1,4 @@
-import 'package:axiom/src/presentation/validation/presentation_field_validator.dart';
+import 'package:axiom/src/core/presentation/validation/presentation_field_validator.dart';
 import 'package:decimal/decimal.dart';
 
 /// Common presentation-level input validators.

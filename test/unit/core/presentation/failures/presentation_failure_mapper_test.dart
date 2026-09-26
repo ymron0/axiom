@@ -4,8 +4,8 @@ library;
 import 'package:axiom/src/application/failures/transaction_would_exceed_budget_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_repository_failure.dart';
-import 'package:axiom/src/presentation/failures/presentation_failure_kind.dart';
-import 'package:axiom/src/presentation/failures/presentation_failure_mapper.dart';
+import 'package:axiom/src/core/presentation/failures/presentation_failure_kind.dart';
+import 'package:axiom/src/core/presentation/failures/presentation_failure_mapper.dart';
 import 'package:test/test.dart';
 
 void main() {

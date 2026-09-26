@@ -1,7 +1,7 @@
 @Tags(['presentation'])
 library;
 
-import 'package:axiom/src/presentation/validation/form_validators.dart';
+import 'package:axiom/src/core/presentation/validation/form_validators.dart';
 import 'package:test/test.dart';
 
 void main() {

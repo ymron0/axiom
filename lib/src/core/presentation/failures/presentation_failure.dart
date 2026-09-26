@@ -1,6 +1,6 @@
 
 
-import 'package:axiom/src/presentation/failures/presentation_failure_kind.dart';
+import 'package:axiom/src/core/presentation/failures/presentation_failure_kind.dart';
 
 /// User-facing representation of a failure.
 ///

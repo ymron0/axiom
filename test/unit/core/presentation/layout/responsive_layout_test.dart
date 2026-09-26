@@ -1,8 +1,8 @@
 @Tags(['presentation'])
 library;
 
-import 'package:axiom/src/presentation/layout/responsive_layout.dart';
-import 'package:axiom/src/presentation/layout/window_size_class.dart';
+import 'package:axiom/src/core/presentation/layout/responsive_layout.dart';
+import 'package:axiom/src/core/presentation/layout/window_size_class.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

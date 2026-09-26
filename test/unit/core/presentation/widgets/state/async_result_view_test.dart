@@ -4,7 +4,7 @@ library;
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
-import 'package:axiom/src/presentation/widgets/state/async_result_view.dart';
+import 'package:axiom/src/core/presentation/widgets/state/async_result_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

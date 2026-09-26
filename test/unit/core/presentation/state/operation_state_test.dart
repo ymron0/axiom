@@ -1,9 +1,9 @@
 @Tags(['presentation'])
 library;
 
-import 'package:axiom/src/presentation/failures/presentation_failure.dart';
-import 'package:axiom/src/presentation/failures/presentation_failure_kind.dart';
-import 'package:axiom/src/presentation/state/operation_state.dart';
+import 'package:axiom/src/core/presentation/failures/presentation_failure.dart';
+import 'package:axiom/src/core/presentation/failures/presentation_failure_kind.dart';
+import 'package:axiom/src/core/presentation/state/operation_state.dart';
 import 'package:test/test.dart';
 
 void main() {

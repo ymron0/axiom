@@ -1,7 +1,7 @@
 import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/result/result.dart';
-import 'package:axiom/src/presentation/failures/presentation_failure_mapper.dart';
-import 'package:axiom/src/presentation/state/operation_state.dart';
+import 'package:axiom/src/core/presentation/failures/presentation_failure_mapper.dart';
+import 'package:axiom/src/core/presentation/state/operation_state.dart';
 
 /// Presentation helpers for expected operation results.
 extension ResultOperationStateExtension<

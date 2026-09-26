@@ -1,4 +1,4 @@
-import 'package:axiom/src/presentation/layout/window_size_class.dart';
+import 'package:axiom/src/core/presentation/layout/window_size_class.dart';
 import 'package:flutter/widgets.dart';
 
 /// Applies width-aware padding around page content.
