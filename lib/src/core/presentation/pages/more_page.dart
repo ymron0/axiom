@@ -38,6 +38,22 @@ final class MorePage extends StatelessWidget {
                     context.router.push(const JarsRoute());
                   },
                 ),
+                AppListItem(
+                  leading: const Icon(
+                    Symbols.settings_rounded,
+                    size: AppSize.iconLarge,
+                  ),
+                  title: const Text('Settings'),
+                  subtitle: const Text(
+                    'Preferences, reference data and data management',
+                  ),
+                  trailing: const Icon(Symbols.chevron_right_rounded),
+                  semanticLabel:
+                      'Settings, preferences, reference data and data management',
+                  onTap: () {
+                    context.router.push(const SettingsRoute());
+                  },
+                ),
               ],
             ),
           ),

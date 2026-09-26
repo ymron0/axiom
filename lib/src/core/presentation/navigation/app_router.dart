@@ -14,9 +14,8 @@ import 'app_router.gr.dart';
 /// - Categories
 /// - More
 ///
-/// Detail, creation, and editing screens live on the root stack rather than
-/// inside an individual tab. This allows them to cover the application shell
-/// while preserving the selected tab underneath.
+/// Detail, creation, editing, management and settings screens live on the root
+/// stack so they cover the shell while retaining the selected tab underneath.
 ///
 /// ## Contract
 ///
@@ -77,6 +76,20 @@ final class AppRouter extends RootStackRouter {
     // Tags.
     //
     AutoRoute(path: '/tags', page: TagManagementRoute.page),
+
+    //
+    // Settings and reference data.
+    //
+    AutoRoute(path: '/settings', page: SettingsRoute.page),
+    AutoRoute(
+      path: '/settings/valuation-currency',
+      page: ValuationCurrencyRoute.page,
+    ),
+    AutoRoute(path: '/settings/assets', page: AssetManagementRoute.page),
+    AutoRoute(path: '/settings/merchants', page: MerchantManagementRoute.page),
+    AutoRoute(path: '/settings/rates', page: RateStatusRoute.page),
+    AutoRoute(path: '/settings/data', page: DataManagementRoute.page),
+    AutoRoute(path: '/settings/data/reset', page: ResetApplicationRoute.page),
 
     //
     // Fallback.

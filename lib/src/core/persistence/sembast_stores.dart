@@ -25,12 +25,33 @@ abstract final class SembastStores {
   static const String balanceSnapshotsName = 'balanceSnapshots';
 
   /// Names of every application-owned Sembast store.
-  ///
-  /// Keep this list synchronized with the store references declared below.
   static const List<String> allNames = <String>[
     assetsName,
     settingsName,
     ratesName,
+    merchantsName,
+    transactionsName,
+    transactionSeriesName,
+    accountsName,
+    custodiansName,
+    categoriesName,
+    jarsName,
+    tagsName,
+    balanceSnapshotsName,
+  ];
+
+  /// Reference data retained during an application financial reset.
+  ///
+  /// Assets must remain available so a new valuation currency can be chosen.
+  /// Rates remain valid because their asset identities remain intact.
+  static const List<String> referenceDataNames = <String>[
+    assetsName,
+    ratesName,
+  ];
+
+  /// User/application state removed by an application reset.
+  static const List<String> resettableNames = <String>[
+    settingsName,
     merchantsName,
     transactionsName,
     transactionSeriesName,
@@ -78,26 +99,42 @@ abstract final class SembastStores {
   static final StoreRef<String, Map<String, Object?>> balanceSnapshots =
       stringMapStoreFactory.store(balanceSnapshotsName);
 
-  /// References to every application-owned Sembast store.
-  ///
-  /// This is primarily intended for database-level infrastructure such as
-  /// schema validation, diagnostics, and migrations. Feature repositories
-  /// should depend on their specific store reference instead.
+  /// References to every application-owned store.
   static final List<StoreRef<String, Map<String, Object?>>> all =
-      List<StoreRef<String, Map<String, Object?>>>.unmodifiable(
-        <StoreRef<String, Map<String, Object?>>>[
-          assets,
-          settings,
-          rates,
-          merchants,
-          transactions,
-          transactionSeries,
-          accounts,
-          custodians,
-          categories,
-          jars,
-          tags,
-          balanceSnapshots,
-        ],
-      );
+      List.unmodifiable(<StoreRef<String, Map<String, Object?>>>[
+        assets,
+        settings,
+        rates,
+        merchants,
+        transactions,
+        transactionSeries,
+        accounts,
+        custodians,
+        categories,
+        jars,
+        tags,
+        balanceSnapshots,
+      ]);
+
+  /// Reference-data stores preserved by reset.
+  static final List<StoreRef<String, Map<String, Object?>>> referenceData =
+      List.unmodifiable(<StoreRef<String, Map<String, Object?>>>[
+        assets,
+        rates,
+      ]);
+
+  /// Stores removed atomically by reset.
+  static final List<StoreRef<String, Map<String, Object?>>> resettable =
+      List.unmodifiable(<StoreRef<String, Map<String, Object?>>>[
+        settings,
+        merchants,
+        transactions,
+        transactionSeries,
+        accounts,
+        custodians,
+        categories,
+        jars,
+        tags,
+        balanceSnapshots,
+      ]);
 }
