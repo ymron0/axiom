@@ -1,6 +1,23 @@
 part of 'async_result_view.dart';
 
-/// Standard empty-content state.
+/// Standard presentation for successfully loaded content that contains no data.
+///
+/// Empty state is distinct from both loading and failure: the operation
+/// completed successfully, but there is currently nothing to display.
+///
+/// ## Semantics
+///
+/// Empty state is not a live accessibility region because it represents stable
+/// successfully loaded content.
+///
+/// The optional action uses normal Material button semantics.
+///
+/// ## Contract
+///
+/// [actionLabel] and [onAction] must either both be supplied or both be absent.
+///
+/// This widget does not determine whether data is empty. That decision belongs
+/// to [AsyncResultView] or the owning feature.
 final class EmptyStateView extends StatelessWidget {
   final String title;
   final String? message;
@@ -24,44 +41,13 @@ final class EmptyStateView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 48, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(height: 16),
-              Semantics(
-                header: true,
-                child: Text(
-                  title,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleMedium,
-                ),
-              ),
-              if (message != null) ...[
-                const SizedBox(height: 8),
-                Text(
-                  message!,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-              if (onAction != null) ...[
-                const SizedBox(height: 20),
-                FilledButton(onPressed: onAction, child: Text(actionLabel!)),
-              ],
-            ],
-          ),
-        ),
-      ),
+    return AppStateView(
+      icon: icon,
+      title: title,
+      message: message,
+      action: onAction == null
+          ? null
+          : FilledButton(onPressed: onAction, child: Text(actionLabel!)),
     );
   }
 }

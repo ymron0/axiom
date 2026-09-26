@@ -1,6 +1,7 @@
 import 'package:axiom/src/core/presentation/navigation/app_navigation_destination.dart';
 import 'package:axiom/src/core/presentation/navigation/app_navigation_shell.dart';
 import 'package:axiom/src/core/presentation/navigation/app_router.gr.dart';
+import 'package:axiom/src/core/presentation/tokens/app_motion.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 
@@ -15,12 +16,16 @@ import 'package:flutter/material.dart';
 ///
 /// ## Semantics
 ///
+/// Tab transitions use the shared application motion tokens.
+///
 /// Tab transitions honor the platform reduced-motion accessibility preference.
 ///
 /// ## Contract
 ///
 /// This page owns only primary navigation. Feature pages remain responsible
 /// for their own application bars, content state, loading states, and actions.
+///
+/// Global transition duration and easing are owned by [AppMotion].
 @RoutePage()
 final class AppShellPage extends StatelessWidget {
   static const List<PageRouteInfo<void>> _tabRoutes = [
@@ -46,10 +51,8 @@ final class AppShellPage extends StatelessWidget {
     return AutoTabsRouter(
       routes: _tabRoutes,
       lazyLoad: true,
-      duration: disableAnimations
-          ? Duration.zero
-          : const Duration(milliseconds: 180),
-      curve: Curves.easeOutCubic,
+      duration: disableAnimations ? Duration.zero : AppMotion.standard,
+      curve: AppMotion.standardCurve,
       transitionBuilder: (context, child, animation) {
         if (disableAnimations) {
           return child;

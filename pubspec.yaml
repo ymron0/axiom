@@ -12,6 +12,7 @@ dependencies:
   dart_mappable: ^4.8.0
   nanoid: ^1.0.0
   decimal: ^3.2.6
+  intl: ^0.20.3
   sembast: ^3.7.4
   path: ^1.9.1
   path_provider: ^2.1.6

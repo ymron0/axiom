@@ -1,6 +1,20 @@
 part of 'async_result_view.dart';
 
-/// Standard presentation for recoverable content errors.
+/// Standard presentation for a safe user-facing failure.
+///
+/// ## Semantics
+///
+/// Error state is exposed as a live accessibility region so a newly occurring
+/// failure can be announced.
+///
+/// ## Contract
+///
+/// [error] must already be a presentation-safe [PresentationFailure].
+///
+/// Domain, application, persistence, and infrastructure failures must be
+/// translated through [PresentationFailureMapper] before they are rendered.
+///
+/// Retry behavior is owned by the caller.
 final class ErrorStateView extends StatelessWidget {
   final PresentationFailure error;
   final VoidCallback? onRetry;
@@ -18,51 +32,19 @@ final class ErrorStateView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Semantics(
+    return AppStateView(
+      icon: Icons.error_outline_rounded,
+      iconColor: theme.colorScheme.error,
+      title: error.title,
+      message: error.message,
       liveRegion: true,
-      child: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 360),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.error_outline_rounded,
-                  size: 48,
-                  color: theme.colorScheme.error,
-                ),
-                const SizedBox(height: 16),
-                Semantics(
-                  header: true,
-                  child: Text(
-                    error.title,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  error.message,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                if (onRetry != null) ...[
-                  const SizedBox(height: 20),
-                  FilledButton.tonalIcon(
-                    onPressed: onRetry,
-                    icon: const Icon(Icons.refresh_rounded),
-                    label: Text(retryLabel),
-                  ),
-                ],
-              ],
+      action: onRetry == null
+          ? null
+          : FilledButton.tonalIcon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh_rounded),
+              label: Text(retryLabel),
             ),
-          ),
-        ),
-      ),
     );
   }
 }

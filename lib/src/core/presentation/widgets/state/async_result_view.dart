@@ -1,7 +1,8 @@
 import 'package:axiom/src/core/failures/base_failure.dart';
-import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/core/presentation/failures/presentation_failure.dart';
 import 'package:axiom/src/core/presentation/failures/presentation_failure_mapper.dart';
+import 'package:axiom/src/core/presentation/widgets/state/app_state_view.dart';
+import 'package:axiom/src/core/result/result.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,24 +19,38 @@ typedef AsyncResultEmptyPredicate<T> = bool Function(T value);
 
 /// Renders `AsyncValue<Result<T, F>>` consistently.
 ///
-/// Riverpod loading and unexpected asynchronous errors are handled separately
-/// from expected domain/application failures represented by [Result].
+/// This widget is the shared presentation boundary between:
 ///
-/// ## Semantics
+/// - Riverpod asynchronous state;
+/// - typed application/domain failures;
+/// - successfully loaded content;
+/// - successfully loaded empty content.
 ///
-/// Initial loading displays [LoadingStateView].
+/// ## Loading behavior
 ///
-/// Existing data remains visible during provider refresh or reload. A linear
-/// progress indicator is displayed above the existing content.
+/// Initial loading replaces content with [LoadingStateView].
 ///
-/// Expected failures are mapped with [PresentationErrorMapper].
+/// Refresh and reload preserve successfully loaded content and display a
+/// lightweight progress indicator above it.
 ///
-/// Unexpected asynchronous errors receive a generic safe presentation error.
+/// ## Failure behavior
 ///
-/// ## Behavior
+/// Expected failures contained in [Result] remain typed until they reach this
+/// widget and are converted with [PresentationFailureMapper].
 ///
-/// Feature screens should not duplicate loading/error/result branching.
-/// Instead they should delegate it to this widget.
+/// Unexpected errors produced by the asynchronous provider are converted into
+/// a generic safe presentation failure.
+///
+/// ## Empty behavior
+///
+/// Empty state is determined only after the operation succeeds. The optional
+/// [isEmpty] predicate defines what empty means for the feature.
+///
+/// ## Contract
+///
+/// Feature screens should not reproduce loading/error/result/refresh branching.
+///
+/// Business logic and retry operations remain owned by the feature.
 final class AsyncResultView<T, F extends BaseFailure> extends StatelessWidget {
   final AsyncValue<Result<T, F>> value;
   final AsyncResultDataBuilder<T> builder;
@@ -44,6 +59,7 @@ final class AsyncResultView<T, F extends BaseFailure> extends StatelessWidget {
   final VoidCallback? onRetry;
   final PresentationFailureMapper errorMapper;
   final String loadingSemanticLabel;
+  final String refreshSemanticLabel;
   final String emptyTitle;
   final String? emptyMessage;
 
@@ -56,6 +72,7 @@ final class AsyncResultView<T, F extends BaseFailure> extends StatelessWidget {
     this.onRetry,
     this.errorMapper = const PresentationFailureMapper(),
     this.loadingSemanticLabel = 'Loading',
+    this.refreshSemanticLabel = 'Refreshing',
     this.emptyTitle = 'Nothing here yet',
     this.emptyMessage,
     super.key,
@@ -66,11 +83,15 @@ final class AsyncResultView<T, F extends BaseFailure> extends StatelessWidget {
     return value.when(
       skipLoadingOnRefresh: true,
       skipLoadingOnReload: true,
-      loading: () => LoadingStateView(semanticLabel: loadingSemanticLabel),
-      error: (error, stackTrace) => ErrorStateView(
-        error: errorMapper.fromObject(error),
-        onRetry: onRetry,
-      ),
+      loading: () {
+        return LoadingStateView(semanticLabel: loadingSemanticLabel);
+      },
+      error: (error, stackTrace) {
+        return ErrorStateView(
+          error: errorMapper.fromObject(error),
+          onRetry: onRetry,
+        );
+      },
       data: (result) {
         final content = result.when<Widget>(
           success: (loadedValue) {
@@ -96,11 +117,17 @@ final class AsyncResultView<T, F extends BaseFailure> extends StatelessWidget {
         return Stack(
           children: [
             content,
-            const Positioned(
+            Positioned(
               top: 0,
               left: 0,
               right: 0,
-              child: LinearProgressIndicator(minHeight: 2),
+              child: Semantics(
+                liveRegion: true,
+                label: refreshSemanticLabel,
+                child: const ExcludeSemantics(
+                  child: LinearProgressIndicator(minHeight: 2),
+                ),
+              ),
             ),
           ],
         );

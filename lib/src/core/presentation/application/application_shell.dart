@@ -1,5 +1,6 @@
-import 'package:axiom/src/core/presentation/widgets/state/async_result_view.dart';
 import 'package:axiom/src/core/presentation/navigation/app_router.dart';
+import 'package:axiom/src/core/presentation/theme/app_theme.dart';
+import 'package:axiom/src/core/presentation/widgets/state/async_result_view.dart';
 import 'package:flutter/material.dart';
 
 /// Root presentation shell.
@@ -8,8 +9,10 @@ import 'package:flutter/material.dart';
 ///
 /// - root navigation;
 /// - application restoration;
-/// - global theme configuration;
+/// - global theme selection;
 /// - root navigation loading state.
+///
+/// Global theme construction itself belongs to [AppTheme].
 ///
 /// Feature-specific state, loading behavior, validation, and application bars
 /// remain owned by their respective feature pages.
@@ -19,6 +22,8 @@ import 'package:flutter/material.dart';
 /// Exactly one [AppRouter] exists for the lifetime of this widget's state.
 ///
 /// The router is disposed when the shell leaves the widget tree.
+///
+/// The root application always receives the shared Material 3 theme.
 ///
 /// ## Semantics
 ///
@@ -30,10 +35,11 @@ import 'package:flutter/material.dart';
 /// ## Contract
 ///
 /// This widget does not initialize infrastructure, perform application
-/// bootstrap, or own feature presentation state.
+/// bootstrap, construct feature themes, or own feature presentation state.
 ///
 /// Those responsibilities belong to the application's composition root,
-/// application layer, and individual feature presentation layers respectively.
+/// shared presentation theme, application layer, and individual feature
+/// presentation layers respectively.
 final class ApplicationShell extends StatefulWidget {
   /// Creates the root application shell.
   const ApplicationShell({super.key});
@@ -67,7 +73,7 @@ final class _ApplicationShellState extends State<ApplicationShell> {
     return MaterialApp.router(
       debugShowCheckedModeBanner: false,
       restorationScopeId: _applicationRestorationScopeId,
-      theme: ThemeData(useMaterial3: true),
+      theme: AppTheme.light,
       routerConfig: _router.config(
         navRestorationScopeId: _navigationRestorationScopeId,
         placeholder: _buildNavigationPlaceholder,

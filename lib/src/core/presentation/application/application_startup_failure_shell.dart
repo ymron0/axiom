@@ -1,5 +1,6 @@
 import 'package:axiom/src/core/persistence/failures/persistence_failure.dart';
 import 'package:axiom/src/core/presentation/failures/presentation_failure_mapper.dart';
+import 'package:axiom/src/core/presentation/theme/app_theme.dart';
 import 'package:axiom/src/core/presentation/widgets/state/async_result_view.dart';
 import 'package:flutter/material.dart';
 
@@ -9,9 +10,15 @@ import 'package:flutter/material.dart';
 /// presentation boundary. It is then mapped to a safe user-facing
 /// presentation failure.
 ///
+/// The bootstrap failure UI uses the same global Material theme as the normal
+/// application shell.
+///
 /// ## Semantics
 ///
 /// Infrastructure details are not rendered directly to the user.
+///
+/// Theme construction remains independent from application infrastructure, so
+/// the shared theme remains available even when bootstrap fails.
 ///
 /// ## Contract
 ///
@@ -31,7 +38,7 @@ final class ApplicationStartupFailureShell extends StatelessWidget {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(useMaterial3: true),
+      theme: AppTheme.light,
       home: Scaffold(body: ErrorStateView(error: presentationFailure)),
     );
   }

@@ -23,7 +23,7 @@ enum EntityIcon {
   payments,
   creditCard,
   wallet,
-  safe,
+  lock,
   currencyExchange,
   trendingUp,
   showChart,
