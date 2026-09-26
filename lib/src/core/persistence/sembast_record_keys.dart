@@ -12,4 +12,7 @@
 abstract final class SembastRecordKeys {
   /// Key of the application's singleton settings record.
   static const String settings = 'settings';
+
+  /// Key of the application's singleton onboarding record.
+  static const String onboarding = 'onboarding';
 }

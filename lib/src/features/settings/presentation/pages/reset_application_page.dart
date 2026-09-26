@@ -1,6 +1,5 @@
 import 'package:auto_route/auto_route.dart';
 import 'package:axiom/src/core/presentation/mutations/result_mutation_state.dart';
-import 'package:axiom/src/core/presentation/navigation/app_router.gr.dart';
 import 'package:axiom/src/core/presentation/tokens/design_tokens.dart';
 import 'package:axiom/src/core/presentation/widgets/content/app_content.dart';
 import 'package:flutter/material.dart';
@@ -21,16 +20,6 @@ final class ResetApplicationPage extends ConsumerWidget {
     final state = ref.watch(resetApplicationMutation);
     final failure = resultMutationFailure(state);
     final pending = state is MutationPending;
-
-    ref.listen(resetApplicationMutation, (previous, next) {
-      if (next case MutationSuccess(:final value) when value.isSuccess) {
-        if (!context.mounted) {
-          return;
-        }
-
-        context.router.replace(const ValuationCurrencyRoute());
-      }
-    });
 
     return Scaffold(
       appBar: AppBar(title: const Text('Reset application')),
@@ -53,9 +42,10 @@ final class ResetApplicationPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.medium),
                 const Text(
-                  'This permanently removes settings, merchants, accounts, '
-                  'custodians, transactions, transaction series, categories, '
-                  'jars, tags and balance snapshots.',
+                  'This permanently removes settings, onboarding state, merchants, '
+                  'accounts, custodians, transactions, transaction series, categories, '
+                  'jars, tags and balance snapshots. Setup will start again after the '
+                  'reset.',
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: AppSpacing.medium),

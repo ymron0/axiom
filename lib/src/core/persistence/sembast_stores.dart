@@ -13,6 +13,7 @@ import 'package:sembast/sembast.dart';
 abstract final class SembastStores {
   static const String assetsName = 'assets';
   static const String settingsName = 'settings';
+  static const String onboardingName = 'onboarding';
   static const String ratesName = 'rates';
   static const String merchantsName = 'merchants';
   static const String transactionsName = 'transactions';
@@ -28,6 +29,7 @@ abstract final class SembastStores {
   static const List<String> allNames = <String>[
     assetsName,
     settingsName,
+    onboardingName,
     ratesName,
     merchantsName,
     transactionsName,
@@ -41,9 +43,6 @@ abstract final class SembastStores {
   ];
 
   /// Reference data retained during an application financial reset.
-  ///
-  /// Assets must remain available so a new valuation currency can be chosen.
-  /// Rates remain valid because their asset identities remain intact.
   static const List<String> referenceDataNames = <String>[
     assetsName,
     ratesName,
@@ -52,6 +51,7 @@ abstract final class SembastStores {
   /// User/application state removed by an application reset.
   static const List<String> resettableNames = <String>[
     settingsName,
+    onboardingName,
     merchantsName,
     transactionsName,
     transactionSeriesName,
@@ -68,6 +68,9 @@ abstract final class SembastStores {
 
   static final StoreRef<String, Map<String, Object?>> settings =
       stringMapStoreFactory.store(settingsName);
+
+  static final StoreRef<String, Map<String, Object?>> onboarding =
+      stringMapStoreFactory.store(onboardingName);
 
   static final StoreRef<String, Map<String, Object?>> rates =
       stringMapStoreFactory.store(ratesName);
@@ -104,6 +107,7 @@ abstract final class SembastStores {
       List.unmodifiable(<StoreRef<String, Map<String, Object?>>>[
         assets,
         settings,
+        onboarding,
         rates,
         merchants,
         transactions,
@@ -127,6 +131,7 @@ abstract final class SembastStores {
   static final List<StoreRef<String, Map<String, Object?>>> resettable =
       List.unmodifiable(<StoreRef<String, Map<String, Object?>>>[
         settings,
+        onboarding,
         merchants,
         transactions,
         transactionSeries,
