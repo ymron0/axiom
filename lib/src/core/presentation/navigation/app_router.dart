@@ -6,9 +6,11 @@ import 'app_router.gr.dart';
 ///
 /// ## Semantics
 ///
-/// The root route hosts the five persistent primary destinations. Additional
-/// routes can be added alongside [AppShellRoute] when they should temporarily
-/// cover or replace the persistent application navigation.
+/// The root route hosts the five persistent primary destinations.
+///
+/// Detail and editing flows are root stack routes so they can temporarily cover
+/// the persistent navigation shell without making primary destinations own
+/// nested routing state.
 ///
 /// ## Contract
 ///
@@ -31,6 +33,22 @@ final class AppRouter extends RootStackRouter {
         AutoRoute(path: 'more', page: MoreRoute.page),
       ],
     ),
+
+    AutoRoute(path: '/accounts/new', page: CreateAccountRoute.page),
+    AutoRoute(path: '/accounts/:accountId/edit', page: EditAccountRoute.page),
+    AutoRoute(path: '/accounts/:accountId', page: AccountDetailsRoute.page),
+
+    AutoRoute(path: '/custodians/new', page: CreateCustodianRoute.page),
+    AutoRoute(
+      path: '/custodians/:custodianId/edit',
+      page: EditCustodianRoute.page,
+    ),
+    AutoRoute(
+      path: '/custodians/:custodianId',
+      page: CustodianDetailsRoute.page,
+    ),
+    AutoRoute(path: '/custodians', page: CustodiansRoute.page),
+
     AutoRoute(path: '*', page: NavigationNotFoundRoute.page),
   ];
 }
