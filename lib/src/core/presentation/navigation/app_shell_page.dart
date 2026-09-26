@@ -1,6 +1,6 @@
-import 'package:axiom/src/presentation/navigation/app_navigation_destination.dart';
-import 'package:axiom/src/presentation/navigation/app_navigation_shell.dart';
-import 'package:axiom/src/presentation/navigation/app_router.gr.dart';
+import 'package:axiom/src/core/presentation/navigation/app_navigation_destination.dart';
+import 'package:axiom/src/core/presentation/navigation/app_navigation_shell.dart';
+import 'package:axiom/src/core/presentation/navigation/app_router.gr.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 

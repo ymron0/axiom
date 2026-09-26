@@ -1,5 +1,5 @@
 import 'package:axiom/src/core/presentation/layout/responsive_layout.dart';
-import 'package:axiom/src/presentation/navigation/app_navigation_destination.dart';
+import 'package:axiom/src/core/presentation/navigation/app_navigation_destination.dart';
 import 'package:flutter/material.dart';
 
 /// Responsive shell around the application's primary navigation destinations.
