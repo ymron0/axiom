@@ -9,6 +9,7 @@ void main() {
     test('uses stable store names', () {
       expect(SembastStores.assetsName, 'assets');
       expect(SembastStores.settingsName, 'settings');
+      expect(SembastStores.onboardingName, 'onboarding');
       expect(SembastStores.ratesName, 'rates');
       expect(SembastStores.merchantsName, 'merchants');
       expect(SembastStores.transactionsName, 'transactions');
@@ -25,6 +26,7 @@ void main() {
       expect(SembastStores.allNames, <String>[
         'assets',
         'settings',
+        'onboarding',
         'rates',
         'merchants',
         'transactions',
@@ -48,6 +50,8 @@ void main() {
       expect(SembastStores.assets.name, SembastStores.assetsName);
 
       expect(SembastStores.settings.name, SembastStores.settingsName);
+
+      expect(SembastStores.onboarding.name, SembastStores.onboardingName);
 
       expect(SembastStores.rates.name, SembastStores.ratesName);
 
