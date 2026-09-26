@@ -1,90 +1,96 @@
+import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/identity/ids/category_id.dart';
-import 'package:axiom/src/features/categories/di/get_categories_use_case_provider.dart';
-import 'package:axiom/src/features/categories/di/get_category_by_id_use_case_provider.dart';
-import 'package:axiom/src/features/categories/domain/failures/category_failure.dart';
+import 'package:axiom/src/core/presentation/mutations/result_mutation_state.dart';
+import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/categories/di/category_watch_queries_provider.dart';
+import 'package:axiom/src/features/categories/domain/entities/category.dart';
 import 'package:axiom/src/features/categories/domain/failures/category_not_found_failure.dart';
+import 'package:axiom/src/features/categories/presentation/state/categories_view_controller.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-
-import '../../../../core/failures/base_failure.dart';
-import '../../../../core/presentation/mutations/result_mutation_state.dart';
-import '../../../../core/result/result.dart';
-import '../../domain/entities/category.dart';
-import '../state/categories_view_controller.dart';
 
 part 'categories_state.g.dart';
 
-/// Loads categories from the application boundary.
+/// Watches categories from persistence.
 @riverpod
-Future<Result<List<Category>, BaseFailure>> categories(Ref ref) async {
-  final useCase = ref.watch(getCategoriesUseCaseProvider);
-  final result = await useCase();
-
-  return widenResult(result);
+Stream<Result<List<Category>, BaseFailure>> categories(Ref ref) {
+  return ref.watch(categoryWatchQueriesProvider).all().map((result) {
+    return widenResult(result);
+  });
 }
 
-/// Applies presentation-only filtering to [categoriesProvider].
+/// Applies presentation-only filtering to the watched category collection.
 @riverpod
-Future<Result<List<Category>, BaseFailure>> visibleCategories(Ref ref) async {
-  final source = await ref.watch(categoriesProvider.future);
-
-  if (source case final Failure<BaseFailure> failure) {
-    return failure;
-  }
-
+AsyncValue<Result<List<Category>, BaseFailure>> visibleCategories(Ref ref) {
+  final source = ref.watch(categoriesProvider);
   final state = ref.watch(categoriesViewControllerProvider);
-  final query = state.searchQuery.trim().toLowerCase();
 
-  final categories =
-      source.valueOrNull!
-          .where((category) {
-            if (!state.includeDeleted && category.isDeleted) {
-              return false;
-            }
+  return source.when(
+    loading: () => const AsyncLoading(),
+    error: (error, stackTrace) => AsyncError(error, stackTrace),
+    data: (result) {
+      final visible = result.when<Result<List<Category>, BaseFailure>>(
+        success: (categories) {
+          final query = state.searchQuery.trim().toLowerCase();
 
-            if (state.kind != null && category.kind != state.kind) {
-              return false;
-            }
+          final filtered =
+              categories
+                  .where((category) {
+                    if (!state.includeDeleted && category.isDeleted) {
+                      return false;
+                    }
 
-            if (query.isNotEmpty &&
-                !category.name.toLowerCase().contains(query)) {
-              return false;
-            }
+                    if (state.kind != null && category.kind != state.kind) {
+                      return false;
+                    }
 
-            return true;
-          })
-          .toList(growable: false)
-        ..sort((left, right) {
-          final sortOrder = left.sortOrder.compareTo(right.sortOrder);
-          if (sortOrder != 0) {
-            return sortOrder;
-          }
+                    if (query.isNotEmpty &&
+                        !category.name.toLowerCase().contains(query)) {
+                      return false;
+                    }
 
-          return left.name.toLowerCase().compareTo(right.name.toLowerCase());
-        });
+                    return true;
+                  })
+                  .toList(growable: false)
+                ..sort((left, right) {
+                  final sortOrder = left.sortOrder.compareTo(right.sortOrder);
 
-  return Success(categories);
+                  if (sortOrder != 0) {
+                    return sortOrder;
+                  }
+
+                  return left.name.toLowerCase().compareTo(
+                    right.name.toLowerCase(),
+                  );
+                });
+
+          return Success(List.unmodifiable(filtered));
+        },
+        failure: (failure) => failure,
+      );
+
+      return AsyncData(visible);
+    },
+  );
 }
 
-/// Loads one category for a details/edit route.
+/// Watches one category for details and editing.
 @riverpod
-Future<Result<Category, BaseFailure>> categoryDetails(
+Stream<Result<Category, BaseFailure>> categoryDetails(
   Ref ref,
   CategoryId categoryId,
-) async {
-  final useCase = ref.watch(getCategoryByIdUseCaseProvider);
-  final result = await useCase(categoryId);
+) {
+  return ref.watch(categoryWatchQueriesProvider).byId(categoryId).map((result) {
+    return result.when<Result<Category, BaseFailure>>(
+      success: (category) {
+        if (category == null) {
+          return CategoryNotFoundFailure(
+            message: 'Category ID was not found: ${categoryId.value}',
+          );
+        }
 
-  if (result case final Failure<CategoryFailure> failure) {
-    return failure;
-  }
-
-  final category = result.valueOrNull;
-
-  if (category == null) {
-    return CategoryNotFoundFailure(
-      message: 'Category ID was not found: ${categoryId.value}',
+        return Success(category);
+      },
+      failure: (failure) => failure,
     );
-  }
-
-  return Success(category);
+  });
 }

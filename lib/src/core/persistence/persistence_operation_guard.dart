@@ -32,3 +32,31 @@ guardPersistenceOperation<T extends Object?, F extends BaseFailure>({
     return persistenceFailure(failureMessage);
   }
 }
+
+/// Watches a persistence operation and translates expected persistence
+/// exceptions into feature-specific failure results.
+///
+/// The stream remains strongly typed: expected persistence problems are emitted
+/// as [Result] failures rather than exposed as stream errors.
+///
+/// Programmer errors and unexpected exceptions deliberately propagate.
+Stream<Result<T, F>>
+guardPersistenceStream<T extends Object?, F extends BaseFailure>({
+  required Stream<Result<T, F>> Function() operation,
+  required Result<T, F> Function(String message) persistenceFailure,
+  required String failureMessage,
+}) async* {
+  try {
+    await for (final result in operation()) {
+      yield result;
+    }
+  } on PersistenceRecordException {
+    yield persistenceFailure(
+      'Persisted data is invalid or cannot be reconstructed.',
+    );
+  } on FileSystemException {
+    yield persistenceFailure(failureMessage);
+  } on DatabaseException {
+    yield persistenceFailure(failureMessage);
+  }
+}

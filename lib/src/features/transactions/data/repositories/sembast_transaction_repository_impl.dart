@@ -746,4 +746,111 @@ final class SembastTransactionRepositoryImpl implements TransactionRepository {
           '${id.value}',
     );
   }
+
+  @override
+  Stream<Result<List<Transaction>, TransactionFailure>> watchAll() {
+    return _watchWhere((_) => true);
+  }
+
+  @override
+  Stream<Result<Transaction?, TransactionFailure>> watchById(TransactionId id) {
+    return persistence.guardPersistenceStream<Transaction?, TransactionFailure>(
+      operation: () {
+        return _store
+            .record(id.value)
+            .onSnapshot(_database)
+            .map<Result<Transaction?, TransactionFailure>>((snapshot) {
+              if (snapshot == null) {
+                return const Success(null);
+              }
+
+              return Success(
+                TransactionPersistenceModel.fromRecord(
+                  snapshot.key,
+                  snapshot.value,
+                ).toEntity(),
+              );
+            });
+      },
+      persistenceFailure: (message) =>
+          TransactionRepositoryFailure(message: message),
+      failureMessage: 'Unable to watch the transaction.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Transaction>, TransactionFailure>>
+  watchTransactionsByAccountId(AccountId accountId) {
+    return _watchWhere(
+      (transaction) => transaction.ledgerEntries.any(
+        (entry) => entry.accountId == accountId,
+      ),
+    );
+  }
+
+  @override
+  Stream<Result<List<Transaction>, TransactionFailure>>
+  watchTransactionsByCategoryId(CategoryId categoryId) {
+    return _watchWhere(
+      (transaction) =>
+          transaction.splits.any((split) => split.categoryId == categoryId),
+    );
+  }
+
+  @override
+  Stream<Result<List<Transaction>, TransactionFailure>>
+  watchTransactionsByJarId(JarId jarId) {
+    return _watchWhere(
+      (transaction) => transaction.splits.any((split) => split.jarId == jarId),
+    );
+  }
+
+  @override
+  Stream<Result<List<Transaction>, TransactionFailure>> watchQuery(
+    TransactionQuery query,
+  ) {
+    return _watchWhere(
+      query.isEmpty
+          ? (_) => true
+          : (transaction) => _matchesQuery(transaction, query),
+    );
+  }
+
+  Stream<Result<List<Transaction>, TransactionFailure>> _watchWhere(
+    bool Function(Transaction transaction) matches,
+  ) {
+    return persistence
+        .guardPersistenceStream<List<Transaction>, TransactionFailure>(
+          operation: () {
+            final query = _store.query(
+              finder: Finder(
+                sortOrders: <SortOrder>[
+                  SortOrder(TransactionPersistenceModel.persistenceOrderField),
+                ],
+              ),
+            );
+
+            return query
+                .onSnapshots(_database)
+                .map<Result<List<Transaction>, TransactionFailure>>((
+                  snapshots,
+                ) {
+                  final transactions = snapshots
+                      .map(
+                        (snapshot) => TransactionPersistenceModel.fromRecord(
+                          snapshot.key,
+                          snapshot.value,
+                        ).toEntity(),
+                      )
+                      .where(matches)
+                      .toList(growable: false);
+
+                  return Success(List<Transaction>.unmodifiable(transactions));
+                });
+          },
+          persistenceFailure: (message) =>
+              TransactionRepositoryFailure(message: message),
+          failureMessage: 'Unable to watch transactions.',
+        );
+  }
 }

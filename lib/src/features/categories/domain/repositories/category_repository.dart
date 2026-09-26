@@ -282,4 +282,12 @@ abstract interface class CategoryRepository {
   ///
   /// Those cross-category checks occur before calling this repository method.
   Future<Result<void, CategoryFailure>> restore(Category category);
+
+  Stream<Result<List<Category>, CategoryFailure>> watchAll();
+
+  Stream<Result<List<Category>, CategoryFailure>> watchActive();
+
+  Stream<Result<List<Category>, CategoryFailure>> watchArchived();
+
+  Stream<Result<Category?, CategoryFailure>> watchById(CategoryId id);
 }

@@ -54,6 +54,18 @@ final class AppRouter extends RootStackRouter {
     AutoRoute(path: '/accounts/:accountId/edit', page: EditAccountRoute.page),
     AutoRoute(path: '/accounts/:accountId', page: AccountDetailsRoute.page),
 
+    // Custodians
+    AutoRoute(path: '/custodians/new', page: CreateCustodianRoute.page),
+    AutoRoute(
+      path: '/custodians/:custodianId/edit',
+      page: EditCustodianRoute.page,
+    ),
+    AutoRoute(
+      path: '/custodians/:custodianId',
+      page: CustodianDetailsRoute.page,
+    ),
+    AutoRoute(path: '/custodians', page: CustodiansRoute.page),
+
     //
     // Categories.
     //

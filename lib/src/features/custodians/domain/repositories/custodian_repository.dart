@@ -110,4 +110,12 @@ abstract interface class CustodianRepository {
   /// [CustodianAlreadyExistsFailure] when its identity already exists in
   /// persistence.
   Future<Result<void, CustodianFailure>> restore(Custodian custodian);
+
+  Stream<Result<List<Custodian>, CustodianFailure>> watchAll();
+
+  Stream<Result<List<Custodian>, CustodianFailure>> watchActive();
+
+  Stream<Result<List<Custodian>, CustodianFailure>> watchArchived();
+
+  Stream<Result<Custodian?, CustodianFailure>> watchById(CustodianId id);
 }

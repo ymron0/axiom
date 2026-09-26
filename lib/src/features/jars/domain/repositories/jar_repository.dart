@@ -94,4 +94,12 @@ abstract interface class JarRepository {
   /// Restoration clears [Jar.deletedAt] but preserves [Jar.archivedAt].
   /// Therefore a jar that was archived when deleted is restored as archived.
   Future<Result<void, JarFailure>> restore(Jar jar);
+
+  Stream<Result<List<Jar>, JarFailure>> watchAll();
+
+  Stream<Result<List<Jar>, JarFailure>> watchActive();
+
+  Stream<Result<List<Jar>, JarFailure>> watchArchived();
+
+  Stream<Result<Jar?, JarFailure>> watchById(JarId id);
 }

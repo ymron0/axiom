@@ -274,7 +274,7 @@ final class _ActivityPageState extends ConsumerState<ActivityPage> {
     TransactionActivityData data, {
     Transaction? transaction,
   }) async {
-    final changed = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -287,9 +287,7 @@ final class _ActivityPageState extends ConsumerState<ActivityPage> {
       },
     );
 
-    if (changed ?? false) {
-      await _refresh();
-    }
+    // No refresh is required. Persistence emits the changed transaction.
   }
 
   Future<void> _openDetails(
@@ -328,7 +326,7 @@ final class _ActivityPageState extends ConsumerState<ActivityPage> {
     Transaction transaction,
     TransactionActivityData data,
   ) async {
-    final changed = await showModalBottomSheet<bool>(
+    await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -340,9 +338,7 @@ final class _ActivityPageState extends ConsumerState<ActivityPage> {
       },
     );
 
-    if (changed ?? false) {
-      await _refresh();
-    }
+    // No refresh is required. The transaction watcher receives the new offset.
   }
 
   Future<void> _deleteTransaction(Transaction transaction) async {
@@ -380,8 +376,6 @@ final class _ActivityPageState extends ConsumerState<ActivityPage> {
 
     try {
       final snapshot = await runDeleteTransactionMutation(ref, transaction);
-
-      await _refresh();
 
       if (!mounted) {
         return;
@@ -464,8 +458,6 @@ final class _ActivityPageState extends ConsumerState<ActivityPage> {
         transaction: transaction,
         mode: mode,
       );
-
-      await _refresh();
     } catch (error) {
       _showMutationError(error);
     }
@@ -474,7 +466,6 @@ final class _ActivityPageState extends ConsumerState<ActivityPage> {
   Future<void> _restoreTransaction(Transaction snapshot) async {
     try {
       await runRestoreTransactionMutation(ref, snapshot);
-      await _refresh();
 
       if (mounted) {
         ScaffoldMessenger.of(
@@ -486,6 +477,10 @@ final class _ActivityPageState extends ConsumerState<ActivityPage> {
     }
   }
 
+  /// Explicit retry/manual refresh only.
+  ///
+  /// Normal persistence mutations do not call this because Sembast watchers
+  /// emit changes automatically.
   Future<void> _refresh() async {
     final state = ref.read(transactionsViewControllerProvider);
 

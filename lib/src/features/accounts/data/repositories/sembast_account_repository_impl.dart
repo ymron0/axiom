@@ -396,6 +396,117 @@ final class SembastAccountRepositoryImpl implements AccountRepository {
     );
   }
 
+  @override
+  Stream<Result<List<Account>, AccountFailure>> watchAll() {
+    return guardPersistenceStream<List<Account>, AccountFailure>(
+      operation: () {
+        return _watchAccounts().map<Result<List<Account>, AccountFailure>>(
+          (accounts) => Success(List<Account>.unmodifiable(accounts)),
+        );
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the accounts.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Account>, AccountFailure>> watchActive() {
+    return guardPersistenceStream<List<Account>, AccountFailure>(
+      operation: () {
+        return _watchAccounts().map<Result<List<Account>, AccountFailure>>((
+          accounts,
+        ) {
+          final active = accounts
+              .where((account) => !account.isArchived)
+              .toList(growable: false);
+
+          return Success(List<Account>.unmodifiable(active));
+        });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the active accounts.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Account>, AccountFailure>> watchArchived() {
+    return guardPersistenceStream<List<Account>, AccountFailure>(
+      operation: () {
+        return _watchAccounts().map<Result<List<Account>, AccountFailure>>((
+          accounts,
+        ) {
+          final archived = accounts
+              .where((account) => account.isArchived)
+              .toList(growable: false);
+
+          return Success(List<Account>.unmodifiable(archived));
+        });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the archived accounts.',
+    );
+  }
+
+  @override
+  Stream<Result<Account?, AccountFailure>> watchById(AccountId id) {
+    return guardPersistenceStream<Account?, AccountFailure>(
+      operation: () {
+        return _store
+            .record(id.value)
+            .onSnapshot(_database)
+            .map<Result<Account?, AccountFailure>>((snapshot) {
+              if (snapshot == null) {
+                return const Success(null);
+              }
+
+              return Success(_accountFromSnapshot(snapshot));
+            });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the account.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Account>, AccountFailure>> watchByCustodianId(
+    CustodianId custodianId,
+  ) {
+    return guardPersistenceStream<List<Account>, AccountFailure>(
+      operation: () {
+        final query = _store.query(
+          finder: Finder(
+            filter: Filter.equals(
+              AccountPersistenceModel.custodianIdField,
+              custodianId.value,
+            ),
+          ),
+        );
+
+        return query
+            .onSnapshots(_database)
+            .map<Result<List<Account>, AccountFailure>>((snapshots) {
+              final accounts = snapshots
+                  .map(_accountFromSnapshot)
+                  .toList(growable: false);
+
+              return Success(List<Account>.unmodifiable(accounts));
+            });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch accounts by custodian ID.',
+    );
+  }
+
+  Stream<List<Account>> _watchAccounts() {
+    return _store
+        .query()
+        .onSnapshots(_database)
+        .map(
+          (snapshots) =>
+              snapshots.map(_accountFromSnapshot).toList(growable: false),
+        );
+  }
+
   /// Reconstructs an account from its persisted record key and value.
   static Account _accountFromRecord({
     required String recordKey,

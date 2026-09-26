@@ -7,13 +7,12 @@ import 'package:axiom/src/core/identity/ids/jar_id.dart';
 import 'package:axiom/src/core/result/result.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/value_objects/asset_amount.dart';
-import 'package:axiom/src/features/jars/di/get_active_jars_use_case_provider.dart';
-import 'package:axiom/src/features/jars/di/get_jar_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/jars/di/get_jars_use_case_provider.dart';
+import 'package:axiom/src/features/jars/di/jar_watch_queries_provider.dart';
 import 'package:axiom/src/features/jars/domain/entities/jar.dart';
 import 'package:axiom/src/features/jars/domain/failures/jar_failure.dart';
 import 'package:axiom/src/features/jars/domain/value_objects/jar_progress.dart';
-import 'package:axiom/src/features/transactions/di/get_transactions_by_jar_id_use_case_provider.dart';
+import 'package:axiom/src/features/transactions/di/transaction_watch_queries_provider.dart';
 import 'package:axiom/src/features/transactions/domain/entities/transaction.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_failure.dart';
 import 'package:decimal/decimal.dart';
@@ -48,9 +47,6 @@ final class JarProgressPresentationData {
 }
 
 /// One transaction allocation belonging to a jar.
-///
-/// Multiple splits on the same transaction targeting the same jar are
-/// collapsed into one valuation-currency amount.
 final class JarAllocationEntry {
   /// Creates a jar allocation entry.
   const JarAllocationEntry({required this.transaction, required this.amount});
@@ -71,32 +67,32 @@ final class JarAllocationPresentationData {
   final Currency valuationCurrency;
 }
 
-/// Loads active jars for the normal overview.
+/// Watches active jars for the normal overview.
 @riverpod
-Future<Result<List<Jar>, JarFailure>> jars(Ref ref) async {
-  final result = await ref.watch(getActiveJarsUseCaseProvider)();
-
-  return result.when<Result<List<Jar>, JarFailure>>(
-    success: (jars) => Success(_sortJars(jars)),
-    failure: (failure) => failure,
-  );
+Stream<Result<List<Jar>, JarFailure>> jars(Ref ref) {
+  return ref.watch(jarWatchQueriesProvider).active().map((result) {
+    return result.when<Result<List<Jar>, JarFailure>>(
+      success: (jars) => Success(_sortJars(jars)),
+      failure: (failure) => failure,
+    );
+  });
 }
 
-/// Loads all jars, including archived jars.
+/// Watches all jars, including archived jars.
 @riverpod
-Future<Result<List<Jar>, JarFailure>> allJars(Ref ref) async {
-  final result = await ref.watch(getJarsUseCaseProvider)();
-
-  return result.when<Result<List<Jar>, JarFailure>>(
-    success: (jars) => Success(_sortJars(jars)),
-    failure: (failure) => failure,
-  );
+Stream<Result<List<Jar>, JarFailure>> allJars(Ref ref) {
+  return ref.watch(jarWatchQueriesProvider).all().map((result) {
+    return result.when<Result<List<Jar>, JarFailure>>(
+      success: (jars) => Success(_sortJars(jars)),
+      failure: (failure) => failure,
+    );
+  });
 }
 
-/// Loads one jar by identity.
+/// Watches one jar by identity.
 @riverpod
-Future<Result<Jar?, JarFailure>> jar(Ref ref, JarId jarId) {
-  return ref.watch(getJarByIdUseCaseProvider)(jarId);
+Stream<Result<Jar?, JarFailure>> jar(Ref ref, JarId jarId) {
+  return ref.watch(jarWatchQueriesProvider).byId(jarId);
 }
 
 /// Loads the configured valuation currency used by jars.
@@ -163,97 +159,136 @@ jarProgressPresentation(Ref ref, JarId jarId) async {
   );
 }
 
-/// Loads all transactions containing an allocation to [jarId].
+/// Watches all transactions containing an allocation to [jarId].
 @riverpod
-Future<Result<List<Transaction>, TransactionFailure>> jarTransactions(
+Stream<Result<List<Transaction>, TransactionFailure>> jarTransactions(
   Ref ref,
   JarId jarId,
-) async {
-  final result = await ref.watch(getTransactionsByJarIdUseCaseProvider)(jarId);
+) {
+  return ref.watch(transactionWatchQueriesProvider).byJarId(jarId).map((
+    result,
+  ) {
+    return result.when<Result<List<Transaction>, TransactionFailure>>(
+      success: (transactions) {
+        final sorted = List<Transaction>.of(
+          transactions,
+        )..sort((left, right) => right.effectiveAt.compareTo(left.effectiveAt));
 
-  return result.when<Result<List<Transaction>, TransactionFailure>>(
-    success: (transactions) {
-      final sorted = List<Transaction>.of(transactions)
-        ..sort((left, right) {
-          return right.effectiveAt.compareTo(left.effectiveAt);
-        });
-
-      return Success(List.unmodifiable(sorted));
-    },
-    failure: (failure) => failure,
-  );
-}
-
-/// Derives jar-specific allocation amounts from its transactions.
-@riverpod
-Future<Result<List<JarAllocationEntry>, TransactionFailure>> jarAllocations(
-  Ref ref,
-  JarId jarId,
-) async {
-  final transactionsResult = await ref.watch(
-    jarTransactionsProvider(jarId).future,
-  );
-
-  if (transactionsResult case final Failure<TransactionFailure> failure) {
-    return failure;
-  }
-
-  final entries = <JarAllocationEntry>[];
-
-  for (final transaction in transactionsResult.valueOrNull!) {
-    final matchingSplits = transaction.splits
-        .where((split) => split.jarId == jarId)
-        .toList(growable: false);
-
-    if (matchingSplits.isEmpty) {
-      continue;
-    }
-
-    var signedTotal = Decimal.zero;
-
-    for (final split in matchingSplits) {
-      final amount = split.valuationAmount;
-
-      signedTotal += amount.isIncoming ? amount.amount : -amount.amount;
-    }
-
-    final assetId = matchingSplits.first.valuationAmount.assetId;
-
-    final allocation = signedTotal < Decimal.zero
-        ? AssetAmount.outgoing(assetId: assetId, amount: signedTotal.abs())
-        : AssetAmount.incoming(assetId: assetId, amount: signedTotal);
-
-    entries.add(
-      JarAllocationEntry(transaction: transaction, amount: allocation),
+        return Success(List.unmodifiable(sorted));
+      },
+      failure: (failure) => failure,
     );
-  }
-
-  return Success(List.unmodifiable(entries));
+  });
 }
 
-/// Loads allocation entries together with valuation-currency metadata.
+/// Derives jar-specific allocation amounts from watched transactions.
+///
+/// This provider derives directly from [jarTransactionsProvider] rather than
+/// awaiting its `.future`, allowing every subsequent persistence emission to
+/// propagate immediately.
 @riverpod
-Future<Result<JarAllocationPresentationData, BaseFailure>>
-jarAllocationPresentation(Ref ref, JarId jarId) async {
-  final allocationsResult = await ref.watch(
-    jarAllocationsProvider(jarId).future,
+AsyncValue<Result<List<JarAllocationEntry>, TransactionFailure>> jarAllocations(
+  Ref ref,
+  JarId jarId,
+) {
+  final source = ref.watch(jarTransactionsProvider(jarId));
+
+  return source.when(
+    loading: () => const AsyncLoading(),
+    error: (error, stackTrace) => AsyncError(error, stackTrace),
+    data: (transactionsResult) {
+      final result = transactionsResult
+          .when<Result<List<JarAllocationEntry>, TransactionFailure>>(
+            success: (transactions) {
+              final entries = <JarAllocationEntry>[];
+
+              for (final transaction in transactions) {
+                final matchingSplits = transaction.splits
+                    .where((split) => split.jarId == jarId)
+                    .toList(growable: false);
+
+                if (matchingSplits.isEmpty) {
+                  continue;
+                }
+
+                var signedTotal = Decimal.zero;
+
+                for (final split in matchingSplits) {
+                  final amount = split.valuationAmount;
+
+                  signedTotal += amount.isIncoming
+                      ? amount.amount
+                      : -amount.amount;
+                }
+
+                final assetId = matchingSplits.first.valuationAmount.assetId;
+
+                final allocation = signedTotal < Decimal.zero
+                    ? AssetAmount.outgoing(
+                        assetId: assetId,
+                        amount: signedTotal.abs(),
+                      )
+                    : AssetAmount.incoming(
+                        assetId: assetId,
+                        amount: signedTotal,
+                      );
+
+                entries.add(
+                  JarAllocationEntry(
+                    transaction: transaction,
+                    amount: allocation,
+                  ),
+                );
+              }
+
+              return Success(List.unmodifiable(entries));
+            },
+            failure: (failure) => failure,
+          );
+
+      return AsyncData(result);
+    },
   );
+}
 
-  if (allocationsResult case final Failure<BaseFailure> failure) {
-    return failure;
-  }
+/// Combines watched allocations with valuation-currency metadata.
+@riverpod
+AsyncValue<Result<JarAllocationPresentationData, BaseFailure>>
+jarAllocationPresentation(Ref ref, JarId jarId) {
+  final allocations = ref.watch(jarAllocationsProvider(jarId));
+  final currency = ref.watch(jarValuationCurrencyProvider);
 
-  final currencyResult = await ref.watch(getValuationCurrencyServiceProvider)();
+  return allocations.when(
+    loading: () => const AsyncLoading(),
+    error: (error, stackTrace) => AsyncError(error, stackTrace),
+    data: (allocationsResult) {
+      return currency.when(
+        loading: () => const AsyncLoading(),
+        error: (error, stackTrace) => AsyncError(error, stackTrace),
+        data: (currencyResult) {
+          final result = allocationsResult
+              .when<Result<JarAllocationPresentationData, BaseFailure>>(
+                success: (entries) {
+                  return currencyResult
+                      .when<Result<JarAllocationPresentationData, BaseFailure>>(
+                        success: (valuationCurrency) {
+                          return Success(
+                            JarAllocationPresentationData(
+                              entries: entries,
+                              valuationCurrency: valuationCurrency,
+                            ),
+                          );
+                        },
+                        failure: (failure) => failure,
+                      );
+                },
+                failure: (failure) => failure,
+              );
 
-  if (currencyResult case final Failure<BaseFailure> failure) {
-    return failure;
-  }
-
-  return Success(
-    JarAllocationPresentationData(
-      entries: allocationsResult.valueOrNull!,
-      valuationCurrency: currencyResult.valueOrNull!,
-    ),
+          return AsyncData(result);
+        },
+      );
+    },
   );
 }
 

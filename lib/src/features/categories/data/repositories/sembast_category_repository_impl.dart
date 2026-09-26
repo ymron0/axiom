@@ -632,4 +632,85 @@ final class SembastCategoryRepositoryImpl implements CategoryRepository {
       entityVersion: category.entityVersion,
     );
   }
+
+  @override
+  Stream<Result<List<Category>, CategoryFailure>> watchAll() {
+    return guardPersistenceStream<List<Category>, CategoryFailure>(
+      operation: () {
+        return _watchCategories().map<Result<List<Category>, CategoryFailure>>(
+          (categories) => Success(List<Category>.unmodifiable(categories)),
+        );
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the categories.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Category>, CategoryFailure>> watchActive() {
+    return guardPersistenceStream<List<Category>, CategoryFailure>(
+      operation: () {
+        return _watchCategories().map<Result<List<Category>, CategoryFailure>>((
+          categories,
+        ) {
+          final active = categories
+              .where((category) => !category.isArchived)
+              .toList(growable: false);
+
+          return Success(List<Category>.unmodifiable(active));
+        });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the active categories.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Category>, CategoryFailure>> watchArchived() {
+    return guardPersistenceStream<List<Category>, CategoryFailure>(
+      operation: () {
+        return _watchCategories().map<Result<List<Category>, CategoryFailure>>((
+          categories,
+        ) {
+          final archived = categories
+              .where((category) => category.isArchived)
+              .toList(growable: false);
+
+          return Success(List<Category>.unmodifiable(archived));
+        });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the archived categories.',
+    );
+  }
+
+  @override
+  Stream<Result<Category?, CategoryFailure>> watchById(CategoryId id) {
+    return guardPersistenceStream<Category?, CategoryFailure>(
+      operation: () {
+        return _store
+            .record(id.value)
+            .onSnapshot(_database)
+            .map<Result<Category?, CategoryFailure>>((snapshot) {
+              if (snapshot == null) {
+                return const Success(null);
+              }
+
+              return Success(_categoryFromSnapshot(snapshot));
+            });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the category.',
+    );
+  }
+
+  Stream<List<Category>> _watchCategories() {
+    return _store
+        .query()
+        .onSnapshots(_database)
+        .map(
+          (snapshots) =>
+              snapshots.map(_categoryFromSnapshot).toList(growable: false),
+        );
+  }
 }

@@ -457,4 +457,81 @@ final class SembastJarRepositoryImpl implements JarRepository {
       entityVersion: jar.entityVersion,
     );
   }
+
+  @override
+  Stream<Result<List<Jar>, JarFailure>> watchAll() {
+    return guardPersistenceStream<List<Jar>, JarFailure>(
+      operation: () {
+        return _watchJars().map<Result<List<Jar>, JarFailure>>(
+          (jars) => Success(List<Jar>.unmodifiable(jars)),
+        );
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the jars.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Jar>, JarFailure>> watchActive() {
+    return guardPersistenceStream<List<Jar>, JarFailure>(
+      operation: () {
+        return _watchJars().map<Result<List<Jar>, JarFailure>>((jars) {
+          final active = jars
+              .where((jar) => !jar.isArchived)
+              .toList(growable: false);
+
+          return Success(List<Jar>.unmodifiable(active));
+        });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the active jars.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Jar>, JarFailure>> watchArchived() {
+    return guardPersistenceStream<List<Jar>, JarFailure>(
+      operation: () {
+        return _watchJars().map<Result<List<Jar>, JarFailure>>((jars) {
+          final archived = jars
+              .where((jar) => jar.isArchived)
+              .toList(growable: false);
+
+          return Success(List<Jar>.unmodifiable(archived));
+        });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the archived jars.',
+    );
+  }
+
+  @override
+  Stream<Result<Jar?, JarFailure>> watchById(JarId id) {
+    return guardPersistenceStream<Jar?, JarFailure>(
+      operation: () {
+        return _store
+            .record(id.value)
+            .onSnapshot(_database)
+            .map<Result<Jar?, JarFailure>>((snapshot) {
+              if (snapshot == null) {
+                return const Success(null);
+              }
+
+              return Success(_jarFromSnapshot(snapshot));
+            });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the jar.',
+    );
+  }
+
+  Stream<List<Jar>> _watchJars() {
+    return _store
+        .query()
+        .onSnapshots(_database)
+        .map(
+          (snapshots) =>
+              snapshots.map(_jarFromSnapshot).toList(growable: false),
+        );
+  }
 }

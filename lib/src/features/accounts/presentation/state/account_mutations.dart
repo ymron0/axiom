@@ -20,10 +20,10 @@ final updateAccountMutation = Mutation<Result<void, AccountFailure>>(
   label: 'update-account',
 );
 
-/// Executes account creation and refreshes affected queries.
+/// Executes account creation.
 ///
-/// `null` is returned only for an unexpected thrown exception. The mutation
-/// itself retains that exception as [MutationError].
+/// Watched account and custodian-account projections update automatically from
+/// persistence. Only non-reactive derived projections are invalidated.
 Future<Result<Account, AccountFailure>?> executeCreateAccount(
   WidgetRef ref,
   AccountFormData data,
@@ -36,9 +36,7 @@ Future<Result<Account, AccountFailure>?> executeCreateAccount(
     });
 
     if (result.isSuccess) {
-      ref.invalidate(accountsProvider);
       ref.invalidate(accountFormOptionsProvider(null));
-      ref.invalidate(custodianAccountsProvider(data.custodianId));
       ref.invalidate(custodianValuationProvider(data.custodianId));
     }
 
@@ -48,7 +46,9 @@ Future<Result<Account, AccountFailure>?> executeCreateAccount(
   }
 }
 
-/// Executes account editing and refreshes all affected projections.
+/// Executes account editing.
+///
+/// Watched account projections require no explicit invalidation.
 Future<Result<void, AccountFailure>?> executeUpdateAccount(
   WidgetRef ref, {
   required Account original,
@@ -65,14 +65,9 @@ Future<Result<void, AccountFailure>?> executeUpdateAccount(
     });
 
     if (result.isSuccess) {
-      ref.invalidate(accountsProvider);
-      ref.invalidate(accountProvider(original.id));
       ref.invalidate(accountValuationPresentationProvider(original.id));
 
-      ref.invalidate(custodianAccountsProvider(original.custodianId));
       ref.invalidate(custodianValuationProvider(original.custodianId));
-
-      ref.invalidate(custodianAccountsProvider(data.custodianId));
       ref.invalidate(custodianValuationProvider(data.custodianId));
 
       ref.invalidate(accountFormOptionsProvider(data.custodianId));

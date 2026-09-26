@@ -16,7 +16,7 @@ import 'package:axiom/src/features/merchants/di/get_merchants_use_case_provider.
 import 'package:axiom/src/features/merchants/domain/failures/merchant_failure.dart';
 import 'package:axiom/src/features/tags/di/get_tags_use_case_provider.dart';
 import 'package:axiom/src/features/tags/domain/failures/tag_failure.dart';
-import 'package:axiom/src/features/transactions/di/query_transactions_use_case_provider.dart';
+import 'package:axiom/src/features/transactions/di/transaction_watch_queries_provider.dart';
 import 'package:axiom/src/features/transactions/domain/failures/transaction_failure.dart';
 import 'package:axiom/src/features/transactions/domain/repositories/transaction_query.dart';
 import 'package:axiom/src/features/transactions/presentation/providers/transactions_view_controller.dart';
@@ -25,113 +25,131 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'transaction_month_source_provider.g.dart';
 
-/// Loads repository-backed transaction and reference data for one month.
+/// Watches transaction data for one month.
 ///
-/// The period uses local-calendar boundaries converted to UTC, so a transaction
-/// belongs to the month the user sees rather than to an arbitrary UTC month.
+/// The transaction collection itself is reactive. Supporting reference data is
+/// reloaded whenever the watched transaction stream emits.
+///
+/// The period uses local-calendar boundaries converted to UTC.
 @riverpod
-Future<Result<TransactionMonthSource, BaseFailure>> transactionMonthSource(
+Stream<Result<TransactionMonthSource, BaseFailure>> transactionMonthSource(
   Ref ref,
   DateTime month,
-) async {
+) async* {
+  final transactionQueries = ref.watch(transactionWatchQueriesProvider);
+
+  final getMerchants = ref.watch(getMerchantsUseCaseProvider);
+  final getArchivedMerchants = ref.watch(getArchivedMerchantsUseCaseProvider);
+  final getAccounts = ref.watch(getAccountsUseCaseProvider);
+  final getArchivedAccounts = ref.watch(getArchivedAccountsUseCaseProvider);
+  final getAssets = ref.watch(getAssetUseCaseProvider);
+  final getCategories = ref.watch(getCategoriesUseCaseProvider);
+  final getJars = ref.watch(getJarsUseCaseProvider);
+  final getTags = ref.watch(getTagsUseCaseProvider);
+  final getValuationCurrency = ref.watch(getValuationCurrencyServiceProvider);
+
   final monthStart = DateTime(month.year, month.month);
   final monthEnd = DateTime(month.year, month.month + 1);
 
-  final transactionsResult = await ref
-      .watch(queryTransactionsUseCaseProvider)
-      .call(
-        TransactionQuery(
-          effectiveFrom: monthStart.toUtc(),
-          effectiveUntil: monthEnd.toUtc(),
-        ),
-      );
-
-  if (transactionsResult case final Failure<TransactionFailure> failure) {
-    return failure;
-  }
-
-  final merchantsResult = await ref.watch(getMerchantsUseCaseProvider).call();
-
-  if (merchantsResult case final Failure<MerchantFailure> failure) {
-    return failure;
-  }
-
-  final archivedMerchantsResult = await ref
-      .watch(getArchivedMerchantsUseCaseProvider)
-      .call();
-
-  if (archivedMerchantsResult case final Failure<MerchantFailure> failure) {
-    return failure;
-  }
-
-  final accountsResult = await ref.watch(getAccountsUseCaseProvider).call();
-
-  if (accountsResult case final Failure<AccountFailure> failure) {
-    return failure;
-  }
-
-  final archivedAccountsResult = await ref
-      .watch(getArchivedAccountsUseCaseProvider)
-      .call();
-
-  if (archivedAccountsResult case final Failure<AccountFailure> failure) {
-    return failure;
-  }
-
-  final assetsResult = await ref.watch(getAssetUseCaseProvider).call();
-
-  if (assetsResult case final Failure<AssetFailure> failure) {
-    return failure;
-  }
-
-  final categoriesResult = await ref.watch(getCategoriesUseCaseProvider).call();
-
-  if (categoriesResult case final Failure<CategoryFailure> failure) {
-    return failure;
-  }
-
-  final jarsResult = await ref.watch(getJarsUseCaseProvider).call();
-
-  if (jarsResult case final Failure<JarFailure> failure) {
-    return failure;
-  }
-
-  final tagsResult = await ref.watch(getTagsUseCaseProvider).call();
-
-  if (tagsResult case final Failure<TagFailure> failure) {
-    return failure;
-  }
-
-  final valuationCurrencyResult = await ref
-      .watch(getValuationCurrencyServiceProvider)
-      .call();
-
-  if (valuationCurrencyResult case final Failure<BaseFailure> failure) {
-    return failure;
-  }
-
-  return Success(
-    TransactionMonthSource(
-      monthStart: monthStart,
-      transactions: transactionsResult.valueOrNull!,
-      merchants: [
-        ...merchantsResult.valueOrNull!,
-        ...archivedMerchantsResult.valueOrNull!,
-      ],
-      accounts: [
-        ...accountsResult.valueOrNull!,
-        ...archivedAccountsResult.valueOrNull!,
-      ],
-      assets: assetsResult.valueOrNull!,
-      categories: categoriesResult.valueOrNull!,
-      jars: jarsResult.valueOrNull!,
-      tags: tagsResult.valueOrNull!,
-      valuationCurrency: valuationCurrencyResult.valueOrNull!,
+  final transactions = transactionQueries.query(
+    TransactionQuery(
+      effectiveFrom: monthStart.toUtc(),
+      effectiveUntil: monthEnd.toUtc(),
     ),
   );
+
+  await for (final transactionsResult in transactions) {
+    if (transactionsResult case final Failure<TransactionFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final merchantsResult = await getMerchants();
+
+    if (merchantsResult case final Failure<MerchantFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final archivedMerchantsResult = await getArchivedMerchants();
+
+    if (archivedMerchantsResult case final Failure<MerchantFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final accountsResult = await getAccounts();
+
+    if (accountsResult case final Failure<AccountFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final archivedAccountsResult = await getArchivedAccounts();
+
+    if (archivedAccountsResult case final Failure<AccountFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final assetsResult = await getAssets();
+
+    if (assetsResult case final Failure<AssetFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final categoriesResult = await getCategories();
+
+    if (categoriesResult case final Failure<CategoryFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final jarsResult = await getJars();
+
+    if (jarsResult case final Failure<JarFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final tagsResult = await getTags();
+
+    if (tagsResult case final Failure<TagFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    final valuationCurrencyResult = await getValuationCurrency();
+
+    if (valuationCurrencyResult case final Failure<BaseFailure> failure) {
+      yield failure;
+      continue;
+    }
+
+    yield Success(
+      TransactionMonthSource(
+        monthStart: monthStart,
+        transactions: transactionsResult.valueOrNull!,
+        merchants: [
+          ...merchantsResult.valueOrNull!,
+          ...archivedMerchantsResult.valueOrNull!,
+        ],
+        accounts: [
+          ...accountsResult.valueOrNull!,
+          ...archivedAccountsResult.valueOrNull!,
+        ],
+        assets: assetsResult.valueOrNull!,
+        categories: categoriesResult.valueOrNull!,
+        jars: jarsResult.valueOrNull!,
+        tags: tagsResult.valueOrNull!,
+        valuationCurrency: valuationCurrencyResult.valueOrNull!,
+      ),
+    );
+  }
 }
 
-/// Applies local view state to the cached monthly repository result.
+/// Applies local view state to the watched monthly repository result.
 @riverpod
 AsyncValue<Result<TransactionActivityData, BaseFailure>>
 transactionActivityData(Ref ref) {

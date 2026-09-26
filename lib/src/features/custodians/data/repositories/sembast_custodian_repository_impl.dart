@@ -446,4 +446,84 @@ final class SembastCustodianRepositoryImpl implements CustodianRepository {
         modifiedAt: custodian.modifiedAt,
         entityVersion: custodian.entityVersion,
       );
+
+  @override
+  Stream<Result<List<Custodian>, CustodianFailure>> watchAll() {
+    return guardPersistenceStream<List<Custodian>, CustodianFailure>(
+      operation: () {
+        return _watchCustodians()
+            .map<Result<List<Custodian>, CustodianFailure>>(
+              (custodians) => Success(List<Custodian>.unmodifiable(custodians)),
+            );
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the custodians.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Custodian>, CustodianFailure>> watchActive() {
+    return guardPersistenceStream<List<Custodian>, CustodianFailure>(
+      operation: () {
+        return _watchCustodians()
+            .map<Result<List<Custodian>, CustodianFailure>>((custodians) {
+              final active = custodians
+                  .where((custodian) => !custodian.isArchived)
+                  .toList(growable: false);
+
+              return Success(List<Custodian>.unmodifiable(active));
+            });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the active custodians.',
+    );
+  }
+
+  @override
+  Stream<Result<List<Custodian>, CustodianFailure>> watchArchived() {
+    return guardPersistenceStream<List<Custodian>, CustodianFailure>(
+      operation: () {
+        return _watchCustodians()
+            .map<Result<List<Custodian>, CustodianFailure>>((custodians) {
+              final archived = custodians
+                  .where((custodian) => custodian.isArchived)
+                  .toList(growable: false);
+
+              return Success(List<Custodian>.unmodifiable(archived));
+            });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the archived custodians.',
+    );
+  }
+
+  @override
+  Stream<Result<Custodian?, CustodianFailure>> watchById(CustodianId id) {
+    return guardPersistenceStream<Custodian?, CustodianFailure>(
+      operation: () {
+        return _store
+            .record(id.value)
+            .onSnapshot(_database)
+            .map<Result<Custodian?, CustodianFailure>>((snapshot) {
+              if (snapshot == null) {
+                return const Success(null);
+              }
+
+              return Success(_custodianFromSnapshot(snapshot));
+            });
+      },
+      persistenceFailure: _persistenceFailure,
+      failureMessage: 'Unable to watch the custodian.',
+    );
+  }
+
+  Stream<List<Custodian>> _watchCustodians() {
+    return _store
+        .query()
+        .onSnapshots(_database)
+        .map(
+          (snapshots) =>
+              snapshots.map(_custodianFromSnapshot).toList(growable: false),
+        );
+  }
 }

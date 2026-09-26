@@ -226,4 +226,27 @@ abstract interface class TransactionRepository {
   /// The deleted snapshot is not mutated, and the restored record has a null
   /// [Transaction.deletedAt].
   Future<Result<void, TransactionFailure>> restore(Transaction transaction);
+
+  /// Watches all persisted transactions.
+  Stream<Result<List<Transaction>, TransactionFailure>> watchAll();
+
+  /// Watches one transaction by identity.
+  Stream<Result<Transaction?, TransactionFailure>> watchById(TransactionId id);
+
+  /// Watches transactions affecting [accountId].
+  Stream<Result<List<Transaction>, TransactionFailure>>
+  watchTransactionsByAccountId(AccountId accountId);
+
+  /// Watches transactions allocated to [categoryId].
+  Stream<Result<List<Transaction>, TransactionFailure>>
+  watchTransactionsByCategoryId(CategoryId categoryId);
+
+  /// Watches transactions allocated to [jarId].
+  Stream<Result<List<Transaction>, TransactionFailure>>
+  watchTransactionsByJarId(JarId jarId);
+
+  /// Watches transactions satisfying [query].
+  Stream<Result<List<Transaction>, TransactionFailure>> watchQuery(
+    TransactionQuery query,
+  );
 }

@@ -4,9 +4,9 @@ import 'package:axiom/src/core/failures/base_failure.dart';
 import 'package:axiom/src/core/identity/ids/account_id.dart';
 import 'package:axiom/src/core/identity/ids/custodian_id.dart';
 import 'package:axiom/src/core/result/result.dart';
+import 'package:axiom/src/features/accounts/di/account_watch_queries_provider.dart';
 import 'package:axiom/src/features/accounts/di/get_account_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/accounts/di/get_accounts_use_case_provider.dart';
-import 'package:axiom/src/features/accounts/di/get_active_accounts_use_case_provider.dart';
 import 'package:axiom/src/features/accounts/domain/entities/account.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_failure.dart';
 import 'package:axiom/src/features/accounts/domain/failures/account_not_found_failure.dart';
@@ -14,6 +14,7 @@ import 'package:axiom/src/features/assets/di/get_asset_by_id_use_case_provider.d
 import 'package:axiom/src/features/assets/di/get_asset_use_case_provider.dart';
 import 'package:axiom/src/features/assets/domain/entities/asset.dart';
 import 'package:axiom/src/features/assets/domain/failures/asset_not_found_failure.dart';
+import 'package:axiom/src/features/custodians/di/custodian_watch_queries_provider.dart';
 import 'package:axiom/src/features/custodians/di/get_active_custodians_use_case_provider.dart';
 import 'package:axiom/src/features/custodians/di/get_custodian_by_id_use_case_provider.dart';
 import 'package:axiom/src/features/custodians/domain/entities/custodian.dart';
@@ -51,48 +52,46 @@ final class AccountFormOptions {
   final int nextSortOrder;
 }
 
-/// Loads active accounts for the overview.
+/// Watches active accounts for the overview.
 @riverpod
-Future<Result<List<Account>, AccountFailure>> accounts(Ref ref) async {
-  final result = await ref.watch(getActiveAccountsUseCaseProvider)();
-
-  return result.when<Result<List<Account>, AccountFailure>>(
-    success: (accounts) {
-      final sorted = List<Account>.of(accounts)
-        ..sort((left, right) {
-          final order = left.sortOrder.compareTo(right.sortOrder);
-
-          if (order != 0) {
-            return order;
-          }
-
-          return left.name.toLowerCase().compareTo(right.name.toLowerCase());
-        });
-
-      return Success(sorted);
-    },
-    failure: (failure) => failure,
-  );
+Stream<Result<List<Account>, AccountFailure>> accounts(Ref ref) {
+  return ref.watch(accountWatchQueriesProvider).active().map((result) {
+    return result.when<Result<List<Account>, AccountFailure>>(
+      success: (accounts) => Success(_sortAccounts(accounts)),
+      failure: (failure) => failure,
+    );
+  });
 }
 
-/// Loads one account by ID.
+/// Watches all accounts, including archived accounts.
 @riverpod
-Future<Result<Account?, AccountFailure>> account(Ref ref, AccountId accountId) {
-  return ref.watch(getAccountByIdUseCaseProvider)(accountId);
+Stream<Result<List<Account>, AccountFailure>> allAccounts(Ref ref) {
+  return ref.watch(accountWatchQueriesProvider).all().map((result) {
+    return result.when<Result<List<Account>, AccountFailure>>(
+      success: (accounts) => Success(_sortAccounts(accounts)),
+      failure: (failure) => failure,
+    );
+  });
 }
 
-/// Loads the custodian associated with an account.
+/// Watches one account by ID.
 @riverpod
-Future<Result<Custodian?, CustodianFailure>> accountCustodian(
+Stream<Result<Account?, AccountFailure>> account(Ref ref, AccountId accountId) {
+  return ref.watch(accountWatchQueriesProvider).byId(accountId);
+}
+
+/// Watches the custodian associated with an account.
+@riverpod
+Stream<Result<Custodian?, CustodianFailure>> accountCustodian(
   Ref ref,
   CustodianId custodianId,
 ) {
-  return ref.watch(getCustodianByIdUseCaseProvider)(custodianId);
+  return ref.watch(custodianWatchQueriesProvider).byId(custodianId);
 }
 
 /// Loads complete current account valuation presentation data.
 ///
-/// Financial calculations remain owned by [GetAccountValuationService].
+/// Financial calculations remain owned by the application service.
 @riverpod
 Future<Result<AccountValuationPresentationData, BaseFailure>>
 accountValuationPresentation(Ref ref, AccountId accountId) async {
@@ -155,8 +154,8 @@ accountValuationPresentation(Ref ref, AccountId accountId) async {
 
 /// Loads supporting values for account creation and editing.
 ///
-/// [includedCustodianId] ensures an archived custodian already assigned to an
-/// edited account remains selectable.
+/// Form reference data remains a bounded operation. Persistent account and
+/// custodian entities shown on the primary screens are watched separately.
 @riverpod
 Future<Result<AccountFormOptions, BaseFailure>> accountFormOptions(
   Ref ref,
@@ -229,4 +228,19 @@ Future<Result<AccountFormOptions, BaseFailure>> accountFormOptions(
       nextSortOrder: nextSortOrder,
     ),
   );
+}
+
+List<Account> _sortAccounts(Iterable<Account> accounts) {
+  final sorted = List<Account>.of(accounts)
+    ..sort((left, right) {
+      final order = left.sortOrder.compareTo(right.sortOrder);
+
+      if (order != 0) {
+        return order;
+      }
+
+      return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+    });
+
+  return List.unmodifiable(sorted);
 }

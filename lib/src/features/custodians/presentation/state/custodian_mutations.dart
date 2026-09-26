@@ -21,6 +21,8 @@ final updateCustodianMutation = Mutation<Result<void, CustodianFailure>>(
 );
 
 /// Creates a custodian.
+///
+/// Watched custodian projections update automatically from persistence.
 Future<Result<Custodian, CustodianFailure>?> executeCreateCustodian(
   WidgetRef ref,
   CustodianFormData data,
@@ -33,10 +35,7 @@ Future<Result<Custodian, CustodianFailure>?> executeCreateCustodian(
     });
 
     if (result.isSuccess) {
-      ref.invalidate(custodiansProvider);
-      ref.invalidate(nextCustodianSortOrderProvider);
-
-      // New custodians must become immediately available in account forms.
+      // Account form options remain a bounded reference-data query.
       ref.invalidate(accountFormOptionsProvider(null));
     }
 
@@ -47,6 +46,8 @@ Future<Result<Custodian, CustodianFailure>?> executeCreateCustodian(
 }
 
 /// Updates one custodian.
+///
+/// The watched overview and details providers require no manual refresh.
 Future<Result<void, CustodianFailure>?> executeUpdateCustodian(
   WidgetRef ref, {
   required Custodian original,
@@ -63,12 +64,9 @@ Future<Result<void, CustodianFailure>?> executeUpdateCustodian(
     });
 
     if (result.isSuccess) {
-      ref.invalidate(custodiansProvider);
-      ref.invalidate(custodianProvider(original.id));
       ref.invalidate(custodianValuationProvider(original.id));
-      ref.invalidate(nextCustodianSortOrderProvider);
 
-      // Account forms may render the custodian's display name.
+      // Account forms may render this custodian's display metadata.
       ref.invalidate(accountFormOptionsProvider(original.id));
     }
 

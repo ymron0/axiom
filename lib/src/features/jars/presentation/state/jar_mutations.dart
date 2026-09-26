@@ -33,7 +33,13 @@ final unarchiveJarMutation = Mutation<Result<Jar, JarFailure>>(
   label: 'unarchive-jar',
 );
 
-/// Creates a jar and invalidates affected presentation projections.
+/// Creates a jar.
+///
+/// Persisted jar projections are watched directly, so [jarsProvider],
+/// [allJarsProvider], and [jarProvider] update automatically after the write.
+///
+/// [jarFormOptionsProvider] remains a bounded query and is invalidated because
+/// the next available sort order changes after successful creation.
 Future<Result<Jar, BaseFailure>?> executeCreateJar(
   WidgetRef ref, {
   required JarFormData data,
@@ -52,8 +58,6 @@ Future<Result<Jar, BaseFailure>?> executeCreateJar(
     });
 
     if (result.isSuccess) {
-      ref.invalidate(jarsProvider);
-      ref.invalidate(allJarsProvider);
       ref.invalidate(jarFormOptionsProvider);
     }
 
@@ -63,7 +67,13 @@ Future<Result<Jar, BaseFailure>?> executeCreateJar(
   }
 }
 
-/// Updates a jar and invalidates affected presentation projections.
+/// Updates a jar.
+///
+/// The persisted jar entity is observed directly by the presentation layer, so
+/// the jar overview and details projections require no explicit invalidation.
+///
+/// Progress is invalidated because jar target configuration may have changed.
+/// Form options are invalidated because sort-order data may also have changed.
 Future<Result<void, BaseFailure>?> executeUpdateJar(
   WidgetRef ref, {
   required Jar original,
@@ -86,7 +96,8 @@ Future<Result<void, BaseFailure>?> executeUpdateJar(
     });
 
     if (result.isSuccess) {
-      _invalidateJar(ref, original.id);
+      ref.invalidate(jarFormOptionsProvider);
+      ref.invalidate(jarProgressPresentationProvider(original.id));
     }
 
     return result;
@@ -96,17 +107,23 @@ Future<Result<void, BaseFailure>?> executeUpdateJar(
 }
 
 /// Archives [jarId].
+///
+/// The watched jar streams update automatically after persistence changes.
+/// Progress is recalculated because lifecycle state may affect presentation.
 Future<Result<Jar, JarFailure>?> executeArchiveJar(
   WidgetRef ref,
   JarId jarId,
 ) async {
   try {
     final result = await archiveJarMutation.run(ref, (transaction) {
-      return transaction.get(archiveJarUseCaseProvider)(jarId);
+      final useCase = transaction.get(archiveJarUseCaseProvider);
+
+      return useCase(jarId);
     });
 
     if (result.isSuccess) {
-      _invalidateJar(ref, jarId);
+      ref.invalidate(jarProgressPresentationProvider(jarId));
+      ref.invalidate(jarFormOptionsProvider);
     }
 
     return result;
@@ -116,33 +133,26 @@ Future<Result<Jar, JarFailure>?> executeArchiveJar(
 }
 
 /// Reactivates [jarId].
+///
+/// The watched jar streams update automatically after persistence changes.
 Future<Result<Jar, JarFailure>?> executeUnarchiveJar(
   WidgetRef ref,
   JarId jarId,
 ) async {
   try {
     final result = await unarchiveJarMutation.run(ref, (transaction) {
-      return transaction.get(unarchiveJarUseCaseProvider)(jarId);
+      final useCase = transaction.get(unarchiveJarUseCaseProvider);
+
+      return useCase(jarId);
     });
 
     if (result.isSuccess) {
-      _invalidateJar(ref, jarId);
+      ref.invalidate(jarProgressPresentationProvider(jarId));
+      ref.invalidate(jarFormOptionsProvider);
     }
 
     return result;
   } on Object {
     return null;
   }
-}
-
-void _invalidateJar(WidgetRef ref, JarId jarId) {
-  ref.invalidate(jarsProvider);
-  ref.invalidate(allJarsProvider);
-  ref.invalidate(jarFormOptionsProvider);
-
-  ref.invalidate(jarProvider(jarId));
-  ref.invalidate(jarProgressPresentationProvider(jarId));
-  ref.invalidate(jarTransactionsProvider(jarId));
-  ref.invalidate(jarAllocationsProvider(jarId));
-  ref.invalidate(jarAllocationPresentationProvider(jarId));
 }

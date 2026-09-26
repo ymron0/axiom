@@ -118,4 +118,26 @@ abstract interface class AccountRepository {
   /// [AccountAlreadyExistsFailure] when its identity already exists in
   /// persistence.
   Future<Result<void, AccountFailure>> restore(Account account);
+
+  /// Watches all persisted accounts.
+  ///
+  /// The current snapshot is emitted when the subscription starts and a new
+  /// snapshot is emitted whenever the persisted account collection changes.
+  Stream<Result<List<Account>, AccountFailure>> watchAll();
+
+  /// Watches persisted accounts that are not archived.
+  Stream<Result<List<Account>, AccountFailure>> watchActive();
+
+  /// Watches persisted accounts that are archived.
+  Stream<Result<List<Account>, AccountFailure>> watchArchived();
+
+  /// Watches the account identified by [id].
+  ///
+  /// Emits `Success(null)` when the account does not exist.
+  Stream<Result<Account?, AccountFailure>> watchById(AccountId id);
+
+  /// Watches accounts belonging to [custodianId].
+  Stream<Result<List<Account>, AccountFailure>> watchByCustodianId(
+    CustodianId custodianId,
+  );
 }
