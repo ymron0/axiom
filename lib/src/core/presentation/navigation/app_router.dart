@@ -66,6 +66,14 @@ final class AppRouter extends RootStackRouter {
     AutoRoute(path: '/categories/:categoryId', page: CategoryDetailsRoute.page),
 
     //
+    // Jars.
+    //
+    AutoRoute(path: '/jars', page: JarsRoute.page),
+    AutoRoute(path: '/jars/new', page: CreateJarRoute.page),
+    AutoRoute(path: '/jars/:jarId/edit', page: EditJarRoute.page),
+    AutoRoute(path: '/jars/:jarId', page: JarDetailsRoute.page),
+
+    //
     // Tags.
     //
     AutoRoute(path: '/tags', page: TagManagementRoute.page),
